@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: 4, title: 'Plat signature au choix', desc: 'Entrecôte grillée 250g ou Burger Le Savane.', pts: 500, icon: '🥩', category: 'Plat' }
     ],
     notifications: [
-      { id: 101, title: '🔥 Vente Flash du Soir', text: '-20% sur l\'addition ce soir pour nos membres fidélité !', time: 'Il y a 10 min', read: false },
+      { id: 101, title: '✨ Offre Privilège du Soir', text: '-20% sur la carte ce soir pour nos membres d\'or !', time: 'Il y a 10 min', read: false },
       { id: 102, title: '🎁 Cadeau Anniversaire', text: 'Profitez de +50 points bonus lors de votre prochaine visite.', time: 'Hier', read: true }
     ],
     clients: [
@@ -146,12 +146,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Close Scanner if open
     scannerModal.classList.remove('active');
 
-    // Trigger Canvas Confetti
+    // Trigger Canvas Confetti in Gold Colors!
     if (window.confetti) {
       confetti({
-        particleCount: 60,
-        spread: 70,
-        origin: { y: 0.6 }
+        particleCount: 70,
+        spread: 80,
+        origin: { y: 0.6 },
+        colors: ['#F59E0B', '#D97706', '#FDE68A', '#FFFFFF']
       });
     }
 
@@ -160,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderMerchantUI();
 
     // Show Toast Confirmation
-    showToast('🎉 +10 Points crédités !', 'Scan QR de la Table #4 validé avec succès.');
+    showToast('✨ +10 Points crédités !', 'Scan QR de la Table #4 validé avec succès.');
   };
 
   if (btnSimulateScanOk) {
@@ -234,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (notifsContainer) {
       notifsContainer.innerHTML = state.notifications.map(n => `
-        <div class="reward-card" style="${!n.read ? 'border-left: 3px solid var(--primary);' : ''}">
+        <div class="reward-card" style="${!n.read ? 'border-left: 3px solid var(--gold-accent);' : ''}">
           <div class="reward-icon-box">🔔</div>
           <div class="reward-details">
             <div class="reward-title">${n.title}</div>
@@ -284,10 +285,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (passTitle) passTitle.textContent = reward.title;
     if (passQR) {
       passQR.innerHTML = `
-        <div style="background: white; padding: 12px; border-radius: 12px; display: inline-block;">
+        <div style="background: white; padding: 14px; border-radius: 14px; display: inline-block; border: 2px solid var(--gold-accent);">
           <svg width="140" height="140" viewBox="0 0 100 100">
             <rect width="100" height="100" fill="#ffffff" />
-            <path d="M10 10h30v30h-30zM50 10h40v10h-40zM10 50h10v40h-10zM30 50h30v10h-30zM70 40h20v50h-20z" fill="#0F172A"/>
+            <path d="M10 10h30v30h-30zM50 10h40v10h-40zM10 50h10v40h-10zM30 50h30v10h-30zM70 40h20v50h-20z" fill="#D97706"/>
           </svg>
         </div>
       `;
@@ -338,7 +339,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <tr>
           <td style="font-weight: 600;">${c.name}</td>
           <td style="color: var(--dash-muted);">${c.phone}</td>
-          <td><span style="font-weight: 700; color: var(--primary);">${c.points} pts</span></td>
+          <td><span style="font-weight: 700; color: var(--gold-accent);">${c.points} pts</span></td>
           <td>${c.visits} visites</td>
           <td style="color: var(--dash-muted); font-size: 0.8rem;">${c.lastVisit}</td>
           <td><span class="chip-tag ${c.segment === 'VIP' ? 'chip-vip' : c.segment === 'Nouveau' ? 'chip-new' : 'chip-active'}">${c.segment}</span></td>
@@ -359,7 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td style="font-size: 1.3rem;">${r.icon}</td>
           <td style="font-weight: 600;">${r.title}</td>
           <td style="color: var(--dash-muted);">${r.desc}</td>
-          <td style="font-weight: 700; color: var(--primary);">${r.pts} pts</td>
+          <td style="font-weight: 700; color: var(--gold-accent);">${r.pts} pts</td>
           <td><span class="chip-tag chip-active">Actif</span></td>
           <td>
             <button class="btn-secondary" style="padding: 0.25rem 0.5rem; color: var(--primary);" onclick="deleteReward(${r.id})">
@@ -448,7 +449,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnFastNotif = document.getElementById('btn-fast-notif');
   if (btnFastNotif) {
     btnFastNotif.addEventListener('click', () => {
-      showToast('🔥 Offre Spéciale Le Savane', '-20% sur la carte ce soir pour nos membres fidélité !');
+      showToast('✨ Offre Privilège Le Savane', '-20% sur la carte ce soir pour nos membres d\'or !');
     });
   }
 
@@ -470,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
-     8. CHART.JS ANALYTICS GRAPH
+     8. CHART.JS ANALYTICS GRAPH (GOLD PALETTE)
      ========================================================================== */
   const chartCanvas = document.getElementById('scansChart');
   if (chartCanvas && window.Chart) {
@@ -481,19 +482,19 @@ document.addEventListener('DOMContentLoaded', () => {
         datasets: [{
           label: 'Scans QR Code',
           data: [320, 450, 510, 680, 940, 1120, 880],
-          borderColor: '#E11D48',
-          backgroundColor: 'rgba(225, 29, 72, 0.1)',
+          borderColor: '#D97706',
+          backgroundColor: 'rgba(245, 158, 11, 0.12)',
           fill: true,
           tension: 0.4,
-          pointRadius: 4,
-          pointBackgroundColor: '#E11D48'
+          pointRadius: 5,
+          pointBackgroundColor: '#F59E0B'
         }]
       },
       options: {
         responsive: true,
         plugins: { legend: { display: false } },
         scales: {
-          y: { grid: { color: '#F1F5F9' } },
+          y: { grid: { color: '#E8E2D5' } },
           x: { grid: { display: false } }
         }
       }
