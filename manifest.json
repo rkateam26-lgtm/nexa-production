@@ -1,0 +1,21 @@
+{
+  "name": "Nexa — Fidélité Le Savane",
+  "short_name": "Nexa Savane",
+  "description": "Scannez votre QR code et obtenez vos récompenses au restaurant Le Savane",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0B0F17",
+  "theme_color": "#E11D48",
+  "icons": [
+    {
+      "src": "./assets/savane_dish.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "./assets/savane_dish.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}

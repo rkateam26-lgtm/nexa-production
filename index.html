@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXA — Plateforme de Fidélisation & Relationship Management par QR Code</title>
+  
+  <!-- PWA Manifest -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#E11D48">
+
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP DEMO HEADER BAR / SWITCHER
+       ========================================================================== -->
+  <header class="nexa-header">
+    <div class="brand-logo">
+      <div class="brand-badge">N</div>
+      <span>NEXA</span>
+      <span class="brand-tag">PROTOTYPE SAAS V2 READY</span>
+    </div>
+
+    <!-- View Mode Switcher Buttons -->
+    <div class="view-switcher">
+      <button class="switch-btn" data-view="mobile">
+        <i data-lucide="smartphone"></i>
+        <span>Vue Client Mobile</span>
+      </button>
+      <button class="switch-btn" data-view="desktop">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Vue Restaurateur</span>
+      </button>
+      <button class="switch-btn active" data-view="dual">
+        <i data-lucide="columns"></i>
+        <span>Mode Double Écran (En direct)</span>
+      </button>
+      <button class="switch-btn" data-view="cashier">
+        <i data-lucide="store"></i>
+        <span>Vue Serveur / Caisse</span>
+      </button>
+    </div>
+
+    <!-- Quick Demo Action Controls -->
+    <div class="demo-controls">
+      <button class="btn-demo-action btn-pulse" id="btn-fast-scan">
+        <i data-lucide="qr-code"></i>
+        <span>Simuler Scan QR (+10 pts)</span>
+      </button>
+      <button class="btn-demo-action" id="btn-fast-notif">
+        <i data-lucide="bell"></i>
+        <span>Tester Notif Push</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN VIEWPORT CONTAINER
+       ========================================================================== -->
+  <main class="main-viewport viewport-dual" id="viewport-container">
+
+    <!-- ==========================================================================
+         LEFT: MOBILE SMARTPHONE APP (CLIENT VIEW - LE SAVANE)
+         ========================================================================== -->
+    <div class="phone-wrapper">
+      <div class="phone-screen">
+        
+        <!-- Smartphone Notch / Status Bar -->
+        <div class="phone-notch">
+          <span>12:45</span>
+          <div class="notch-pill"></div>
+          <div style="display: flex; gap: 4px; align-items: center;">
+            <i data-lucide="wifi" style="width:14px; height:14px;"></i>
+            <i data-lucide="battery" style="width:14px; height:14px;"></i>
+          </div>
+        </div>
+
+        <!-- Scrollable Phone Screen Content -->
+        <div class="phone-content">
+
+          <!-- Restaurant Hero Header -->
+          <div class="restaurant-hero" style="background-image: url('./assets/le_savane_hero.jpg');">
+            <div class="restaurant-badge-overlay">
+              <img src="./assets/savane_dish.jpg" alt="Le Savane Logo" class="restaurant-logo-img">
+              <div class="restaurant-info">
+                <h1>Le Savane</h1>
+                <div class="restaurant-sub">
+                  <span class="rating-tag">★ 4.9</span>
+                  <span>• Bistro & Grill Raffiné</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SCREEN 1: LOYALTY HOME & POINTS (DEFAULT ACTIVE) -->
+          <div class="client-screen active" id="screen-home">
+            
+            <!-- User Points Hero Card -->
+            <div class="points-card-premium">
+              <div class="points-header">
+                <div>
+                  <p class="points-label">Solde de Points</p>
+                  <div class="points-amount-display">
+                    <span class="points-number" id="user-points-val">140</span>
+                    <span class="points-label">PTS</span>
+                  </div>
+                </div>
+                <span class="user-status">Membre Silver</span>
+              </div>
+
+              <!-- Progression towards next reward -->
+              <div class="progress-container">
+                <div class="progress-labels">
+                  <span>Prochaine récompense</span>
+                  <span id="user-progress-lbl">70% de l'objectif Dessert (200 pts)</span>
+                </div>
+                <div class="progress-track">
+                  <div class="progress-fill" id="user-progress-fill" style="width: 70%;"></div>
+                </div>
+              </div>
+
+              <button class="qr-pass-trigger" onclick="claimReward(1)">
+                <i data-lucide="qr-code"></i>
+                <span>Afficher mon Pass QR Client</span>
+              </button>
+            </div>
+
+            <!-- Quick QR Code Scanner CTA Box -->
+            <div class="scan-cta-box">
+              <div class="scan-cta-text">
+                <h3>Scannez votre table</h3>
+                <p>Cumulez +10 points à chaque visite</p>
+              </div>
+              <button class="btn-scan-action" id="btn-trigger-scan">
+                <i data-lucide="camera"></i>
+                <span>Scan QR</span>
+              </button>
+            </div>
+
+            <!-- Available Rewards List -->
+            <div class="section-title">
+              <span>Récompenses Disponibles</span>
+              <span style="font-size:0.75rem; color: var(--primary); font-weight:600;">4 Récompenses</span>
+            </div>
+
+            <div class="rewards-list" id="client-rewards-list">
+              <!-- Rendered dynamically by app.js -->
+            </div>
+
+          </div>
+
+          <!-- SCREEN 2: HISTORY TIMELINE -->
+          <div class="client-screen" id="screen-history">
+            <div class="section-title" style="margin-top: 1rem;">
+              <span>Historique d'Activité</span>
+            </div>
+            <div class="history-feed" id="client-history-feed">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- SCREEN 3: NOTIFICATIONS CENTER -->
+          <div class="client-screen" id="screen-notifs">
+            <div class="section-title" style="margin-top: 1rem;">
+              <span>Offres & Notifications</span>
+            </div>
+            
+            <!-- Web Notification Permission Banner -->
+            <div style="margin: 0 1rem 1rem 1rem; padding: 0.85rem; background: rgba(225, 29, 72, 0.1); border: 1px solid rgba(225, 29, 72, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <h4 style="font-size: 0.85rem; color: white;">Notifications Web</h4>
+                <p style="font-size: 0.7rem; color: var(--mobile-muted);">Autorisées pour Le Savane</p>
+              </div>
+              <span style="background: var(--accent-green); color: white; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: 700;">Actif</span>
+            </div>
+
+            <div class="rewards-list" id="client-notifs-feed">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- SCREEN 4: CLIENT PROFILE -->
+          <div class="client-screen" id="screen-profile">
+            <div style="padding: 1.5rem 1rem; text-align: center;">
+              <div style="width: 72px; height: 72px; background: var(--primary); border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: white; font-weight: 800;">
+                TL
+              </div>
+              <h2 style="color: white; font-size: 1.2rem;">Thomas Laurent</h2>
+              <p style="color: var(--mobile-muted); font-size: 0.8rem;">+33 6 42 19 88 30 (WhatsApp)</p>
+              <span class="user-status" style="margin-top: 0.5rem; display: inline-block;">Membre Privilège</span>
+
+              <div style="margin-top: 2rem; background: var(--mobile-card); border-radius: 12px; padding: 1rem; text-align: left;">
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--mobile-border);">
+                  <span style="color: var(--mobile-muted); font-size: 0.85rem;">Date d'inscription</span>
+                  <span style="color: white; font-size: 0.85rem;">01 Août 2026</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--mobile-border);">
+                  <span style="color: var(--mobile-muted); font-size: 0.85rem;">Nombre de visites</span>
+                  <span style="color: white; font-size: 0.85rem;">8 visites</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
+                  <span style="color: var(--mobile-muted); font-size: 0.85rem;">Établissement favori</span>
+                  <span style="color: white; font-size: 0.85rem;">Le Savane (Paris)</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Mobile Bottom Navigation -->
+        <nav class="mobile-nav">
+          <button class="nav-tab active" data-tab="home">
+            <i data-lucide="gift"></i>
+            <span>Fidélité</span>
+          </button>
+          <button class="nav-tab" data-tab="history">
+            <i data-lucide="clock"></i>
+            <span>Activité</span>
+          </button>
+          <button class="nav-tab" data-tab="notifs">
+            <i data-lucide="bell"></i>
+            <span>Notifs <span id="notif-badge-count" style="display:none; background:var(--primary); color:white; border-radius:50%; padding:0 4px; font-size:0.6rem;">1</span></span>
+          </button>
+          <button class="nav-tab" data-tab="profile">
+            <i data-lucide="user"></i>
+            <span>Profil</span>
+          </button>
+        </nav>
+
+      </div>
+    </div>
+
+
+    <!-- ==========================================================================
+         RIGHT: DESKTOP RESTAURATEUR SAAS DASHBOARD
+         ========================================================================== -->
+    <div class="dashboard-container">
+      
+      <!-- Sidebar Navigation -->
+      <aside class="dash-sidebar">
+        <div>
+          <div class="dash-brand">
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <img src="./assets/savane_dish.jpg" alt="Logo" style="width:32px; height:32px; border-radius:8px; object-fit:cover;">
+              <div>
+                <div class="dash-brand-name">LE SAVANE</div>
+                <div class="dash-brand-sub">Espace Restaurateur Nexa</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dash-menu">
+            <button class="dash-menu-item active" data-section="overview">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Vue d'ensemble</span>
+            </button>
+            <button class="dash-menu-item" data-section="clients">
+              <i data-lucide="users"></i>
+              <span>Clients & CRM</span>
+            </button>
+            <button class="dash-menu-item" data-section="loyalty">
+              <i data-lucide="award"></i>
+              <span>Récompenses</span>
+            </button>
+            <button class="dash-menu-item" data-section="qrcodes">
+              <i data-lucide="qr-code"></i>
+              <span>QR Codes</span>
+            </button>
+            <button class="dash-menu-item" data-section="notifs">
+              <i data-lucide="send"></i>
+              <span>Notifications Push</span>
+            </button>
+            <button class="dash-menu-item" data-section="stats">
+              <i data-lucide="bar-chart-3"></i>
+              <span>Statistiques</span>
+            </button>
+            <button class="dash-menu-item" data-section="settings">
+              <i data-lucide="settings"></i>
+              <span>Paramètres & Sécurité</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Merchant Admin Profile Footer -->
+        <div class="merchant-profile-card">
+          <div class="merchant-avatar">LS</div>
+          <div class="merchant-details">
+            <h4>Gérant Le Savane</h4>
+            <p>14 Rue de la Paix, Paris</p>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main SaaS Body -->
+      <div class="dash-main">
+        
+        <!-- Header Bar -->
+        <header class="dash-header">
+          <div class="dash-page-title">
+            <h2 id="dash-title">Vue d'ensemble</h2>
+            <p>Plateforme de fidélisation et CRM restaurant en temps réel</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; align-items: center;">
+            <span style="font-size: 0.75rem; background: rgba(16, 185, 129, 0.1); color: var(--accent-green); border: 1px solid rgba(16, 185, 129, 0.3); padding: 0.3rem 0.75rem; border-radius: 20px; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+              <span style="width: 8px; height: 8px; background: var(--accent-green); border-radius: 50%; display: inline-block;"></span>
+              18 clients en salle ce soir
+            </span>
+          </div>
+        </header>
+
+        <div class="dash-body">
+
+          <!-- SECTION 1: OVERVIEW DASHBOARD -->
+          <div class="dash-section active" id="dash-sec-overview">
+            
+            <!-- 4 Metric KPI Cards -->
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span>Clients Enregistrés</span>
+                  <div class="stat-icon"><i data-lucide="users"></i></div>
+                </div>
+                <div class="stat-value-box">
+                  <span class="stat-value" id="stat-total-clients">1 248</span>
+                  <span class="stat-trend up">↑ +14%</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span>Scans QR ce Mois</span>
+                  <div class="stat-icon"><i data-lucide="qr-code"></i></div>
+                </div>
+                <div class="stat-value-box">
+                  <span class="stat-value" id="stat-qr-scans">3 890</span>
+                  <span class="stat-trend up">↑ +22%</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span>Points Distribués</span>
+                  <div class="stat-icon"><i data-lucide="sparkles"></i></div>
+                </div>
+                <div class="stat-value-box">
+                  <span class="stat-value" id="stat-pts-given">38 900</span>
+                  <span class="stat-trend up">↑ +18%</span>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-header">
+                  <span>Récompenses Utilisées</span>
+                  <div class="stat-icon"><i data-lucide="gift"></i></div>
+                </div>
+                <div class="stat-value-box">
+                  <span class="stat-value" id="stat-rewards-redeemed">245</span>
+                  <span class="stat-trend up">↑ +9%</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Analytics Graph + Activity Live Feed Grid -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+              <div class="data-table-container" style="padding: 1.25rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;">Évolution des Scans QR par Jour</h3>
+                <canvas id="scansChart" height="130"></canvas>
+              </div>
+
+              <div class="data-table-container" style="padding: 1.25rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;">Activité en Direct</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                  <div style="font-size: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--dash-border);">
+                    <strong style="color: var(--primary);">+10 pts</strong> — Scan Table #4 (Thomas Laurent)
+                    <div style="color: var(--dash-muted); font-size: 0.7rem;">À l'instant</div>
+                  </div>
+                  <div style="font-size: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--dash-border);">
+                    <strong style="color: var(--accent-gold);">Récompense</strong> — Café Gourmand (Sophie M.)
+                    <div style="color: var(--dash-muted); font-size: 0.7rem;">Il y a 12 min</div>
+                  </div>
+                  <div style="font-size: 0.8rem;">
+                    <strong style="color: var(--accent-green);">Nouveau Client</strong> — Lucas Bernard (+33 7 89...)
+                    <div style="color: var(--dash-muted); font-size: 0.7rem;">Il y a 45 min</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SECTION 2: CLIENTS CRM TABLE -->
+          <div class="dash-section" id="dash-sec-clients">
+            <div class="data-table-container">
+              <div class="table-header-tools">
+                <div class="table-search">
+                  <i data-lucide="search" style="width:16px; color: var(--dash-muted);"></i>
+                  <input type="text" placeholder="Rechercher par nom ou WhatsApp...">
+                </div>
+                <button class="btn-primary">
+                  <i data-lucide="download"></i>
+                  <span>Exporter CRM (CSV)</span>
+                </button>
+              </div>
+
+              <table class="nexa-table">
+                <thead>
+                  <tr>
+                    <th>Nom du Client</th>
+                    <th>Numéro WhatsApp</th>
+                    <th>Points Accumulés</th>
+                    <th>Visites</th>
+                    <th>Dernière Activité</th>
+                    <th>Segment</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="crm-table-body">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SECTION 3: REWARDS MANAGER -->
+          <div class="dash-section" id="dash-sec-loyalty">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 700;">Gestion du Programme de Récompenses</h3>
+                <p style="font-size: 0.8rem; color: var(--dash-muted);">Définissez le nombre de points requis pour chaque privilège.</p>
+              </div>
+              <button class="btn-primary" id="btn-open-add-reward">
+                <i data-lucide="plus"></i>
+                <span>Créer une Récompense</span>
+              </button>
+            </div>
+
+            <div class="data-table-container">
+              <table class="nexa-table">
+                <thead>
+                  <tr>
+                    <th>Icône</th>
+                    <th>Titre de la Récompense</th>
+                    <th>Description</th>
+                    <th>Points Requis</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="rewards-admin-body">
+                  <!-- Rendered dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- SECTION 4: QR CODE MANAGER -->
+          <div class="dash-section" id="dash-sec-qrcodes">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Générateur de QR Code Restaurant</h3>
+                <div class="form-group">
+                  <label>Emplacement du QR Code</label>
+                  <select id="qr-location-select">
+                    <option value="Table #4">Table #4 (En salle)</option>
+                    <option value="Table #12">Table #12 (Terrasse)</option>
+                    <option value="Caisse">Comptoir de Caisse</option>
+                    <option value="Ticket">Imprimé sur Ticket de caisse</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Points attribués au Scan</label>
+                  <input type="number" value="10" readonly style="background: #F1F5F9;">
+                </div>
+                <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                  <i data-lucide="printer"></i>
+                  <span>Télécharger l'Affiche Imprimable PDF</span>
+                </button>
+              </div>
+
+              <!-- Printable Poster Simulator -->
+              <div class="data-table-container" style="padding: 1.5rem; text-align: center; background: #FFFFFF;">
+                <div style="border: 2px solid var(--primary); padding: 1.5rem; border-radius: 16px; background: linear-gradient(180deg, #FFFFFF, #FFF5F7);">
+                  <div style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--dash-text); text-transform: uppercase;">
+                    Le Savane
+                  </div>
+                  <p style="font-size: 0.85rem; color: var(--dash-muted); margin-bottom: 1.25rem;">
+                    Scannez & Obtenez <strong style="color: var(--primary);">+10 Points</strong> sur votre addition !
+                  </p>
+
+                  <div style="background: white; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: var(--shadow-md);">
+                    <svg width="150" height="150" viewBox="0 0 100 100">
+                      <rect width="100" height="100" fill="#ffffff" />
+                      <path d="M0 0h30v30h-30zM70 0h30v30h-30zM0 70h30v30h-30zM10 10h10v10h-10zM80 10h10v10h-10zM10 80h10v10h-10z" fill="#E11D48"/>
+                      <path d="M35 35h30v30h-30zM45 45h10v10h-10z" fill="#0F172A"/>
+                    </svg>
+                  </div>
+
+                  <p style="font-size: 0.75rem; color: var(--dash-muted); margin-top: 1rem;">
+                    Aucune application à télécharger • Scan direct avec l'appareil photo
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION 5: PUSH NOTIFICATION BROADCASTER -->
+          <div class="dash-section" id="dash-sec-notifs">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              
+              <!-- Form Composer -->
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Créer une Campagne de Notification</h3>
+                <form id="form-send-notif">
+                  <div class="form-group">
+                    <label>Titre de la Notification</label>
+                    <input type="text" id="notif-title-input" placeholder="ex: 🔥 Offre Spéciale du Soir" required>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Message Promotionnel</label>
+                    <textarea id="notif-text-input" rows="3" placeholder="ex: -20% sur l'addition ce soir pour nos membres !" required></textarea>
+                  </div>
+
+                  <div class="form-group">
+                    <label>Audience Cible</label>
+                    <select id="notif-audience-input">
+                      <option>Tous les clients enregistrés (1 248)</option>
+                      <option>Clients VIP (>200 pts) (342)</option>
+                      <option>Clients inactifs (>14 jours) (189)</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+                    <i data-lucide="send"></i>
+                    <span>Envoyer la Notification aux Clients</span>
+                  </button>
+                </form>
+              </div>
+
+              <!-- Notification Campaign History -->
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Historique des Envois</h3>
+                <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                  <div style="padding: 0.85rem; background: #F8FAFC; border-radius: 10px; border: 1px solid var(--dash-border);">
+                    <div style="font-weight: 700; font-size: 0.9rem;">🔥 Vente Flash du Soir</div>
+                    <p style="font-size: 0.75rem; color: var(--dash-muted);">-20% sur l'addition ce soir pour nos membres fidélité !</p>
+                    <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: var(--dash-muted);">
+                      <span>Envoyé à 1 248 clients</span>
+                      <span style="color: var(--accent-green); font-weight: 700;">84% Taux d'ouverture</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- SECTION 6: STATS -->
+          <div class="dash-section" id="dash-sec-stats">
+            <div class="data-table-container" style="padding: 2rem; text-align: center;">
+              <i data-lucide="trending-up" style="width:48px; height:48px; color: var(--primary); margin-bottom: 1rem;"></i>
+              <h3 style="font-size: 1.25rem; font-weight: 700;">Statistiques de Rétention & ROI</h3>
+              <p style="color: var(--dash-muted); max-width: 500px; margin: 0.5rem auto 1.5rem auto;">
+                Nexa augmente la fréquence de visite en restaurant de <strong>+34%</strong> grâce à l'accès instantané par QR code.
+              </p>
+            </div>
+          </div>
+
+          <!-- SECTION 7: SETTINGS & ANTI-FRAUD -->
+          <div class="dash-section" id="dash-sec-settings">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Profil du Restaurant</h3>
+                <div class="form-group">
+                  <label>Nom de l'établissement</label>
+                  <input type="text" value="Le Savane">
+                </div>
+                <div class="form-group">
+                  <label>Spécialité / Type de cuisine</label>
+                  <input type="text" value="Bistro & Grill Raffiné">
+                </div>
+                <div class="form-group">
+                  <label>Adresse complète</label>
+                  <input type="text" value="14 Rue de la Paix, 75002 Paris">
+                </div>
+                <button class="btn-primary">Enregistrer les Modifications</button>
+              </div>
+
+              <!-- Security & Anti-Abuse Rules Panel -->
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: var(--dash-text);">
+                  🛡️ Sécurité & Anti-Fraude (Scans QR)
+                </h3>
+                <div class="form-group">
+                  <label>Délai d'attente (Cooldown) entre 2 scans par client</label>
+                  <select>
+                    <option selected>3 heures (1 scan par repas)</option>
+                    <option>6 heures</option>
+                    <option>24 heures</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Vérification de Géolocalisation GPS (Rayon 50m)</label>
+                  <select>
+                    <option selected>Activée (Requis en restaurant)</option>
+                    <option>Désactivée</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Mode QR Code sur Ticket de Caisse</label>
+                  <select>
+                    <option selected>QR Code dynamique à usage unique</option>
+                    <option>QR Code fixe sur table</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- ==========================================================================
+       MODALS & OVERLAYS
+       ========================================================================== -->
+
+  <!-- 1. Scanner Camera Simulator Modal -->
+  <div class="scanner-modal" id="scanner-modal">
+    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+      <h3 style="color: white; font-size: 1.1rem;">Scanner le QR Code Table</h3>
+      <button id="btn-close-scanner" style="color: white; font-size: 1.5rem;">✕</button>
+    </div>
+
+    <div class="scanner-target">
+      <div class="scanner-line"></div>
+    </div>
+
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <p style="color: white; font-size: 0.9rem; margin-bottom: 1rem;">Pointez la caméra vers le QR Code de votre table</p>
+      <button class="btn-primary" id="btn-simulate-scan-ok" style="font-size: 0.9rem; padding: 0.75rem 1.5rem;">
+        ⚡ Valider le Scan Table #4 (+10 Pts)
+      </button>
+    </div>
+  </div>
+
+  <!-- 2. Redemption Pass QR Modal (Cashier Redemption) -->
+  <div class="nexa-modal-backdrop" id="redemption-pass-modal">
+    <div class="nexa-modal-card" style="text-align: center;">
+      <div class="modal-header">
+        <h3 style="font-size: 1.1rem;">Pass Récompense Client</h3>
+        <button id="btn-close-pass" style="font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+
+      <p style="color: var(--dash-muted); font-size: 0.85rem; margin-bottom: 1rem;">Présentez ce QR Code lors du paiement au serveur</p>
+      <h2 id="pass-reward-title" style="color: var(--primary); font-size: 1.3rem; margin-bottom: 1rem;">Boisson offerte</h2>
+
+      <div id="pass-qr-box" style="margin-bottom: 1rem;"></div>
+
+      <p style="font-size: 0.75rem; color: var(--dash-muted);">Valable 15 minutes • Usage unique</p>
+    </div>
+  </div>
+
+  <!-- 3. Add Reward Modal (Restaurateur Admin) -->
+  <div class="nexa-modal-backdrop" id="modal-add-reward">
+    <div class="nexa-modal-card">
+      <div class="modal-header">
+        <h3>Créer une nouvelle Récompense</h3>
+        <button id="btn-close-add-reward" style="font-size: 1.2rem; cursor: pointer;">✕</button>
+      </div>
+      <form id="form-add-reward">
+        <div class="form-group">
+          <label>Titre de la récompense</label>
+          <input type="text" id="reward-title-input" placeholder="ex: Verre de vin offert" required>
+        </div>
+        <div class="form-group">
+          <label>Points requis</label>
+          <input type="number" id="reward-pts-input" placeholder="150" required>
+        </div>
+        <div class="form-group">
+          <label>Description courte</label>
+          <input type="text" id="reward-desc-input" placeholder="Au choix sur la carte des vins" required>
+        </div>
+        <div class="form-group">
+          <label>Emoji / Icône</label>
+          <input type="text" id="reward-icon-input" placeholder="🍷" value="🍷">
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+          Ajouter la Récompense au Programme
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Live Toast Push Notification Overlay -->
+  <div class="notification-toast" id="notification-toast">
+    <div class="toast-icon">🔔</div>
+    <div>
+      <div style="font-weight: 700; font-size: 0.9rem;" id="toast-title">Offre Le Savane</div>
+      <div style="font-size: 0.8rem; color: #CBD5E1;" id="toast-body">Un nouveau privilège est disponible !</div>
+    </div>
+  </div>
+
+  <!-- Main JavaScript File -->
+  <script src="app.js"></script>
+
+</body>
+</html>
