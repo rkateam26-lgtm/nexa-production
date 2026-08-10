@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXA — Presentation Pitch Deck Investisseurs (Fidélisation & CRM QR Code)</title>
+  
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* Investor Pitch Presentation Styles - Luxury Whitey-Gold & Marron Gold Theme */
+    body {
+      background: #1F150F;
+      color: #FAF8F5;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .pitch-viewport {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      padding: 3rem 5rem;
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      background: radial-gradient(circle at top right, #342217 0%, #1A110C 100%);
+      opacity: 0;
+      transition: opacity 0.4s ease-in-out, transform 0.4s ease-in-out;
+      transform: scale(0.98);
+    }
+
+    .slide.active {
+      display: flex;
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(217, 119, 6, 0.25);
+      padding-bottom: 1rem;
+    }
+
+    .slide-tag {
+      background: rgba(217, 119, 6, 0.18);
+      color: #F59E0B;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      padding: 0.35rem 0.85rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .slide-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.3rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      margin: 0.5rem 0;
+    }
+
+    .slide-body {
+      flex: 1;
+      margin: 1.5rem 0;
+      display: flex;
+      gap: 2.5rem;
+      align-items: center;
+    }
+
+    .slide-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 1rem;
+      color: #A3968C;
+      font-size: 0.85rem;
+    }
+
+    .controls-bar {
+      position: fixed;
+      bottom: 1.5rem;
+      right: 2rem;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: rgba(42, 29, 21, 0.95);
+      padding: 0.5rem 1rem;
+      border-radius: 30px;
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      backdrop-filter: blur(12px);
+    }
+
+    .btn-pitch-nav {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border-radius: 50%;
+      width: 38px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+    }
+
+    .btn-pitch-nav:hover {
+      background: #D97706;
+      color: #FFFFFF;
+    }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; width: 100%; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; width: 100%; }
+
+    .card-pitch {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(245, 158, 11, 0.22);
+      border-radius: 16px;
+      padding: 1.5rem;
+    }
+
+    .card-pitch h3 {
+      font-size: 1.2rem;
+      color: #F59E0B;
+      margin-bottom: 0.5rem;
+    }
+
+    .stat-number-giant {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3.2rem;
+      font-weight: 800;
+      color: #F59E0B;
+      line-height: 1.1;
+    }
+
+    @media (max-width: 900px) {
+      .slide { padding: 1.5rem; }
+      .slide-title { font-size: 1.5rem; }
+      .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 1rem; }
+      .slide-body { flex-direction: column; overflow-y: auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="pitch-viewport">
+
+    <!-- SLIDE 1: COVER -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-header">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width:36px; height:36px; background:linear-gradient(135deg, #FDE68A, #D97706); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; color:#2A1D15;">N</div>
+          <span style="font-weight:800; font-size:1.2rem; letter-spacing:1px; color:white;">NEXA</span>
+        </div>
+        <span class="slide-tag">Investor Pitch Deck 2026</span>
+      </div>
+
+      <div class="slide-body" style="justify-content: center; text-align: center;">
+        <div style="max-width: 840px;">
+          <span style="color:#F59E0B; font-weight:800; text-transform:uppercase; letter-spacing:2px; font-size:0.9rem;">La Révolution de la Fidélisation en Restauration</span>
+          <h1 style="font-family:'Outfit', sans-serif; font-size: 3.6rem; font-weight:900; color:white; line-height:1.12; margin: 1rem 0 1.5rem 0;">
+            La Plateforme SaaS de Fidélisation & CRM QR Code pour Restaurants & Cafés
+          </h1>
+          <p style="font-size: 1.25rem; color: #A3968C; max-width: 720px; margin: 0 auto 2rem auto;">
+            Transformer chaque table de restaurant en un canal automatisé de génération de clients récurrents grâce au scan QR sans application à télécharger.
+          </p>
+          <div style="display:inline-flex; gap:1.5rem; background:rgba(245,158,11,0.12); padding:0.85rem 2rem; border-radius:30px; border:1px solid rgba(245,158,11,0.35);">
+            <span>📍 Cible : Restauration Indépendante & Groupes</span>
+            <span>⚡ Modèle : SaaS B2B Recurring (MRR/ARR)</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 1 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: LE PROBLÈME -->
+    <div class="slide" id="slide-2">
+      <div class="slide-header">
+        <h2 class="slide-title">Le Problème : Le Gâchis de la Rétention en Restauration</h2>
+        <span class="slide-tag">01. Contexte & Problème</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card-pitch" style="border-left: 4px solid #EF4444;">
+            <h3>🚪 80% de Clients Perdus</h3>
+            <p style="color:#A3968C; font-size:0.95rem;">
+              80% des clients qui passent la porte d'un restaurant ne reviennent jamais car le restaurateur n'a aucun moyen direct ni automatique de les recontacter.
+            </p>
+          </div>
+
+          <div class="card-pitch" style="border-left: 4px solid #F59E0B;">
+            <h3>🏷️ Cartes Tampons Périimées</h3>
+            <p style="color:#A3968C; font-size:0.95rem;">
+              Les cartes de fidélité en carton sont oubliées dans les portefeuilles ou perdues par 90% des clients. Elles n'offrent AUCUNE donnée au restaurateur.
+            </p>
+          </div>
+
+          <div class="card-pitch" style="border-left: 4px solid #3B82F6;">
+            <h3>💸 Budget Pubs Insta/TikTok Gâché</h3>
+            <p style="color:#A3968C; font-size:0.95rem;">
+              Acquérir un nouveau client coûte <strong>5x plus cher</strong> que faire revenir un client existant. Sans CRM, le restaurateur dépense à perte.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 2 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: LA SOLUTION NEXA -->
+    <div class="slide" id="slide-3">
+      <div class="slide-header">
+        <h2 class="slide-title">La Solution NEXA : Le Scan QR Table en 3 Secondes</h2>
+        <span class="slide-tag">02. Notre Solution</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <div style="margin-bottom: 1.5rem;">
+              <h3 style="color:#F59E0B; font-size:1.3rem; margin-bottom:0.4rem;">⚡ 1. Scan QR Table sans Téléchargement</h3>
+              <p style="color:#A3968C;">Le client flashe le QR code fixé sur la Table #4 ➔ sa Web App s'ouvre en 1 seconde et crédite instantanément +10 points de fidélité.</p>
+            </div>
+
+            <div style="margin-bottom: 1.5rem;">
+              <h3 style="color:#F59E0B; font-size:1.3rem; margin-bottom:0.4rem;">🎁 2. Catalogue de Récompenses Intelligentes</h3>
+              <p style="color:#A3968C;">Échange de points en 1 tap (Café gourmand, dessert offert, boisson) avec génération d'un Pass QR temporaire pour la caisse.</p>
+            </div>
+
+            <div>
+              <h3 style="color:#F59E0B; font-size:1.3rem; margin-bottom:0.4rem;">📊 3. Dashboard Restaurateur & Relance WhatsApp</h3>
+              <p style="color:#A3968C;">Fichier clients enrichi automatiquement (numéros WhatsApp, solde de points, statut VIP) et envois d'offres push automatisées.</p>
+            </div>
+          </div>
+
+          <div class="card-pitch" style="background: linear-gradient(135deg, rgba(217,119,6,0.15), rgba(42,29,21,0.4)); text-align:center; padding:2rem;">
+            <div style="font-size:4rem; margin-bottom:1rem;">📱</div>
+            <h3 style="font-size:1.5rem; color:white; margin-bottom:0.5rem;">Zero-Friction Technology</h3>
+            <p style="color:#A3968C;">"Aucun téléchargement sur l'App Store, aucune friction. 100% basé sur le Web PWA ultra-rapide."</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 3 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: DÉMO PRODUIT CLIENT -->
+    <div class="slide" id="slide-4">
+      <div class="slide-header">
+        <h2 class="slide-title">Démo Produit : L'Expérience Client WebApp Épurée</h2>
+        <span class="slide-tag">03. Produit Live</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch">
+            <h3>Une Interface Client Sanctuarisée</h3>
+            <ul style="color:#A3968C; line-height:2; padding-left:1.2rem;">
+              <li>Design Whitey-Gold & Marron Gold sobre et élégant.</li>
+              <li>Affichage clair du solde de points (<strong>140 PTS</strong>) et jauge de progression vers le dessert offert.</li>
+              <li>Bouton principal géant : <strong>"⚡ Scanner ma Table (+10 Pts)"</strong>.</li>
+              <li>Catalogue réactif de récompenses et Pass QR sécurisé à usage unique valable 15 minutes en caisse.</li>
+            </ul>
+          </div>
+
+          <div class="card-pitch" style="text-align:center; background:#18100B;">
+            <div style="border:2px solid #D97706; padding:1.5rem; border-radius:20px; background:#FAF8F5; color:#2A1D15;">
+              <span style="font-size:0.75rem; color:#786C63; font-weight:800; text-transform:uppercase;">LE SAVANE (Table #4)</span>
+              <div style="font-size:3rem; font-weight:900; color:#D97706; margin:0.3rem 0;">140 PTS</div>
+              <p style="font-size:0.78rem; color:#786C63; margin-bottom:1rem;">Objectif Dessert Offert : <strong>70% (200 pts)</strong></p>
+              <div style="background:#2A1D15; color:white; padding:0.6rem; border-radius:10px; font-weight:800; font-size:0.85rem;">
+                ⚡ Scanner ma Table (+10 Pts)
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 4 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: DÉMO PRODUIT RESTAURATEUR -->
+    <div class="slide" id="slide-5">
+      <div class="slide-header">
+        <h2 class="slide-title">Démo Produit : Le Dashboard Restaurateur & Fiches CRM</h2>
+        <span class="slide-tag">03. Produit Live</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch">
+            <h3>Pilotage en Temps Réel</h3>
+            <ul style="color:#A3968C; line-height:2; padding-left:1.2rem;">
+              <li><strong>Suivi des Scans</strong> : 3 890 scans de QR codes par mois.</li>
+              <li><strong>Fiches Clients Mobiles</strong> : Nom, WhatsApp, Solde de Points, Nombre de Visites et date du dernier scan.</li>
+              <li><strong>Bouton 1 Clic WhatsApp</strong> : Contact direct pour anniversaire ou offre privilégiée.</li>
+              <li><strong>Statistiques & Graphique</strong> d'évolution de fréquentation de l'établissement.</li>
+            </ul>
+          </div>
+
+          <div class="card-pitch" style="background:#160E0A;">
+            <div style="background:white; border-radius:12px; padding:1rem; color:#2A1D15;">
+              <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F5F1EB; padding-bottom:0.5rem; margin-bottom:0.5rem;">
+                <div>
+                  <strong style="font-size:0.9rem;">Thomas Laurent</strong>
+                  <div style="font-size:0.75rem; color:#786C63;">+33 6 42 ** 30</div>
+                </div>
+                <span style="background:#F4EFEA; color:#D97706; font-size:0.7rem; font-weight:800; padding:2px 8px; border-radius:10px;">VIP</span>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:0.5rem; text-align:center; font-size:0.75rem; background:#F5F1EB; padding:0.4rem; border-radius:8px;">
+                <div>Points<br><strong style="color:#D97706;">140 pts</strong></div>
+                <div>Visites<br><strong>8 visites</strong></div>
+                <div>Scan<br><strong>12:45</strong></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 5 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: NOTIFICATIONS PUSH -->
+    <div class="slide" id="slide-6">
+      <div class="slide-header">
+        <h2 class="slide-title">Démo Produit : Notifications Push & Remplissage des Soirs Creux</h2>
+        <span class="slide-tag">03. Produit Live</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch">
+            <h3>Booster la Fréquentation les Soirs Creux</h3>
+            <p style="color:#A3968C; line-height:1.8;">
+              Un mardi soir pluvieux avec peu de réservations ? Le restaurateur rédige une notification push en 30 secondes depuis son dashboard :
+            </p>
+            <div style="background:rgba(245,158,11,0.12); padding:1rem; border-radius:12px; border-left:4px solid #F59E0B; margin:1rem 0;">
+              <strong style="color:#F59E0B;">"✨ Offre Spéciale du Soir : -20% sur la carte ce soir pour nos membres VIP !"</strong>
+            </div>
+            <p style="color:#A3968C;">
+              <strong>Résultat</strong> : +25% à +35% de couvert additionnel généré immédiatement sans dépenser en publicité.
+            </p>
+          </div>
+
+          <div class="card-pitch" style="text-align:center;">
+            <div class="stat-number-giant">+35%</div>
+            <p style="color:#A3968C; margin-top:0.5rem;">De chiffre d'affaires généré sur les créneaux habituellement creux grâce à la relance instantanée.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 6 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: DUAL PITCH MODE -->
+    <div class="slide" id="slide-7">
+      <div class="slide-header">
+        <h2 class="slide-title">Technologie Exclusive : Le Mode Double Écran (Pitch Mode)</h2>
+        <span class="slide-tag">03. Produit Live</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch">
+            <h3>Une Démonstration Commerciale Imparable</h3>
+            <p style="color:#A3968C; line-height:1.8;">
+              NEXA intègre un mode <strong>Double Écran (`?role=demo`)</strong> unique sur le marché :
+            </p>
+            <ul style="color:#A3968C; line-height:2; padding-left:1.2rem;">
+              <li>Permet au commercial de présenter sur un seul écran le smartphone du client à gauche et le tableau de bord du gérant à droite.</li>
+              <li>Lorsqu'un scan est simulé sur le téléphone, le dashboard restaurateur se met à jour en temps réel en direct !</li>
+              <li>Taux de conversion commerciale auprès des gérants de restaurant : <strong>>65% lors des démos</strong>.</li>
+            </ul>
+          </div>
+
+          <div class="card-pitch" style="text-align:center; background:linear-gradient(135deg, rgba(217,119,6,0.2), rgba(0,0,0,0.5));">
+            <div style="font-size:3rem; margin-bottom:0.5rem;">📱 ↔️ 🖥️</div>
+            <h3 style="color:white; font-size:1.3rem;">Master Pitch View</h3>
+            <p style="color:#A3968C; font-size:0.85rem;">La preuve par l'interaction en direct.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 7 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: TAILLE DU MARCHÉ -->
+    <div class="slide" id="slide-8">
+      <div class="slide-header">
+        <h2 class="slide-title">Taille du Marché (TAM / SAM / SOM)</h2>
+        <span class="slide-tag">04. Opportunité de Marché</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card-pitch" style="text-align:center;">
+            <span style="color:#A3968C; font-size:0.85rem;">TAM (Global Restauration)</span>
+            <div class="stat-number-giant">220 000</div>
+            <p style="color:#A3968C; font-size:0.85rem; margin-top:0.5rem;">Établissements de restauration commerciale en France & Afrique francophone</p>
+          </div>
+
+          <div class="card-pitch" style="text-align:center;">
+            <span style="color:#A3968C; font-size:0.85rem;">SAM (Target CHR Indépendants)</span>
+            <div class="stat-number-giant">45 000</div>
+            <p style="color:#A3968C; font-size:0.85rem; margin-top:0.5rem;">Restaurants, Bistros & Cafés indépendants prioritaires</p>
+          </div>
+
+          <div class="card-pitch" style="text-align:center; border-color:#F59E0B;">
+            <span style="color:#F59E0B; font-size:0.85rem;">SOM (Cible 24 Mois)</span>
+            <div class="stat-number-giant" style="color:#10B981;">3 000</div>
+            <p style="color:#A3968C; font-size:0.85rem; margin-top:0.5rem;">Restaurants abonnés payants à la solution NEXA</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 8 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: BUSINESS MODEL -->
+    <div class="slide" id="slide-9">
+      <div class="slide-header">
+        <h2 class="slide-title">Modèle Économique (Business Model SaaS B2B)</h2>
+        <span class="slide-tag">05. Génération de Revenus</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card-pitch" style="text-align:center;">
+            <h3 style="color:white;">NEXA BASIC</h3>
+            <p style="color:#A3968C; font-size:0.8rem; margin-bottom:1rem;">Petit Bistro / Café Solo</p>
+            <div style="font-size:2rem; font-weight:800; color:#F59E0B; margin-bottom:1rem;">29 € <span style="font-size:0.8rem; color:#A3968C;">/mois (~19 000 FCFA)</span></div>
+            <ul style="color:#A3968C; font-size:0.8rem; text-align:left; line-height:1.8;">
+              <li>Jusqu'à 500 scans/mois</li>
+              <li>QR Codes de table fournis</li>
+              <li>Support Web App</li>
+            </ul>
+          </div>
+
+          <div class="card-pitch" style="text-align:center; border-color:#F59E0B; background:rgba(217,119,6,0.12);">
+            <div style="background:#F59E0B; color:#2A1D15; font-size:0.65rem; font-weight:900; padding:2px 8px; border-radius:10px; display:inline-block; margin-bottom:0.5rem;">RECOMMANDÉ</div>
+            <h3 style="color:white;">NEXA PRO</h3>
+            <p style="color:#A3968C; font-size:0.8rem; margin-bottom:1rem;">Restaurant Indépendant & Brasserie</p>
+            <div style="font-size:2rem; font-weight:800; color:#F59E0B; margin-bottom:1rem;">59 € <span style="font-size:0.8rem; color:#A3968C;">/mois (~38 500 FCFA)</span></div>
+            <ul style="color:#A3968C; font-size:0.8rem; text-align:left; line-height:1.8;">
+              <li>Scans illimités</li>
+              <li>CRM WhatsApp & Notifs Push</li>
+              <li>Pass QR Caisse sécurisé</li>
+            </ul>
+          </div>
+
+          <div class="card-pitch" style="text-align:center;">
+            <h3 style="color:white;">NEXA MULTI-GROUP</h3>
+            <p style="color:#A3968C; font-size:0.8rem; margin-bottom:1rem;">Groupe & Franchise de Restauration</p>
+            <div style="font-size:2rem; font-weight:800; color:#F59E0B; margin-bottom:1rem;">119 € <span style="font-size:0.8rem; color:#A3968C;">/mois (~78 000 FCFA)</span></div>
+            <ul style="color:#A3968C; font-size:0.8rem; text-align:left; line-height:1.8;">
+              <li>Multi-établissements</li>
+              <li>API Caisse POS & Rapports</li>
+              <li>Account Manager dédié</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 9 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: PRÉVISIONS FINANCIÈRES -->
+    <div class="slide" id="slide-10">
+      <div class="slide-header">
+        <h2 class="slide-title">Prévisions Financières & Croissance ARR (3 Ans)</h2>
+        <span class="slide-tag">06. Projections Financières</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div>
+            <canvas id="nexaFinancialChart" height="220"></canvas>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:1rem;">
+            <div class="card-pitch">
+              <span style="color:#A3968C; font-size:0.75rem;">ANNÉE 1</span>
+              <h4 style="font-size:1.3rem; color:#F59E0B;">283 200 € ARR <span style="font-size:0.8rem; color:#A3968C;">(~185,8 Millions FCFA)</span></h4>
+              <p style="font-size:0.8rem; color:#A3968C;">400 restaurants abonnés</p>
+            </div>
+
+            <div class="card-pitch">
+              <span style="color:#A3968C; font-size:0.75rem;">ANNÉE 2</span>
+              <h4 style="font-size:1.3rem; color:#10B981;">1 274 400 € ARR <span style="font-size:0.8rem; color:#A3968C;">(~836 Millions FCFA)</span></h4>
+              <p style="font-size:0.8rem; color:#A3968C;">1 800 restaurants abonnés</p>
+            </div>
+
+            <div class="card-pitch">
+              <span style="color:#A3968C; font-size:0.75rem;">ANNÉE 3</span>
+              <h4 style="font-size:1.3rem; color:#3B82F6;">3 540 000 € ARR <span style="font-size:0.8rem; color:#A3968C;">(~2,32 Milliards FCFA)</span></h4>
+              <p style="font-size:0.8rem; color:#A3968C;">5 000 restaurants abonnés</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 10 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 11: UNIT ECONOMICS -->
+    <div class="slide" id="slide-11">
+      <div class="slide-header">
+        <h2 class="slide-title">Métriques Unitaires & Rentabilité SaaS (Unit Economics)</h2>
+        <span class="slide-tag">07. Rentabilité Unitaire</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card-pitch" style="text-align:center;">
+            <span style="color:#A3968C; font-size:0.85rem;">CAC (Coût d'Acquisition Client)</span>
+            <div class="stat-number-giant">180 €</div>
+            <p style="color:#A3968C; font-size:0.8rem; margin-top:0.5rem;">Coût commercial terrain + kit PLV QR Code offert</p>
+          </div>
+
+          <div class="card-pitch" style="text-align:center;">
+            <span style="color:#A3968C; font-size:0.85rem;">LTV (Lifetime Value)</span>
+            <div class="stat-number-giant" style="color:#10B981;">1 416 €</div>
+            <p style="color:#A3968C; font-size:0.8rem; margin-top:0.5rem;">Basé sur un abonnement moyen de 59€/mois sur 24 mois</p>
+          </div>
+
+          <div class="card-pitch" style="text-align:center; border-color:#F59E0B; background:rgba(245,158,11,0.1);">
+            <span style="color:#F59E0B; font-size:0.85rem;">Ratio LTV / CAC</span>
+            <div class="stat-number-giant" style="color:#F59E0B;">7.8x</div>
+            <p style="color:#A3968C; font-size:0.8rem; margin-top:0.5rem;">Excellente rentabilité SaaS (Norme du secteur > 3.0x)</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 11 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: GO TO MARKET -->
+    <div class="slide" id="slide-12">
+      <div class="slide-header">
+        <h2 class="slide-title">Stratégie d'Acquisition & Vente Terrain (Go-To-Market)</h2>
+        <span class="slide-tag">08. Ventes & Distribution</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-3">
+          <div class="card-pitch">
+            <h3>🚲 Vente Directe Terrain CHR</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Équipe de commerciaux terrain visitant directement les gérants de restaurants lors des heures creuses (15h-17h) avec démo en live sur tablette.
+            </p>
+          </div>
+
+          <div class="card-pitch">
+            <h3>🔌 Partenariats Caisses & POS</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Accord de distribution avec les revendeurs de matériel de caisse enregistreuse et logiciels POS pour proposer NEXA en option intégrée.
+            </p>
+          </div>
+
+          <div class="card-pitch">
+            <h3>🎁 Kit PLV Table Offert</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Remise au restaurant d'un pack prêt à l'emploi de chevalets de table en plexiglas/bois gravés avec leur QR code personnalisé.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 12 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 13: AVANTAGES CONCURRENTIELS -->
+    <div class="slide" id="slide-13">
+      <div class="slide-header">
+        <h2 class="slide-title">Avantages Concurrentiels & Défendabilité (Moat)</h2>
+        <span class="slide-tag">09. Défendabilité</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch">
+            <h3>⚡ Zéro Friction Téléchargement</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Contrairement aux applications classiques qui nécessitent un téléchargement App Store/Google Play (80% d'abandon), NEXA s'ouvre instantanément dans le navigateur.
+            </p>
+          </div>
+
+          <div class="card-pitch">
+            <h3>🔒 Verrouillage des Données Client</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              L'historique des points et le fichier clients du restaurant sont ancrés dans la plateforme. Le taux de rétention des restaurants abonnés dépasse <strong>94%</strong>.
+            </p>
+          </div>
+
+          <div class="card-pitch">
+            <h3>💬 Intégration WhatsApp Directe</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Envoi d'offres et d'anniversaires directement sur WhatsApp, l'application la plus ouverte au monde (taux d'ouverture de 98%).
+            </p>
+          </div>
+
+          <div class="card-pitch">
+            <h3>📊 Analytics de Fréquentation</h3>
+            <p style="color:#A3968C; font-size:0.9rem;">
+              Rapports précis sur les jours et heures de grande affluence pour optimiser la commande de stock et le planning des serveurs.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 13 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 14: L'OFFRE D'INVESTISSEMENT -->
+    <div class="slide" id="slide-14">
+      <div class="slide-header">
+        <h2 class="slide-title">L'Offre d'Investissement & Recherche de Levée de Fonds</h2>
+        <span class="slide-tag">10. Proposition d'Investissement</span>
+      </div>
+
+      <div class="slide-body">
+        <div class="grid-2">
+          <div class="card-pitch" style="border-color:#F59E0B; background:rgba(217,119,6,0.1); text-align:center; padding:2rem;">
+            <span style="color:#A3968C; font-size:0.9rem; font-weight:700;">MONTANT DE LA LEVÉE (SEED)</span>
+            <div class="stat-number-giant" style="margin:1rem 0;">100 000 €</div>
+            <p style="color:#A3968C; font-size:1.1rem;">environ <strong>65 500 000 FCFA</strong></p>
+            <div style="margin-top:1.5rem; background:#F59E0B; color:#2A1D15; padding:0.6rem; border-radius:10px; font-weight:800;">
+              Équité cédée : 12% du Capital
+            </div>
+          </div>
+
+          <div class="card-pitch">
+            <h3>Allocation des Fonds (Utilisation)</h3>
+            <ul style="color:#A3968C; line-height:2; padding-left:1.2rem;">
+              <li><strong>45% — Force de Vente Terrain</strong> : Recrutement de 4 commerciaux dédiés à la prospection directe CHR.</li>
+              <li><strong>35% — R&D Tech & Intégration POS</strong> : Développement des connecteurs avec les principales caisses du marché.</li>
+              <li><strong>20% — Marketing & Production Kits PLV</strong> : Fabrication des chevalets QR Code bois/plexiglas et salons professionnels.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 14 / 15</span>
+      </div>
+    </div>
+
+    <!-- SLIDE 15: CONCLUSION & CONTACT -->
+    <div class="slide" id="slide-15">
+      <div class="slide-header">
+        <h2 class="slide-title">Rejoignez la Révolution de la Rétention en Restauration !</h2>
+        <span class="slide-tag">11. Conclusion & Contact</span>
+      </div>
+
+      <div class="slide-body" style="justify-content:center; text-align:center;">
+        <div style="max-width:750px;">
+          <h3 style="font-size:2.2rem; color:white; margin-bottom:1rem;">Merci pour votre attention.</h3>
+          <p style="font-size:1.1rem; color:#A3968C; margin-bottom:2rem;">
+            Testez la plateforme en direct et échangeons sur les opportunités de partenariat.
+          </p>
+
+          <div class="card-pitch" style="text-align:left; background:rgba(217,119,6,0.1); border-color:#F59E0B;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; font-size:0.95rem;">
+              <div>
+                <strong style="color:#F59E0B;">📍 Siège & Bureaux :</strong>
+                <p style="color:white; margin-top:0.2rem;">Paris & Ouagadougou</p>
+              </div>
+              <div>
+                <strong style="color:#F59E0B;">📱 Contact Direct :</strong>
+                <p style="color:white; margin-top:0.2rem;">+33 6 42 19 88 30 / WhatsApp</p>
+              </div>
+              <div>
+                <strong style="color:#F59E0B;">📧 Email :</strong>
+                <p style="color:white; margin-top:0.2rem;">contact@nexa-loyalty.com</p>
+              </div>
+              <div>
+                <strong style="color:#F59E0B;">🌐 Prototype Live :</strong>
+                <p style="color:white; margin-top:0.2rem;">nexa-prototype.vercel.app</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="slide-footer">
+        <span>NEXA — Investor Presentation</span>
+        <span>Slide 15 / 15</span>
+      </div>
+    </div>
+
+    <!-- PITCH CONTROLS BAR -->
+    <div class="controls-bar">
+      <button class="btn-pitch-nav" id="btn-prev-slide">←</button>
+      <span id="pitch-counter" style="font-weight:700; font-size:0.85rem; min-width:85px; text-align:center;">Slide 1 / 15</span>
+      <button class="btn-pitch-nav" id="btn-next-slide">→</button>
+      <button class="btn-pitch-nav" id="btn-fullscreen" title="Plein Écran">⛶</button>
+    </div>
+
+  </div>
+
+  <script>
+    // Pitch Slide Navigation Engine
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentSlide = 1;
+      const totalSlides = 15;
+
+      const slides = document.querySelectorAll('.slide');
+      const counter = document.getElementById('pitch-counter');
+      const btnPrev = document.getElementById('btn-prev-slide');
+      const btnNext = document.getElementById('btn-next-slide');
+      const btnFullscreen = document.getElementById('btn-fullscreen');
+
+      function goToSlide(n) {
+        if (n < 1 || n > totalSlides) return;
+        slides.forEach(s => s.classList.remove('active'));
+        
+        currentSlide = n;
+        const target = document.getElementById(`slide-${currentSlide}`);
+        if (target) target.classList.add('active');
+        
+        if (counter) counter.textContent = `Slide ${currentSlide} / ${totalSlides}`;
+      }
+
+      btnPrev.addEventListener('click', () => goToSlide(currentSlide - 1));
+      btnNext.addEventListener('click', () => goToSlide(currentSlide + 1));
+
+      // Keyboard Arrow Navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'PageDown') {
+          goToSlide(currentSlide + 1);
+        } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+          goToSlide(currentSlide - 1);
+        }
+      });
+
+      // Fullscreen toggle
+      if (btnFullscreen) {
+        btnFullscreen.addEventListener('click', () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => alert(err.message));
+          } else {
+            document.exitFullscreen();
+          }
+        });
+      }
+
+      // Financial Chart.js Rendering for Slide 10
+      const chartCanvas = document.getElementById('nexaFinancialChart');
+      if (chartCanvas && window.Chart) {
+        new Chart(chartCanvas, {
+          type: 'bar',
+          data: {
+            labels: ['Année 1', 'Année 2', 'Année 3'],
+            datasets: [{
+              label: 'Chiffre d\'Affaires ARR (en k€)',
+              data: [283.2, 1274.4, 3540],
+              backgroundColor: ['#D97706', '#10B981', '#3B82F6'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              legend: { labels: { color: '#FAF8F5' } }
+            },
+            scales: {
+              y: { ticks: { color: '#A3968C' }, grid: { color: 'rgba(255,255,255,0.08)' } },
+              x: { ticks: { color: '#FAF8F5' }, grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
