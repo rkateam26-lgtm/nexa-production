@@ -82,11 +82,11 @@
             <div style="display: flex; align-items: center; gap: 0.75rem;">
               <img src="./assets/savane_dish.jpg" alt="Le Savane" class="restaurant-logo-clean">
               <div class="restaurant-title-clean">
-                <h1>Le Savane</h1>
+                <h1 id="mobile-resto-name">Le Savane</h1>
                 <p>★ 4.9 • Bistro & Grill Raffiné</p>
               </div>
             </div>
-            <span style="font-size:0.75rem; background:var(--marron-light); padding:0.25rem 0.6rem; border-radius:20px; font-weight:700; color:var(--marron-dark);">
+            <span style="font-size:0.75rem; background:var(--marron-light); padding:0.25rem 0.6rem; border-radius:20px; font-weight:700; color:var(--marron-dark);" id="mobile-table-badge">
               Table #4
             </span>
           </div>
@@ -202,7 +202,7 @@
       <aside class="dash-sidebar">
         <div>
           <div class="dash-brand">
-            <div class="dash-brand-name">LE SAVANE</div>
+            <div class="dash-brand-name" id="dash-brand-name-el">LE SAVANE</div>
             <div class="dash-brand-sub">Dashboard Restaurateur Nexa</div>
           </div>
 
@@ -339,13 +339,25 @@
             </div>
           </div>
 
-          <!-- Section 4: QR Codes & Role Links -->
+          <!-- Section 4: QR Codes & Role Links & Printable Generator -->
           <div class="dash-section" id="dash-sec-qrcodes">
             <div class="data-table-container" style="padding: 1.5rem;">
-              <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Rôles</h3>
+              <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Impresion PLV</h3>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-                Copiez les liens directs pour tester ou partager l'application selon les rôles.
+                Copiez les liens directs ou générez les visuels de chevalets de table prêts à imprimer.
               </p>
+
+              <!-- PRINTABLE PLV TENTS GENERATOR LINK -->
+              <div style="padding: 1rem; background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 12px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+                <div>
+                  <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">🖨️ Chevalets QR Code pour vos Tables (PDF Imprimable)</h4>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Générez et imprimez les visuels A6 / 10x15cm pour les Tables #1 à #20.</p>
+                </div>
+                <a href="qr-generator.html" target="_blank" class="btn-primary" style="text-decoration: none; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+                  <i data-lucide="printer"></i>
+                  <span>Ouvrir le Générateur PLV</span>
+                </a>
+              </div>
 
               <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                 <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NEXA — Générateur de Chevalets QR Code de Table (Imprimable PLV)</title>
+
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
+  <style>
+    body {
+      background-color: var(--bg-whitey);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: 0;
+    }
+
+    .generator-header {
+      background: var(--marron-dark);
+      color: white;
+      padding: 1.25rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid var(--primary-gold);
+    }
+
+    .controls-panel {
+      background: white;
+      border-bottom: 1px solid var(--dash-border);
+      padding: 1.5rem 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+      align-items: flex-end;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 1px solid var(--dash-border);
+      border-radius: 8px;
+      font-size: 0.88rem;
+      background: var(--bg-whitey);
+    }
+
+    .print-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 2rem;
+      padding: 2rem;
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    /* CHEVALET DE TABLE IMPRIMABLE (FORMAT A6 / 10x15 CM) */
+    .table-tent {
+      background: #FFFFFF;
+      border: 2px solid var(--gold-border);
+      border-radius: 20px;
+      padding: 1.75rem 1.25rem;
+      text-align: center;
+      box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 380px;
+      position: relative;
+      background-image: radial-gradient(circle at top right, rgba(245, 158, 11, 0.05) 0%, transparent 60%);
+    }
+
+    .table-tent-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .table-tent-logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--marron-dark);
+      color: var(--primary-gold);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 900;
+      font-size: 1.1rem;
+    }
+
+    .table-number-badge {
+      background: var(--marron-dark);
+      color: #FFFFFF;
+      padding: 0.35rem 1.25rem;
+      border-radius: 20px;
+      font-family: var(--font-heading);
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin: 0.5rem 0;
+      border: 1px solid var(--primary-gold);
+    }
+
+    .qr-frame {
+      background: white;
+      padding: 12px;
+      border-radius: 16px;
+      border: 2px solid var(--primary-gold);
+      box-shadow: 0 4px 12px rgba(217, 119, 6, 0.15);
+      margin: 0.75rem 0;
+      display: inline-block;
+    }
+
+    .table-tent-footer {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .nexa-watermark {
+      font-size: 0.65rem;
+      color: var(--text-light);
+      margin-top: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* MEDIA PRINT STYLES FOR EXACT A4 PRINTING */
+    @media print {
+      body {
+        background: white !important;
+      }
+      .generator-header, .controls-panel, .no-print {
+        display: none !important;
+      }
+      .print-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 1.5cm !important;
+        padding: 1cm !important;
+        max-width: 100% !important;
+      }
+      .table-tent {
+        box-shadow: none !important;
+        border: 2px solid #2A1D15 !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        min-height: 12cm !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Header Bar -->
+  <header class="generator-header">
+    <div style="display: flex; align-items: center; gap: 0.75rem;">
+      <div style="width:34px; height:34px; background:linear-gradient(135deg, #FDE68A, #D97706); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; color:#2A1D15;">N</div>
+      <div>
+        <h1 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: white;">NEXA PLV — Générateur de Chevalets QR Code</h1>
+        <p style="font-size: 0.75rem; color: #D6C8BC; margin: 0;">Impression haute définition pour les tables de restaurant</p>
+      </div>
+    </div>
+    <div class="no-print">
+      <button class="btn-primary" onclick="window.print()" style="background: var(--primary-gold); color: #2A1D15;">
+        <i data-lucide="printer"></i>
+        <span>🖨️ Imprimer les Chevalets (PDF)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Controls Panel -->
+  <div class="controls-panel no-print">
+    <div class="form-group">
+      <label>Nom du Restaurant</label>
+      <input type="text" id="input-resto-name" value="Le Savane">
+    </div>
+
+    <div class="form-group">
+      <label>Nombre de Tables à Imprimer</label>
+      <input type="number" id="input-table-count" value="10" min="1" max="50">
+    </div>
+
+    <div class="form-group">
+      <label>Texte d'Accroche</label>
+      <input type="text" id="input-tagline" value="Flashez pour cumuler vos points & débloquer vos cadeaux !">
+    </div>
+
+    <div class="form-group">
+      <button class="btn-primary" id="btn-generate" style="width: 100%; justify-content: center;">
+        <i data-lucide="refresh-cw"></i>
+        <span>Actualiser les Visuels</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Print Grid -->
+  <main class="print-grid" id="tents-container">
+    <!-- Generated dynamically -->
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const inputRestoName = document.getElementById('input-resto-name');
+      const inputTableCount = document.getElementById('input-table-count');
+      const inputTagline = document.getElementById('input-tagline');
+      const btnGenerate = document.getElementById('btn-generate');
+      const tentsContainer = document.getElementById('tents-container');
+
+      function generateTents() {
+        const restoName = inputRestoName.value.trim() || 'Mon Restaurant';
+        const count = parseInt(inputTableCount.value, 10) || 10;
+        const tagline = inputTagline.value.trim() || 'Flashez pour cumuler vos points !';
+
+        const baseHost = window.location.origin + window.location.pathname.replace('qr-generator.html', 'index.html');
+
+        let htmlBuffer = '';
+        for (let i = 1; i <= count; i++) {
+          const targetUrl = `${baseHost}?role=client&table=${i}`;
+
+          // Generate QR Code SVG string
+          const qr = qrcode(0, 'M');
+          qr.addData(targetUrl);
+          qr.make();
+          const qrSvg = qr.createSvgTag(5, 0);
+
+          htmlBuffer += `
+            <div class="table-tent">
+              <div>
+                <div class="table-tent-brand" style="justify-content: center;">
+                  <div class="table-tent-logo">N</div>
+                  <span style="font-family: var(--font-heading); font-weight: 800; font-size: 1.1rem; color: var(--marron-dark);">${restoName}</span>
+                </div>
+                <div class="table-number-badge">TABLE #${i}</div>
+              </div>
+
+              <div class="qr-frame">
+                ${qrSvg}
+              </div>
+
+              <div>
+                <p style="font-size: 0.85rem; font-weight: 700; color: var(--marron-dark); max-width: 220px; margin: 0 auto 0.4rem auto;">
+                  ${tagline}
+                </p>
+                <div class="table-tent-footer">📱 Sans téléchargement • En 3 secondes</div>
+                <div class="nexa-watermark">Powered by NEXA Loyalty</div>
+              </div>
+            </div>
+          `;
+        }
+
+        tentsContainer.innerHTML = htmlBuffer;
+        if (window.lucide) lucide.createIcons();
+      }
+
+      btnGenerate.addEventListener('click', generateTents);
+      generateTents();
+    });
+  </script>
+</body>
+</html>

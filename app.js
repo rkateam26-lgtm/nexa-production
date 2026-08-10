@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA SAAS PROTOTYPE - CORE ENGINE (JS ES6)
+   NEXA SAAS PROTOTYPE & PRODUCTION ENGINE (JS ES6)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -15,8 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Global Reactive App State
-  const state = {
+  // Global Reactive App State with Local Storage Persistence
+  const storedState = localStorage.getItem('nexa_prod_state');
+  const initialState = storedState ? JSON.parse(storedState) : {
     currentViewMode: 'mobile',
     userLoggedIn: true,
     user: {
@@ -52,19 +53,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const state = initialState;
+
+  function persistState() {
+    localStorage.setItem('nexa_prod_state', JSON.stringify(state));
+  }
+
   // Lucide Icons Initializer
   if (window.lucide) {
     lucide.createIcons();
   }
 
   /* ==========================================================================
-     0. SMART ROLE & SCREEN SIZE ROUTER
+     0. SMART ROLE & TABLE SCAN ROUTER
      ========================================================================== */
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = urlParams.get('role') || urlParams.get('mode');
+  const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const isMobileScreen = window.innerWidth <= 768;
   const viewportContainer = document.getElementById('viewport-container');
   const demoHeader = document.querySelector('.nexa-header');
+
+  // Update Dynamic Table Number Badge
+  const tableBadge = document.getElementById('mobile-table-badge');
+  if (tableBadge) tableBadge.textContent = `Table #${tableParam}`;
 
   if (roleParam === 'client' || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
     if (demoHeader) demoHeader.style.display = 'none';
@@ -96,12 +108,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const linkMerchant = document.getElementById('link-url-merchant');
   const linkDemo = document.getElementById('link-url-demo');
 
-  if (linkClient) linkClient.textContent = `${baseHost}?role=client`;
+  if (linkClient) linkClient.textContent = `${baseHost}?role=client&table=${tableParam}`;
   if (linkMerchant) linkMerchant.textContent = `${baseHost}?role=merchant`;
   if (linkDemo) linkDemo.textContent = `${baseHost}?role=demo`;
 
   window.copyRoleLink = function(role) {
-    const targetUrl = `${baseHost}?role=${role}`;
+    const targetUrl = role === 'client' ? `${baseHost}?role=client&table=${tableParam}` : `${baseHost}?role=${role}`;
     navigator.clipboard.writeText(targetUrl).then(() => {
       showToast('📋 Lien Copié !', `Le lien [${role.toUpperCase()}] a été copié.`);
     }).catch(() => {
@@ -173,7 +185,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     state.user.history.unshift({
       type: 'scan',
-      text: 'Scan QR Table #4',
+      text: `Scan QR Table #${tableParam}`,
       points: '+10 pts',
       date: `Aujourd'hui, ${nowStr}`,
       isPlus: true
@@ -190,9 +202,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    persistState();
     renderClientUI();
     renderMerchantUI();
-    showToast('✨ +10 Points crédités !', 'Scan de la Table #4 validé.');
+    showToast('✨ +10 Points crédités !', `Scan de la Table #${tableParam} validé.`);
   };
 
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', triggerQRScan);
@@ -273,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
       isPlus: false
     });
 
+    persistState();
     renderClientUI();
     renderMerchantUI();
     showRedemptionPassModal(reward);
@@ -439,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
       modalAddReward.classList.remove('active');
       formAddReward.reset();
 
+      persistState();
       renderClientUI();
       renderMerchantUI();
       showToast('🎁 Récompense créée !', `"${title}" ajoutée.`);
@@ -447,6 +462,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.deleteReward = function(rewardId) {
     state.rewards = state.rewards.filter(r => r.id !== rewardId);
+    persistState();
     renderClientUI();
     renderMerchantUI();
     showToast('🗑️ Récompense supprimée', 'Catalogue mis à jour.');
@@ -460,6 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const text = document.getElementById('notif-text-input').value;
 
       state.notifications.unshift({ id: Date.now(), title, text, time: 'À l\'instant', read: false });
+      persistState();
       renderClientUI();
       formSendNotif.reset();
       showToast(title, text);
