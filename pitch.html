@@ -17,7 +17,7 @@
       font-family: 'Plus Jakarta Sans', sans-serif;
       margin: 0;
       padding: 0;
-      overflow: hidden;
+      overflow-x: hidden;
       width: 100vw;
       height: 100vh;
     }
@@ -152,6 +152,35 @@
       font-weight: 800;
       color: #F59E0B;
       line-height: 1.1;
+    }
+
+    /* PRINT STYLES FOR PDF GENERATION */
+    @media print {
+      @page {
+        size: A4 landscape;
+        margin: 0;
+      }
+      body, .pitch-viewport {
+        background: #1F150F !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        overflow: visible !important;
+        height: auto !important;
+      }
+      .controls-bar { display: none !important; }
+      .slide {
+        display: flex !important;
+        opacity: 1 !important;
+        transform: none !important;
+        position: relative !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        padding: 2.5rem 3.5rem !important;
+        box-sizing: border-box !important;
+        background: radial-gradient(circle at top right, #342217 0%, #1A110C 100%) !important;
+      }
     }
 
     @media (max-width: 900px) {
