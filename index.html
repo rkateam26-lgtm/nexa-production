@@ -7,7 +7,7 @@
   
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#E11D48">
+  <meta name="theme-color" content="#D97706">
 
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="styles.css">
@@ -24,13 +24,13 @@
 <body>
 
   <!-- ==========================================================================
-       TOP DEMO HEADER BAR / SWITCHER
+       TOP DEMO HEADER BAR / SWITCHER (Visible ONLY in Master Demo Mode ?role=demo)
        ========================================================================== -->
   <header class="nexa-header">
     <div class="brand-logo">
       <div class="brand-badge">N</div>
       <span>NEXA</span>
-      <span class="brand-tag">PROTOTYPE SAAS V2 READY</span>
+      <span class="brand-tag">PITCH DEMO MODE</span>
     </div>
 
     <!-- View Mode Switcher Buttons -->
@@ -152,7 +152,7 @@
             <!-- Available Rewards List -->
             <div class="section-title">
               <span>Récompenses Disponibles</span>
-              <span style="font-size:0.75rem; color: var(--primary); font-weight:600;">4 Récompenses</span>
+              <span style="font-size:0.75rem; color: var(--gold-accent); font-weight:600;">4 Récompenses</span>
             </div>
 
             <div class="rewards-list" id="client-rewards-list">
@@ -178,7 +178,7 @@
             </div>
             
             <!-- Web Notification Permission Banner -->
-            <div style="margin: 0 1rem 1rem 1rem; padding: 0.85rem; background: rgba(225, 29, 72, 0.1); border: 1px solid rgba(225, 29, 72, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="margin: 0 1rem 1rem 1rem; padding: 0.85rem; background: rgba(245, 158, 11, 0.1); border: 1px solid var(--gold-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between;">
               <div>
                 <h4 style="font-size: 0.85rem; color: white;">Notifications Web</h4>
                 <p style="font-size: 0.7rem; color: var(--mobile-muted);">Autorisées pour Le Savane</p>
@@ -194,7 +194,7 @@
           <!-- SCREEN 4: CLIENT PROFILE -->
           <div class="client-screen" id="screen-profile">
             <div style="padding: 1.5rem 1rem; text-align: center;">
-              <div style="width: 72px; height: 72px; background: var(--primary); border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: white; font-weight: 800;">
+              <div style="width: 72px; height: 72px; background: var(--gold-metallic); border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; color: #17130E; font-weight: 800;">
                 TL
               </div>
               <h2 style="color: white; font-size: 1.2rem;">Thomas Laurent</h2>
@@ -232,7 +232,7 @@
           </button>
           <button class="nav-tab" data-tab="notifs">
             <i data-lucide="bell"></i>
-            <span>Notifs <span id="notif-badge-count" style="display:none; background:var(--primary); color:white; border-radius:50%; padding:0 4px; font-size:0.6rem;">1</span></span>
+            <span>Notifs <span id="notif-badge-count" style="display:none; background:var(--gold-accent); color:#17130E; border-radius:50%; padding:0 4px; font-size:0.6rem; font-weight:800;">1</span></span>
           </button>
           <button class="nav-tab" data-tab="profile">
             <i data-lucide="user"></i>
@@ -277,7 +277,7 @@
             </button>
             <button class="dash-menu-item" data-section="qrcodes">
               <i data-lucide="qr-code"></i>
-              <span>QR Codes</span>
+              <span>QR Codes & Liens</span>
             </button>
             <button class="dash-menu-item" data-section="notifs">
               <i data-lucide="send"></i>
@@ -384,7 +384,7 @@
                 <h3 style="font-size: 1.05rem; font-weight: 700; margin-bottom: 1rem;">Activité en Direct</h3>
                 <div style="display: flex; flex-direction: column; gap: 0.85rem;">
                   <div style="font-size: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--dash-border);">
-                    <strong style="color: var(--primary);">+10 pts</strong> — Scan Table #4 (Thomas Laurent)
+                    <strong style="color: var(--gold-accent);">+10 pts</strong> — Scan Table #4 (Thomas Laurent)
                     <div style="color: var(--dash-muted); font-size: 0.7rem;">À l'instant</div>
                   </div>
                   <div style="font-size: 0.8rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--dash-border);">
@@ -466,8 +466,66 @@
             </div>
           </div>
 
-          <!-- SECTION 4: QR CODE MANAGER -->
+          <!-- SECTION 4: QR CODE MANAGER & SHAREABLE ROLE LINKS -->
           <div class="dash-section" id="dash-sec-qrcodes">
+            
+            <!-- Live Shareable Links Section -->
+            <div class="data-table-container" style="padding: 1.5rem; margin-bottom: 1.5rem; background: linear-gradient(180deg, #FFFFFF, #FDFBF7);">
+              <h3 style="font-size: 1.15rem; font-weight: 800; margin-bottom: 0.5rem; color: var(--dash-text);">
+                🔗 Vos Liens de Partage & Liens QR Code
+              </h3>
+              <p style="font-size: 0.85rem; color: var(--dash-muted); margin-bottom: 1.25rem;">
+                Voici les liens personnalisés à partager ou à encoder dans vos QR codes pour distribuer l'application selon les rôles.
+              </p>
+
+              <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+                
+                <!-- 1. Client Link -->
+                <div style="padding: 0.85rem 1rem; background: #F9F6F0; border: 1px solid var(--dash-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                  <div>
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--gold-accent); text-transform: uppercase;">📱 Lien Client (À encoder sur les QR Codes Table)</span>
+                    <div style="font-family: monospace; font-size: 0.85rem; color: var(--dash-text); font-weight: 700; margin-top: 0.15rem;" id="link-url-client">
+                      https://nexa-prototype.vercel.app/?role=client
+                    </div>
+                    <p style="font-size: 0.7rem; color: var(--dash-muted);">Affiche uniquement l'application mobile client sans aucune barre d'administration.</p>
+                  </div>
+                  <button class="btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.75rem; font-weight: 700;" onclick="copyRoleLink('client')">
+                    📋 Copier le Lien Client
+                  </button>
+                </div>
+
+                <!-- 2. Merchant Link -->
+                <div style="padding: 0.85rem 1rem; background: #F9F6F0; border: 1px solid var(--dash-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                  <div>
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--accent-blue); text-transform: uppercase;">🖥️ Lien Restaurateur (Accès Dashboard Admin)</span>
+                    <div style="font-family: monospace; font-size: 0.85rem; color: var(--dash-text); font-weight: 700; margin-top: 0.15rem;" id="link-url-merchant">
+                      https://nexa-prototype.vercel.app/?role=merchant
+                    </div>
+                    <p style="font-size: 0.7rem; color: var(--dash-muted);">Affiche directement le tableau de bord SaaS sans le sélecteur de mode.</p>
+                  </div>
+                  <button class="btn-secondary" style="padding: 0.45rem 0.85rem; font-size: 0.75rem; font-weight: 700;" onclick="copyRoleLink('merchant')">
+                    📋 Copier le Lien Restaurateur
+                  </button>
+                </div>
+
+                <!-- 3. Master Creator Demo Link -->
+                <div style="padding: 0.85rem 1rem; background: #F9F6F0; border: 1px solid var(--gold-border); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; gap: 1rem;">
+                  <div>
+                    <span style="font-size: 0.75rem; font-weight: 800; color: var(--primary); text-transform: uppercase;">👑 Votre Lien Démo Créateur (Mode Pitch & Double Écran)</span>
+                    <div style="font-family: monospace; font-size: 0.85rem; color: var(--dash-text); font-weight: 700; margin-top: 0.15rem;" id="link-url-demo">
+                      https://nexa-prototype.vercel.app/?role=demo
+                    </div>
+                    <p style="font-size: 0.7rem; color: var(--dash-muted);">Lien réservé au créateur pour basculer en direct entre Mobile, Dashboard et Double Écran.</p>
+                  </div>
+                  <button class="btn-primary" style="padding: 0.45rem 0.85rem; font-size: 0.75rem;" onclick="copyRoleLink('demo')">
+                    📋 Copier Mon Lien Créateur
+                  </button>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- QR Code Generator & Poster Preview -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
               <div class="data-table-container" style="padding: 1.5rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Générateur de QR Code Restaurant</h3>
@@ -492,19 +550,19 @@
 
               <!-- Printable Poster Simulator -->
               <div class="data-table-container" style="padding: 1.5rem; text-align: center; background: #FFFFFF;">
-                <div style="border: 2px solid var(--primary); padding: 1.5rem; border-radius: 16px; background: linear-gradient(180deg, #FFFFFF, #FFF5F7);">
+                <div style="border: 2px solid var(--gold-accent); padding: 1.5rem; border-radius: 16px; background: linear-gradient(180deg, #FFFFFF, #FDFBF7);">
                   <div style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--dash-text); text-transform: uppercase;">
                     Le Savane
                   </div>
                   <p style="font-size: 0.85rem; color: var(--dash-muted); margin-bottom: 1.25rem;">
-                    Scannez & Obtenez <strong style="color: var(--primary);">+10 Points</strong> sur votre addition !
+                    Scannez & Obtenez <strong style="color: var(--gold-accent);">+10 Points</strong> sur votre addition !
                   </p>
 
-                  <div style="background: white; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: var(--shadow-md);">
+                  <div style="background: white; padding: 16px; border-radius: 16px; display: inline-block; box-shadow: var(--shadow-md); border: 2px solid var(--gold-accent);">
                     <svg width="150" height="150" viewBox="0 0 100 100">
                       <rect width="100" height="100" fill="#ffffff" />
-                      <path d="M0 0h30v30h-30zM70 0h30v30h-30zM0 70h30v30h-30zM10 10h10v10h-10zM80 10h10v10h-10zM10 80h10v10h-10z" fill="#E11D48"/>
-                      <path d="M35 35h30v30h-30zM45 45h10v10h-10z" fill="#0F172A"/>
+                      <path d="M0 0h30v30h-30zM70 0h30v30h-30zM0 70h30v30h-30zM10 10h10v10h-10zM80 10h10v10h-10zM10 80h10v10h-10z" fill="#D97706"/>
+                      <path d="M35 35h30v30h-30zM45 45h10v10h-10z" fill="#17130E"/>
                     </svg>
                   </div>
 
@@ -554,9 +612,9 @@
               <div class="data-table-container" style="padding: 1.5rem;">
                 <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem;">Historique des Envois</h3>
                 <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-                  <div style="padding: 0.85rem; background: #F8FAFC; border-radius: 10px; border: 1px solid var(--dash-border);">
-                    <div style="font-weight: 700; font-size: 0.9rem;">🔥 Vente Flash du Soir</div>
-                    <p style="font-size: 0.75rem; color: var(--dash-muted);">-20% sur l'addition ce soir pour nos membres fidélité !</p>
+                  <div style="padding: 0.85rem; background: #F9F6F0; border-radius: 10px; border: 1px solid var(--dash-border);">
+                    <div style="font-weight: 700; font-size: 0.9rem;">✨ Offre Privilège du Soir</div>
+                    <p style="font-size: 0.75rem; color: var(--dash-muted);">-20% sur la carte ce soir pour nos membres d'or !</p>
                     <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.7rem; color: var(--dash-muted);">
                       <span>Envoyé à 1 248 clients</span>
                       <span style="color: var(--accent-green); font-weight: 700;">84% Taux d'ouverture</span>
@@ -571,7 +629,7 @@
           <!-- SECTION 6: STATS -->
           <div class="dash-section" id="dash-sec-stats">
             <div class="data-table-container" style="padding: 2rem; text-align: center;">
-              <i data-lucide="trending-up" style="width:48px; height:48px; color: var(--primary); margin-bottom: 1rem;"></i>
+              <i data-lucide="trending-up" style="width:48px; height:48px; color: var(--gold-accent); margin-bottom: 1rem;"></i>
               <h3 style="font-size: 1.25rem; font-weight: 700;">Statistiques de Rétention & ROI</h3>
               <p style="color: var(--dash-muted); max-width: 500px; margin: 0.5rem auto 1.5rem auto;">
                 Nexa augmente la fréquence de visite en restaurant de <strong>+34%</strong> grâce à l'accès instantané par QR code.
@@ -671,7 +729,7 @@
       </div>
 
       <p style="color: var(--dash-muted); font-size: 0.85rem; margin-bottom: 1rem;">Présentez ce QR Code lors du paiement au serveur</p>
-      <h2 id="pass-reward-title" style="color: var(--primary); font-size: 1.3rem; margin-bottom: 1rem;">Boisson offerte</h2>
+      <h2 id="pass-reward-title" style="color: var(--gold-accent); font-size: 1.3rem; margin-bottom: 1rem;">Boisson offerte</h2>
 
       <div id="pass-qr-box" style="margin-bottom: 1rem;"></div>
 

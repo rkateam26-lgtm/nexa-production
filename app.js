@@ -67,21 +67,37 @@ document.addEventListener('DOMContentLoaded', () => {
   const demoHeader = document.querySelector('.nexa-header');
 
   if (roleParam === 'client') {
-    // Hide demo bar & force client mobile view
     if (demoHeader) demoHeader.style.display = 'none';
     viewportContainer.className = 'main-viewport viewport-mobile';
     state.currentViewMode = 'mobile';
   } else if (roleParam === 'merchant' || roleParam === 'admin') {
-    // Hide demo bar & force merchant dashboard view
     if (demoHeader) demoHeader.style.display = 'none';
     viewportContainer.className = 'main-viewport viewport-desktop';
     state.currentViewMode = 'desktop';
   } else {
-    // Master Creator Demo Mode (default or ?role=demo)
     if (demoHeader) demoHeader.style.display = 'flex';
     viewportContainer.className = 'main-viewport viewport-dual';
     state.currentViewMode = 'dual';
   }
+
+  // Update Shareable Link Elements with Current Host
+  const baseHost = window.location.origin + window.location.pathname;
+  const linkClient = document.getElementById('link-url-client');
+  const linkMerchant = document.getElementById('link-url-merchant');
+  const linkDemo = document.getElementById('link-url-demo');
+
+  if (linkClient) linkClient.textContent = `${baseHost}?role=client`;
+  if (linkMerchant) linkMerchant.textContent = `${baseHost}?role=merchant`;
+  if (linkDemo) linkDemo.textContent = `${baseHost}?role=demo`;
+
+  window.copyRoleLink = function(role) {
+    const targetUrl = `${baseHost}?role=${role}`;
+    navigator.clipboard.writeText(targetUrl).then(() => {
+      showToast('📋 Lien Copié !', `Le lien pour le rôle [${role.toUpperCase()}] a été copié dans le presse-papier.`);
+    }).catch(() => {
+      alert(`Lien pour ${role} : ${targetUrl}`);
+    });
+  };
 
   /* ==========================================================================
      1. VIEW SWITCHER (Mobile vs Desktop vs Dual Side-by-Side vs Cashier)
