@@ -519,10 +519,7 @@ input, select, textarea {
   gap: 1rem;
 }
 
-/* DESKTOP RESTAURATEUR DOCK (Hidden by default on Desktop) */
-.dash-mobile-dock {
-  display: none !important;
-}
+.dash-mobile-dock { display: none !important; }
 
 .dash-body {
   padding: 1.75rem 2rem;
@@ -569,8 +566,35 @@ input, select, textarea {
   border: 1px solid var(--dash-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+}
+
+/* TABLE HORIZONTAL TOUCH SWIPE CONTAINER FOR CRM & CADEAUX */
+.table-scroll-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: scroll !important;
+  overflow-y: hidden !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-x !important;
+  display: block !important;
+}
+
+.table-scroll-wrapper .nexa-table {
+  min-width: 660px !important;
+  width: 660px !important;
+}
+
+.mobile-swipe-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  background: #F4EFEA;
+  border-bottom: 1px solid var(--dash-border);
+  color: var(--primary-gold);
+  font-size: 0.73rem;
+  font-weight: 700;
 }
 
 .nexa-table {
@@ -581,7 +605,7 @@ input, select, textarea {
 
 .nexa-table th {
   background: var(--bg-subtle);
-  padding: 0.75rem 1.25rem;
+  padding: 0.75rem 1rem;
   font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-muted);
@@ -591,7 +615,7 @@ input, select, textarea {
 }
 
 .nexa-table td {
-  padding: 0.85rem 1.25rem;
+  padding: 0.85rem 1rem;
   font-size: 0.85rem;
   color: var(--text-main);
   border-bottom: 1px solid var(--bg-subtle);
@@ -689,7 +713,7 @@ input, select, textarea {
    ========================================================================== */
 @media (max-width: 768px) {
   
-  /* Creator Top Pitch Bar on Mobile */
+  /* Creator Top Pitch Bar */
   .nexa-header {
     padding: 0.5rem 0.75rem !important;
     gap: 0.5rem !important;
@@ -728,12 +752,9 @@ input, select, textarea {
     box-shadow: none !important;
   }
 
-  /* HIDE DESKTOP SIDEBAR ON MOBILE SMARTPHONES */
-  .dash-sidebar {
-    display: none !important;
-  }
+  .dash-sidebar { display: none !important; }
 
-  /* SHOW FIXED BOTTOM NAVIGATION DOCK FOR RESTAURATEUR ON MOBILE */
+  /* FIXED BOTTOM NAVIGATION DOCK FOR RESTAURATEUR */
   .dash-mobile-dock {
     display: grid !important;
     grid-template-columns: repeat(5, 1fr) !important;
@@ -772,7 +793,7 @@ input, select, textarea {
   .dash-header { padding: 0.85rem 1rem !important; }
   
   .dash-body {
-    padding: 0.85rem 1rem 75px 1rem !important; /* Pad bottom for dock */
+    padding: 0.85rem 1rem 75px 1rem !important;
   }
 
   .stats-grid {
@@ -782,13 +803,4 @@ input, select, textarea {
 
   .stat-card { padding: 0.75rem !important; }
   .stat-value { font-size: 1.35rem !important; }
-
-  .data-table-container {
-    overflow-x: auto !important;
-    -webkit-overflow-scrolling: touch !important;
-  }
-
-  .nexa-table {
-    min-width: 540px !important;
-  }
 }

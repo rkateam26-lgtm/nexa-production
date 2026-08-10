@@ -278,19 +278,23 @@
             </div>
           </div>
 
-          <!-- Section 2: CRM Clients -->
+          <!-- Section 2: CRM Clients with Horizontal Swipe Container -->
           <div class="dash-section" id="dash-sec-clients">
             <div class="data-table-container">
-              <div id="crm-cards-wrapper">
+              <div class="mobile-swipe-hint">
+                <i data-lucide="arrow-right-left" style="width:14px; height:14px;"></i>
+                <span>👈 Glissez le tableau vers la gauche pour voir les Points, Visites et Actions ➔</span>
+              </div>
+              <div class="table-scroll-wrapper">
                 <table class="nexa-table">
                   <thead>
                     <tr>
-                      <th>Nom du Client</th>
-                      <th>Numéro WhatsApp</th>
-                      <th>Points</th>
-                      <th>Visites</th>
-                      <th>Dernier Scan</th>
-                      <th>Actions</th>
+                      <th style="width: 140px;">Nom du Client</th>
+                      <th style="width: 130px;">WhatsApp</th>
+                      <th style="width: 90px;">Points</th>
+                      <th style="width: 90px;">Visites</th>
+                      <th style="width: 110px;">Dernier Scan</th>
+                      <th style="width: 100px;">Action</th>
                     </tr>
                   </thead>
                   <tbody id="crm-table-body">
@@ -301,23 +305,29 @@
             </div>
           </div>
 
-          <!-- Section 3: Rewards -->
+          <!-- Section 3: Rewards / Cadeaux with Horizontal Swipe Container -->
           <div class="dash-section" id="dash-sec-loyalty">
             <div class="data-table-container">
-              <table class="nexa-table">
-                <thead>
-                  <tr>
-                    <th>Icône</th>
-                    <th>Titre de la Récompense</th>
-                    <th>Description</th>
-                    <th>Points Requis</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="rewards-admin-body">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
+              <div class="mobile-swipe-hint">
+                <i data-lucide="arrow-right-left" style="width:14px; height:14px;"></i>
+                <span>👈 Glissez le tableau vers la gauche pour voir toutes les colonnes ➔</span>
+              </div>
+              <div class="table-scroll-wrapper">
+                <table class="nexa-table">
+                  <thead>
+                    <tr>
+                      <th style="width: 60px;">Icône</th>
+                      <th style="width: 160px;">Titre de la Récompense</th>
+                      <th style="width: 220px;">Description</th>
+                      <th style="width: 110px;">Points Requis</th>
+                      <th style="width: 100px;">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="rewards-admin-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
