@@ -785,6 +785,9 @@
       <button class="btn-pitch-nav" id="btn-prev-slide">←</button>
       <span id="pitch-counter" style="font-weight:700; font-size:0.85rem; min-width:85px; text-align:center;">Slide 1 / 15</span>
       <button class="btn-pitch-nav" id="btn-next-slide">→</button>
+      <a href="nexa_pitch_deck.pdf" download="NEXA_Pitch_Deck.pdf" class="btn-pitch-nav" style="width:auto; padding:0 0.85rem; border-radius:20px; font-size:0.75rem; font-weight:800; text-decoration:none; color:white;" title="Télécharger la présentation en PDF">
+        ⬇️ PDF
+      </a>
       <button class="btn-pitch-nav" id="btn-fullscreen" title="Plein Écran">⛶</button>
     </div>
 
@@ -828,7 +831,7 @@
       // Fullscreen toggle
       if (btnFullscreen) {
         btnFullscreen.addEventListener('click', () => {
-          if (!document.fullscreenElement) {
+          if (!document.documentElement.fullscreenElement) {
             document.documentElement.requestFullscreen().catch(err => alert(err.message));
           } else {
             document.exitFullscreen();
