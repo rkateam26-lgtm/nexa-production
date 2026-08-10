@@ -2,12 +2,14 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>NEXA — Plateforme de Fidélisation & Relationship Management par QR Code</title>
   
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#D97706">
+  <meta name="theme-color" content="#110F0C">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
   <!-- CSS Stylesheet -->
   <link rel="stylesheet" href="styles.css">
@@ -77,7 +79,7 @@
     <div class="phone-wrapper">
       <div class="phone-screen">
         
-        <!-- Smartphone Notch / Status Bar -->
+        <!-- Smartphone Notch / Status Bar (Visible only in Dual Pitch Mode) -->
         <div class="phone-notch">
           <span>12:45</span>
           <div class="notch-pill"></div>

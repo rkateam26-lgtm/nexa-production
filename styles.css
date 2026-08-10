@@ -60,10 +60,12 @@
   padding: 0;
 }
 
-body {
-  font-family: var(--font-body);
+html, body {
+  width: 100%;
+  min-height: 100%;
   background-color: #0E0C09;
   color: var(--dash-text);
+  font-family: var(--font-body);
   overflow-x: hidden;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -202,25 +204,27 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   VIEWPORT WRAPPERS (Mobile vs Desktop vs Dual vs Cashier)
+   VIEWPORT WRAPPERS (NATIVE MOBILE VS DESKTOP VS DUAL)
    ========================================================================== */
 .main-viewport {
   min-height: calc(100vh - 65px);
   display: flex;
   justify-content: center;
-  padding: 1.5rem;
+  padding: 0;
 }
 
-/* Viewport Modes */
+/* Standalone Native Mobile View (Real Phone) */
 .viewport-mobile {
   width: 100%;
-  max-width: 440px;
+  max-width: 600px;
   margin: 0 auto;
+  padding: 0;
 }
 
 .viewport-desktop {
   width: 100%;
   max-width: 1440px;
+  padding: 1.5rem;
 }
 
 .viewport-dual {
@@ -229,25 +233,49 @@ input, select, textarea {
   display: grid;
   grid-template-columns: 420px 1fr;
   gap: 2rem;
+  padding: 1.5rem;
 }
 
 .viewport-cashier {
   width: 100%;
   max-width: 680px;
   margin: 0 auto;
+  padding: 1.5rem;
 }
 
 /* ==========================================================================
-   REFINED MOBILE SMARTPHONE MOCKUP FRAME
+   SMARTPHONE FRAME (APPLIED ONLY IN DUAL PITCH MODE)
    ========================================================================== */
-.phone-wrapper {
+/* In standalone mobile view, make it 100% full screen native with zero bevel! */
+.viewport-mobile .phone-wrapper {
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
+  box-shadow: none;
+  border: none;
+  width: 100%;
+}
+
+.viewport-mobile .phone-screen {
+  border-radius: 0;
+  min-height: 100vh;
+  max-height: none;
+  border: none;
+  box-shadow: none;
+}
+
+.viewport-mobile .phone-notch {
+  display: none; /* Hide fake notch on real phone! */
+}
+
+/* Dual Pitch Simulator Bezel */
+.viewport-dual .phone-wrapper {
   background: #1D1812;
   border-radius: 46px;
   padding: 10px;
   box-shadow: 
     0 25px 50px -12px rgba(0, 0, 0, 0.85),
-    0 0 0 2px rgba(245, 158, 11, 0.3),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.05);
+    0 0 0 2px rgba(245, 158, 11, 0.3);
   position: relative;
 }
 
@@ -256,11 +284,14 @@ input, select, textarea {
   border-radius: 36px;
   overflow: hidden;
   min-height: 820px;
-  max-height: 840px;
   display: flex;
   flex-direction: column;
   position: relative;
   border: 1px solid var(--mobile-border);
+}
+
+.viewport-dual .phone-screen {
+  max-height: 840px;
 }
 
 .phone-notch {
@@ -288,7 +319,7 @@ input, select, textarea {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding-bottom: 70px;
+  padding-bottom: 75px;
   position: relative;
   scrollbar-width: none;
 }
@@ -297,9 +328,9 @@ input, select, textarea {
   display: none;
 }
 
-/* Mobile Bottom Navigation Bar */
+/* Mobile Bottom Navigation Bar (Fixed Native Dock) */
 .mobile-nav {
-  position: absolute;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
@@ -310,7 +341,13 @@ input, select, textarea {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   align-items: center;
-  z-index: 40;
+  z-index: 90;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Inside dual mode frame, scope nav to phone screen */
+.viewport-dual .mobile-nav {
+  position: absolute;
 }
 
 .nav-tab {
@@ -320,13 +357,13 @@ input, select, textarea {
   justify-content: center;
   gap: 3px;
   color: var(--mobile-muted);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 500;
   height: 100%;
 }
 
 .nav-tab i {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
 }
 
 .nav-tab.active {
@@ -358,7 +395,7 @@ input, select, textarea {
 /* Restaurant Header Banner */
 .restaurant-hero {
   position: relative;
-  height: 185px;
+  height: 200px;
   background-size: cover;
   background-position: center;
   display: flex;
@@ -382,8 +419,8 @@ input, select, textarea {
 }
 
 .restaurant-logo-img {
-  width: 58px;
-  height: 58px;
+  width: 60px;
+  height: 60px;
   border-radius: 16px;
   background: #FFFFFF;
   padding: 4px;
@@ -395,14 +432,14 @@ input, select, textarea {
 .restaurant-info h1 {
   font-family: var(--font-heading);
   color: #FFFFFF;
-  font-size: 1.4rem;
+  font-size: 1.45rem;
   font-weight: 800;
   line-height: 1.2;
 }
 
 .restaurant-sub {
   color: var(--mobile-muted);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -468,14 +505,14 @@ input, select, textarea {
 
 .points-number {
   font-family: var(--font-heading);
-  font-size: 2.85rem;
+  font-size: 3rem;
   font-weight: 800;
   color: #FDFBF7;
   line-height: 1;
 }
 
 .points-label {
-  font-size: 0.9rem;
+  font-size: 0.95rem;
   color: var(--gold-accent);
   font-weight: 700;
 }
@@ -512,12 +549,12 @@ input, select, textarea {
 .qr-pass-trigger {
   margin-top: 1rem;
   width: 100%;
-  padding: 0.8rem;
+  padding: 0.85rem;
   background: rgba(245, 158, 11, 0.08);
   border: 1px solid var(--gold-border);
   border-radius: var(--radius-md);
   color: #FFFFFF;
-  font-size: 0.85rem;
+  font-size: 0.88rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -532,7 +569,7 @@ input, select, textarea {
 /* Quick Scan Button */
 .scan-cta-box {
   margin: 0 1rem 1rem 1rem;
-  padding: 1rem;
+  padding: 1rem 1.15rem;
   background: var(--gold-soft);
   border: 1px dashed var(--gold-border);
   border-radius: var(--radius-md);
@@ -553,7 +590,7 @@ input, select, textarea {
 }
 
 .btn-scan-action {
-  padding: 0.6rem 1.1rem;
+  padding: 0.65rem 1.15rem;
   background: var(--gold-metallic);
   color: #17130E;
   border-radius: 10px;
@@ -624,7 +661,7 @@ input, select, textarea {
 }
 
 .reward-title {
-  font-size: 0.9rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #FFFFFF;
   margin-bottom: 0.2rem;
@@ -643,9 +680,9 @@ input, select, textarea {
 }
 
 .btn-claim {
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.9rem;
   border-radius: 8px;
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -702,10 +739,10 @@ input, select, textarea {
 
 /* QR Scanner Modal Simulator */
 .scanner-modal {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: #000000;
-  z-index: 100;
+  z-index: 200;
   display: none;
   flex-direction: column;
   align-items: center;
