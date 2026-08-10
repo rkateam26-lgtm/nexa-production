@@ -169,7 +169,7 @@
 
         </div>
 
-        <!-- Mobile Bottom Navigation (Strictly contained inside phone screen) -->
+        <!-- Mobile Bottom Navigation (Client App) -->
         <nav class="mobile-nav">
           <button class="nav-tab active" data-tab="home">
             <i data-lucide="gift"></i>
@@ -194,11 +194,11 @@
 
 
     <!-- ==========================================================================
-         RIGHT: DESKTOP RESTAURATEUR SAAS DASHBOARD (SIMPLE & PROFESSIONNEL)
+         RIGHT: RESTAURATEUR SAAS DASHBOARD (DESKTOP & MOBILE RESPONSIVE)
          ========================================================================== -->
     <div class="dashboard-container">
       
-      <!-- Desktop Sidebar (Hidden on Mobile) -->
+      <!-- Desktop Sidebar Navigation -->
       <aside class="dash-sidebar">
         <div>
           <div class="dash-brand">
@@ -249,15 +249,6 @@
           </button>
         </header>
 
-        <!-- DEDICATED HORIZONTAL SWIPEABLE PILL BAR FOR MOBILE RESTAURATEUR VIEW -->
-        <div class="dash-mobile-nav-bar">
-          <button class="dash-mobile-pill active" data-section="overview">📊 Vue d'ensemble</button>
-          <button class="dash-mobile-pill" data-section="clients">👥 CRM Clients</button>
-          <button class="dash-mobile-pill" data-section="loyalty">🎁 Récompenses</button>
-          <button class="dash-mobile-pill" data-section="qrcodes">🔗 QR Codes</button>
-          <button class="dash-mobile-pill" data-section="notifs">🔔 Push Notifs</button>
-        </div>
-
         <div class="dash-body">
 
           <!-- Section 1: Overview -->
@@ -290,21 +281,23 @@
           <!-- Section 2: CRM Clients -->
           <div class="dash-section" id="dash-sec-clients">
             <div class="data-table-container">
-              <table class="nexa-table">
-                <thead>
-                  <tr>
-                    <th>Nom du Client</th>
-                    <th>Numéro WhatsApp</th>
-                    <th>Points</th>
-                    <th>Visites</th>
-                    <th>Dernier Scan</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="crm-table-body">
-                  <!-- Rendered dynamically -->
-                </tbody>
-              </table>
+              <div id="crm-cards-wrapper">
+                <table class="nexa-table">
+                  <thead>
+                    <tr>
+                      <th>Nom du Client</th>
+                      <th>Numéro WhatsApp</th>
+                      <th>Points</th>
+                      <th>Visites</th>
+                      <th>Dernier Scan</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="crm-table-body">
+                    <!-- Rendered dynamically -->
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -337,26 +330,26 @@
               </p>
 
               <div style="display: flex; flex-direction: column; gap: 0.85rem;">
-                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                   <div>
-                    <strong style="color: var(--primary-gold); font-size: 0.85rem;">📱 Lien Client (À imprimer sur QR Code Table)</strong>
-                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark);" id="link-url-client">https://.../?role=client</div>
+                    <strong style="color: var(--primary-gold); font-size: 0.85rem;">📱 Lien Client (Scan QR Table)</strong>
+                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark); word-break: break-all;" id="link-url-client">https://.../?role=client</div>
                   </div>
                   <button class="btn-secondary" onclick="copyRoleLink('client')">Copier</button>
                 </div>
 
-                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                   <div>
                     <strong style="color: var(--accent-blue); font-size: 0.85rem;">🖥️ Lien Restaurateur (Dashboard Admin)</strong>
-                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark);" id="link-url-merchant">https://.../?role=merchant</div>
+                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark); word-break: break-all;" id="link-url-merchant">https://.../?role=merchant</div>
                   </div>
                   <button class="btn-secondary" onclick="copyRoleLink('merchant')">Copier</button>
                 </div>
 
-                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center;">
+                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
                   <div>
                     <strong style="color: var(--marron-dark); font-size: 0.85rem;">👑 Lien Démo Créateur (Pitch Mode)</strong>
-                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark);" id="link-url-demo">https://.../?role=demo</div>
+                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark); word-break: break-all;" id="link-url-demo">https://.../?role=demo</div>
                   </div>
                   <button class="btn-primary" onclick="copyRoleLink('demo')">Copier</button>
                 </div>
@@ -386,6 +379,30 @@
           </div>
 
         </div>
+
+        <!-- FIXED BOTTOM NAVIGATION DOCK FOR RESTAURATEUR ON MOBILE SMARTPHONES -->
+        <nav class="dash-mobile-dock">
+          <button class="dash-dock-tab active" data-section="overview">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Aperçu</span>
+          </button>
+          <button class="dash-dock-tab" data-section="clients">
+            <i data-lucide="users"></i>
+            <span>CRM</span>
+          </button>
+          <button class="dash-dock-tab" data-section="loyalty">
+            <i data-lucide="award"></i>
+            <span>Cadeaux</span>
+          </button>
+          <button class="dash-dock-tab" data-section="qrcodes">
+            <i data-lucide="qr-code"></i>
+            <span>Liens QR</span>
+          </button>
+          <button class="dash-dock-tab" data-section="notifs">
+            <i data-lucide="send"></i>
+            <span>Notifs</span>
+          </button>
+        </nav>
 
       </div>
 

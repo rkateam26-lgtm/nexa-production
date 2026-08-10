@@ -301,32 +301,32 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnClosePass) btnClosePass.addEventListener('click', () => document.getElementById('redemption-pass-modal').classList.remove('active'));
 
   /* ==========================================================================
-     5. RENDER MERCHANT UI (DESKTOP & DEDICATED MOBILE PILLS)
+     5. RENDER MERCHANT UI (DESKTOP SIDEBAR + MOBILE BOTTOM DOCK)
      ========================================================================== */
   const dashMenuItems = document.querySelectorAll('.dash-menu-item');
-  const dashMobilePills = document.querySelectorAll('.dash-mobile-pill');
+  const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
   const dashSections = document.querySelectorAll('.dash-section');
 
   function activateSection(sectionId) {
     dashSections.forEach(s => s.classList.remove('active'));
     dashMenuItems.forEach(m => m.classList.remove('active'));
-    dashMobilePills.forEach(p => p.classList.remove('active'));
+    dashDockTabs.forEach(t => t.classList.remove('active'));
 
     const targetSection = document.getElementById(`dash-sec-${sectionId}`);
     const matchDesktop = document.querySelector(`.dash-menu-item[data-section="${sectionId}"]`);
-    const matchPill = document.querySelector(`.dash-mobile-pill[data-section="${sectionId}"]`);
+    const matchDock = document.querySelector(`.dash-dock-tab[data-section="${sectionId}"]`);
 
     if (targetSection) targetSection.classList.add('active');
     if (matchDesktop) matchDesktop.classList.add('active');
-    if (matchPill) matchPill.classList.add('active');
+    if (matchDock) matchDock.classList.add('active');
   }
 
   dashMenuItems.forEach(item => {
     item.addEventListener('click', () => activateSection(item.dataset.section));
   });
 
-  dashMobilePills.forEach(pill => {
-    pill.addEventListener('click', () => activateSection(pill.dataset.section));
+  dashDockTabs.forEach(tab => {
+    tab.addEventListener('click', () => activateSection(tab.dataset.section));
   });
 
   function renderMerchantUI() {
