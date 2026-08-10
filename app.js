@@ -40,8 +40,8 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: 101, title: '✨ Offre du Soir', text: '-20% sur la carte ce soir pour nos membres d\'or !', time: 'Il y a 10 min', read: false }
     ],
     clients: [
-      { id: 1, name: 'Thomas Laurent', phone: '+33 6 42 ** 30', points: 140, visits: 8, lastVisit: 'Aujourd\'hui', segment: 'VIP' },
-      { id: 2, name: 'Sophie Martin', phone: '+33 6 12 ** 90', points: 280, visits: 14, lastVisit: 'Hier', segment: 'VIP' },
+      { id: 1, name: 'Thomas Laurent', phone: '+33 6 42 ** 30', points: 140, visits: 8, lastVisit: 'Aujourd\'hui, 12:45', segment: 'VIP' },
+      { id: 2, name: 'Sophie Martin', phone: '+33 6 12 ** 90', points: 280, visits: 14, lastVisit: 'Hier, 19:30', segment: 'VIP' },
       { id: 3, name: 'Lucas Bernard', phone: '+33 7 89 ** 12', points: 40, visits: 2, lastVisit: '05/08/2026', segment: 'Nouveau' }
     ],
     stats: {
@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnClosePass) btnClosePass.addEventListener('click', () => document.getElementById('redemption-pass-modal').classList.remove('active'));
 
   /* ==========================================================================
-     5. RENDER MERCHANT UI (DESKTOP SIDEBAR + MOBILE BOTTOM DOCK)
+     5. RENDER MERCHANT UI (DESKTOP TABLE + NATIVE MOBILE CARDS)
      ========================================================================== */
   const dashMenuItems = document.querySelectorAll('.dash-menu-item');
   const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
@@ -335,6 +335,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('stat-pts-given').textContent = state.stats.pointsGiven.toLocaleString();
     document.getElementById('stat-rewards-redeemed').textContent = state.stats.rewardsRedeemed.toLocaleString();
 
+    // 1. Render Desktop CRM Table
     const crmTableBody = document.getElementById('crm-table-body');
     if (crmTableBody) {
       crmTableBody.innerHTML = state.clients.map(c => `
@@ -349,6 +350,40 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     }
 
+    // 2. Render Native Mobile CRM Cards (100% COMPLETE DATA VISIBLE ON PHONE!)
+    const crmMobileCardsFeed = document.getElementById('crm-mobile-cards-feed');
+    if (crmMobileCardsFeed) {
+      crmMobileCardsFeed.innerHTML = state.clients.map(c => `
+        <div class="crm-mobile-card">
+          <div class="crm-card-header">
+            <div>
+              <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${c.name}</h3>
+              <p style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</p>
+            </div>
+            <span style="font-size: 0.7rem; font-weight: 800; background: var(--marron-light); color: var(--primary-gold); padding: 2px 8px; border-radius: 12px;">${c.segment}</span>
+          </div>
+          <div class="crm-card-metrics">
+            <div class="crm-metric-pill">
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Points</span>
+              <strong style="font-size: 1rem; color: var(--primary-gold);">${c.points} pts</strong>
+            </div>
+            <div class="crm-metric-pill">
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Visites</span>
+              <strong style="font-size: 1rem; color: var(--marron-dark);">${c.visits} visites</strong>
+            </div>
+            <div class="crm-metric-pill">
+              <span style="font-size: 0.7rem; color: var(--text-muted);">Dernier scan</span>
+              <strong style="font-size: 0.8rem; color: var(--text-main);">${c.lastVisit}</strong>
+            </div>
+          </div>
+          <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem; font-size: 0.8rem;" onclick="alert('Message WhatsApp envoyé à ${c.name}')">
+            📱 Envoyer un message WhatsApp
+          </button>
+        </div>
+      `).join('');
+    }
+
+    // 3. Render Desktop Rewards Table
     const rewardsAdminBody = document.getElementById('rewards-admin-body');
     if (rewardsAdminBody) {
       rewardsAdminBody.innerHTML = state.rewards.map(r => `
@@ -359,6 +394,28 @@ document.addEventListener('DOMContentLoaded', () => {
           <td><strong style="color: var(--primary-gold);">${r.pts} pts</strong></td>
           <td><button class="btn-secondary" style="color:var(--primary-gold);" onclick="deleteReward(${r.id})">Supprimer</button></td>
         </tr>
+      `).join('');
+    }
+
+    // 4. Render Native Mobile Rewards Cards
+    const rewardsMobileCardsFeed = document.getElementById('rewards-mobile-cards-feed');
+    if (rewardsMobileCardsFeed) {
+      rewardsMobileCardsFeed.innerHTML = state.rewards.map(r => `
+        <div class="crm-mobile-card">
+          <div class="crm-card-header">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span style="font-size: 1.5rem;">${r.icon}</span>
+              <div>
+                <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${r.title}</h3>
+                <p style="font-size: 0.75rem; color: var(--text-muted);">${r.desc}</p>
+              </div>
+            </div>
+            <strong style="color: var(--primary-gold); font-size: 0.95rem;">${r.pts} pts</strong>
+          </div>
+          <button class="btn-secondary" style="width: 100%; color: var(--primary-gold); font-weight: 700; margin-top: 0.5rem;" onclick="deleteReward(${r.id})">
+            Supprimer la Récompense
+          </button>
+        </div>
       `).join('');
     }
   }

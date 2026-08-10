@@ -278,23 +278,21 @@
             </div>
           </div>
 
-          <!-- Section 2: CRM Clients with Horizontal Swipe Container -->
+          <!-- Section 2: CRM Clients (Desktop Table + Mobile Cards Feed) -->
           <div class="dash-section" id="dash-sec-clients">
             <div class="data-table-container">
-              <div class="mobile-swipe-hint">
-                <i data-lucide="arrow-right-left" style="width:14px; height:14px;"></i>
-                <span>👈 Glissez le tableau vers la gauche pour voir les Points, Visites et Actions ➔</span>
-              </div>
-              <div class="table-scroll-wrapper">
+              
+              <!-- Desktop Table (Screen > 768px) -->
+              <div class="desktop-table-only">
                 <table class="nexa-table">
                   <thead>
                     <tr>
-                      <th style="width: 140px;">Nom du Client</th>
-                      <th style="width: 130px;">WhatsApp</th>
-                      <th style="width: 90px;">Points</th>
-                      <th style="width: 90px;">Visites</th>
-                      <th style="width: 110px;">Dernier Scan</th>
-                      <th style="width: 100px;">Action</th>
+                      <th>Nom du Client</th>
+                      <th>Numéro WhatsApp</th>
+                      <th>Points</th>
+                      <th>Visites</th>
+                      <th>Dernier Scan</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="crm-table-body">
@@ -302,25 +300,29 @@
                   </tbody>
                 </table>
               </div>
+
+              <!-- Native Mobile Cards (Screen <= 768px - 100% visible info!) -->
+              <div class="mobile-cards-only" id="crm-mobile-cards-feed">
+                <!-- Rendered dynamically by app.js -->
+              </div>
+
             </div>
           </div>
 
-          <!-- Section 3: Rewards / Cadeaux with Horizontal Swipe Container -->
+          <!-- Section 3: Rewards / Cadeaux (Desktop Table + Mobile Cards Feed) -->
           <div class="dash-section" id="dash-sec-loyalty">
             <div class="data-table-container">
-              <div class="mobile-swipe-hint">
-                <i data-lucide="arrow-right-left" style="width:14px; height:14px;"></i>
-                <span>👈 Glissez le tableau vers la gauche pour voir toutes les colonnes ➔</span>
-              </div>
-              <div class="table-scroll-wrapper">
+              
+              <!-- Desktop Table -->
+              <div class="desktop-table-only">
                 <table class="nexa-table">
                   <thead>
                     <tr>
-                      <th style="width: 60px;">Icône</th>
-                      <th style="width: 160px;">Titre de la Récompense</th>
-                      <th style="width: 220px;">Description</th>
-                      <th style="width: 110px;">Points Requis</th>
-                      <th style="width: 100px;">Actions</th>
+                      <th>Icône</th>
+                      <th>Titre de la Récompense</th>
+                      <th>Description</th>
+                      <th>Points Requis</th>
+                      <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody id="rewards-admin-body">
@@ -328,6 +330,12 @@
                   </tbody>
                 </table>
               </div>
+
+              <!-- Native Mobile Cards -->
+              <div class="mobile-cards-only" id="rewards-mobile-cards-feed">
+                <!-- Rendered dynamically by app.js -->
+              </div>
+
             </div>
           </div>
 
