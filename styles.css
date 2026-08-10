@@ -212,7 +212,7 @@ input, select, textarea {
   padding: 0;
 }
 
-/* Mode 1: Mobile Client View (Untouched) */
+/* Mode 1: Mobile Client View */
 .viewport-mobile .dashboard-container {
   display: none !important;
 }
@@ -232,13 +232,16 @@ input, select, textarea {
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
+  box-shadow: none !important;
 }
 
 .viewport-mobile .phone-screen {
   border-radius: 0 !important;
   border: none !important;
+  box-shadow: none !important;
   min-height: 100vh !important;
   background: var(--bg-whitey) !important;
+  position: relative !important;
 }
 
 .viewport-mobile .phone-notch { display: none !important; }
@@ -278,6 +281,7 @@ input, select, textarea {
   padding: 10px;
   box-shadow: 0 20px 45px rgba(42, 29, 21, 0.4);
   border: 1px solid var(--gold-border);
+  position: relative !important;
 }
 
 .viewport-dual .phone-screen {
@@ -285,6 +289,7 @@ input, select, textarea {
   min-height: 800px;
   max-height: 820px;
   overflow: hidden;
+  position: relative !important;
 }
 
 .viewport-dual .dashboard-container { display: grid !important; }
@@ -300,11 +305,13 @@ input, select, textarea {
 }
 .phone-content::-webkit-scrollbar { display: none; }
 
+/* STRICTLY CONTAINED BOTTOM TAB BAR */
 .mobile-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  width: 100% !important;
   height: 60px;
   background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(14px);
@@ -312,13 +319,9 @@ input, select, textarea {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   align-items: center;
-  z-index: 90;
+  z-index: 50 !important;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  max-width: 500px;
-  margin: 0 auto;
 }
-
-.viewport-dual .mobile-nav { position: absolute; max-width: 100%; }
 
 .nav-tab {
   display: flex;
@@ -445,7 +448,7 @@ input, select, textarea {
 .btn-claim-clean.locked { background: var(--marron-light); color: var(--text-muted); }
 
 /* ==========================================================================
-   DESKTOP RESTAURATEUR SAAS DASHBOARD (ÉPURÉ & MINIMALISTE)
+   DESKTOP RESTAURATEUR SAAS DASHBOARD & MOBILE PILL BAR
    ========================================================================== */
 .dashboard-container {
   background: #FFFFFF;
@@ -478,13 +481,11 @@ input, select, textarea {
   color: var(--text-light);
 }
 
-/* SIDEBAR MENU CONTAINER */
 .dash-menu {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
   margin-top: 1.5rem;
-  width: 100%;
 }
 
 .dash-menu-item {
@@ -517,6 +518,11 @@ input, select, textarea {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 1rem;
+}
+
+/* DEDICATED HORIZONTAL MOBILE PILL BAR (Hidden on Desktop) */
+.dash-mobile-nav-bar {
+  display: none;
 }
 
 .dash-body {
@@ -680,11 +686,11 @@ input, select, textarea {
 .notification-toast.active { display: flex; }
 
 /* ==========================================================================
-   BULLETPROOF HORIZONTAL SWIPEABLE NAVIGATION FOR MOBILE SCREENS
+   MOBILE RESPONSIVENESS (SMARTPHONES <= 768px)
    ========================================================================== */
 @media (max-width: 768px) {
   
-  /* Top Pitch Header Bar for Creator on Mobile */
+  /* Creator Top Header Pitch Bar */
   .nexa-header {
     padding: 0.5rem 0.75rem !important;
     gap: 0.5rem !important;
@@ -706,12 +712,12 @@ input, select, textarea {
     white-space: nowrap !important;
   }
 
+  /* In mobile screen, dual pitch layout displays neatly */
   .viewport-dual {
     grid-template-columns: 1fr !important;
     padding: 0.5rem !important;
   }
 
-  /* Restaurateur SaaS Dashboard Container on Mobile */
   .viewport-desktop {
     padding: 0.5rem !important;
   }
@@ -724,21 +730,13 @@ input, select, textarea {
     box-shadow: none !important;
   }
 
-  /* TRANSFORM RESTAURATEUR SIDEBAR INTO HORIZONTAL SWIPEABLE PILL BAR */
+  /* HIDE SIDEBAR ON MOBILE SMARTPHONES */
   .dash-sidebar {
-    padding: 0.75rem 0.85rem !important;
-    flex-direction: column !important;
-    gap: 0.65rem !important;
+    display: none !important;
   }
 
-  .dash-brand {
-    padding-bottom: 0.4rem !important;
-    margin-bottom: 0 !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
-  }
-
-  /* CRITICAL: FORCE HORIZONTAL SWIPE FOR RESTAURATEUR TABS */
-  .dash-menu {
+  /* SHOW DEDICATED HORIZONTAL PILL BAR ON MOBILE */
+  .dash-mobile-nav-bar {
     display: flex !important;
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -747,45 +745,47 @@ input, select, textarea {
     -webkit-overflow-scrolling: touch !important;
     touch-action: pan-x !important;
     width: 100% !important;
-    padding-bottom: 4px !important;
+    padding: 0.65rem 0.85rem !important;
+    background: var(--marron-dark) !important;
     gap: 0.5rem !important;
-    margin-top: 0 !important;
   }
 
-  .dash-menu::-webkit-scrollbar { display: none; }
+  .dash-mobile-nav-bar::-webkit-scrollbar { display: none; }
 
-  .dash-menu-item {
-    flex: 0 0 auto !important; /* CRITICAL: DO NOT SHRINK! Allow overflow so user can swipe! */
+  .dash-mobile-pill {
+    flex: 0 0 auto !important;
     white-space: nowrap !important;
-    padding: 0.5rem 0.9rem !important;
-    font-size: 0.8rem !important;
+    padding: 0.45rem 0.85rem !important;
     border-radius: 20px !important;
+    color: var(--text-light) !important;
+    font-size: 0.8rem !important;
+    font-weight: 600 !important;
     background: rgba(255, 255, 255, 0.08) !important;
   }
 
-  .dash-menu-item.active {
+  .dash-mobile-pill.active {
     background: var(--primary-gold) !important;
     color: #FFFFFF !important;
+    font-weight: 800 !important;
   }
 
-  .dash-header { padding: 1rem !important; }
-  .dash-body { padding: 1rem !important; }
+  .dash-header { padding: 0.85rem 1rem !important; }
+  .dash-body { padding: 0.85rem 1rem !important; }
 
   .stats-grid {
     grid-template-columns: 1fr 1fr !important;
-    gap: 0.75rem !important;
+    gap: 0.65rem !important;
   }
 
-  .stat-card { padding: 0.85rem !important; }
-  .stat-value { font-size: 1.4rem !important; }
+  .stat-card { padding: 0.75rem !important; }
+  .stat-value { font-size: 1.35rem !important; }
 
-  /* SWIPEABLE TABLES FOR CRM & REWARDS */
   .data-table-container {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
   }
 
   .nexa-table {
-    min-width: 580px !important;
+    min-width: 540px !important;
   }
 }
