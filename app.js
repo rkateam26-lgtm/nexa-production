@@ -59,9 +59,33 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
+     0. URL ROLE ROUTER (?role=client, ?role=merchant, ?role=demo)
+     ========================================================================== */
+  const urlParams = new URLSearchParams(window.location.search);
+  const roleParam = urlParams.get('role') || urlParams.get('mode');
+  const viewportContainer = document.getElementById('viewport-container');
+  const demoHeader = document.querySelector('.nexa-header');
+
+  if (roleParam === 'client') {
+    // Hide demo bar & force client mobile view
+    if (demoHeader) demoHeader.style.display = 'none';
+    viewportContainer.className = 'main-viewport viewport-mobile';
+    state.currentViewMode = 'mobile';
+  } else if (roleParam === 'merchant' || roleParam === 'admin') {
+    // Hide demo bar & force merchant dashboard view
+    if (demoHeader) demoHeader.style.display = 'none';
+    viewportContainer.className = 'main-viewport viewport-desktop';
+    state.currentViewMode = 'desktop';
+  } else {
+    // Master Creator Demo Mode (default or ?role=demo)
+    if (demoHeader) demoHeader.style.display = 'flex';
+    viewportContainer.className = 'main-viewport viewport-dual';
+    state.currentViewMode = 'dual';
+  }
+
+  /* ==========================================================================
      1. VIEW SWITCHER (Mobile vs Desktop vs Dual Side-by-Side vs Cashier)
      ========================================================================== */
-  const viewportContainer = document.getElementById('viewport-container');
   const switchBtns = document.querySelectorAll('.switch-btn');
 
   switchBtns.forEach(btn => {
