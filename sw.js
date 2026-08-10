@@ -1,43 +1,20 @@
-/* ==========================================================================
-   NEXA PWA SERVICE WORKER (OFFLINE & WEB PUSH READY)
-   ========================================================================== */
+// NEXA Service Worker - Cache Bypassing for Live Development Updates
 
-const CACHE_NAME = 'nexa-pwa-v1';
-const ASSETS_TO_CACHE = [
-  './index.html',
-  './styles.css',
-  './app.js',
-  './manifest.json',
-  './assets/le_savane_hero.jpg',
-  './assets/savane_dish.jpg'
-];
-
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
-    })
-  );
+self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
-  e.waitUntil(
-    caches.keys().then((keys) => {
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) return caches.delete(key);
-        })
+        cacheNames.map((cacheName) => caches.delete(cacheName))
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((cachedResponse) => {
-      return cachedResponse || fetch(e.request);
-    })
-  );
+self.addEventListener('fetch', (event) => {
+  // Always fetch fresh network content
+  event.respondWith(fetch(event.request));
 });

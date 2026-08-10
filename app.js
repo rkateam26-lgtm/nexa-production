@@ -4,16 +4,20 @@
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // PWA Service Worker Registration
+  // Force Unregister Old Service Worker to Clear Mobile Browser Cache
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
-      console.log('Service Worker registration skipped:', err);
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (let registration of registrations) {
+        registration.unregister();
+      }
+    }).catch(err => {
+      console.log('SW unregister ok:', err);
     });
   }
 
   // Global Reactive App State
   const state = {
-    currentViewMode: 'dual', // 'mobile', 'desktop', 'dual'
+    currentViewMode: 'mobile',
     userLoggedIn: true,
     user: {
       name: 'Thomas Laurent',
@@ -54,14 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ==========================================================================
-     0. URL ROLE ROUTER (?role=client, ?role=merchant, ?role=demo)
+     0. SMART ROLE & SCREEN SIZE ROUTER
      ========================================================================== */
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = urlParams.get('role') || urlParams.get('mode');
+  const isMobileScreen = window.innerWidth <= 768;
   const viewportContainer = document.getElementById('viewport-container');
   const demoHeader = document.querySelector('.nexa-header');
 
-  if (roleParam === 'client') {
+  // If on a real mobile screen OR explicitly requested ?role=client -> FORCE CLEAN MOBILE VIEW!
+  if (roleParam === 'client' || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
     if (demoHeader) demoHeader.style.display = 'none';
     viewportContainer.className = 'main-viewport viewport-mobile';
     state.currentViewMode = 'mobile';
@@ -69,10 +75,21 @@ document.addEventListener('DOMContentLoaded', () => {
     if (demoHeader) demoHeader.style.display = 'none';
     viewportContainer.className = 'main-viewport viewport-desktop';
     state.currentViewMode = 'desktop';
-  } else {
+  } else if (roleParam === 'demo') {
     if (demoHeader) demoHeader.style.display = 'flex';
     viewportContainer.className = 'main-viewport viewport-dual';
     state.currentViewMode = 'dual';
+  } else {
+    // Default fallback: if screen is desktop show dual, if phone show mobile
+    if (isMobileScreen) {
+      if (demoHeader) demoHeader.style.display = 'none';
+      viewportContainer.className = 'main-viewport viewport-mobile';
+      state.currentViewMode = 'mobile';
+    } else {
+      if (demoHeader) demoHeader.style.display = 'flex';
+      viewportContainer.className = 'main-viewport viewport-dual';
+      state.currentViewMode = 'dual';
+    }
   }
 
   // Update Shareable Role Links with Current Origin
