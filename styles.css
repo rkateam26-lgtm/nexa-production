@@ -188,7 +188,7 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   VIEWPORT WRAPPERS (RESPONSIVE EDGE-TO-EDGE)
+   VIEWPORT WRAPPERS & STRICT MODE ISOLATION
    ========================================================================== */
 .main-viewport {
   width: 100%;
@@ -198,23 +198,65 @@ input, select, textarea {
   padding: 0;
 }
 
-/* Standalone Client Mobile View (100% Fluid on Phone) */
+/* --------------------------------------------------------------------------
+   MODE 1: VUE CLIENT MOBILE STRICT (Hide Desktop SaaS completely!)
+   -------------------------------------------------------------------------- */
+.viewport-mobile .dashboard-container {
+  display: none !important;
+}
+
 .viewport-mobile {
-  width: 100%;
-  max-width: 540px;
-  margin: 0 auto;
-  padding: 0;
+  width: 100% !important;
+  max-width: 500px !important;
+  margin: 0 auto !important;
+  padding: 0 !important;
 }
 
-/* Standalone Restaurateur Desktop View */
+.viewport-mobile .phone-wrapper {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.viewport-mobile .phone-screen {
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  min-height: 100vh !important;
+  background: var(--bg-whitey) !important;
+}
+
+.viewport-mobile .phone-notch {
+  display: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 2: VUE RESTAURATEUR DESKTOP STRICT (Hide Mobile App completely!)
+   -------------------------------------------------------------------------- */
+.viewport-desktop .phone-wrapper {
+  display: none !important;
+}
+
 .viewport-desktop {
-  width: 100%;
-  max-width: 1400px;
-  padding: 1.5rem;
-  margin: 0 auto;
+  width: 100% !important;
+  max-width: 1400px !important;
+  padding: 1.5rem !important;
+  margin: 0 auto !important;
 }
 
-/* Master Pitch Dual Side-by-Side View */
+.viewport-desktop .dashboard-container {
+  display: grid !important;
+  width: 100% !important;
+}
+
+/* --------------------------------------------------------------------------
+   MODE 3: MODE DUAL PITCH MASTER (Show both side-by-side on desktop)
+   -------------------------------------------------------------------------- */
 .viewport-dual {
   width: 100%;
   max-width: 1600px;
@@ -225,30 +267,13 @@ input, select, textarea {
   margin: 0 auto;
 }
 
-/* ==========================================================================
-   CLIENT MOBILE APP (WHITE GOLD & MARRON - ÉPURÉ & ULTRA SIMPLE)
-   ========================================================================== */
-.phone-wrapper {
-  width: 100%;
-  background: transparent;
-}
-
-/* In Master Pitch Dual Mode ONLY, show outer mockup frame */
 .viewport-dual .phone-wrapper {
+  display: block !important;
   background: var(--marron-dark);
   border-radius: 44px;
   padding: 10px;
   box-shadow: 0 20px 45px rgba(42, 29, 21, 0.4);
   border: 1px solid var(--gold-border);
-}
-
-.phone-screen {
-  background: var(--bg-whitey);
-  width: 100%;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  position: relative;
 }
 
 .viewport-dual .phone-screen {
@@ -258,12 +283,8 @@ input, select, textarea {
   overflow: hidden;
 }
 
-.phone-notch {
-  display: none;
-}
-
 .viewport-dual .phone-notch {
-  display: flex;
+  display: flex !important;
   height: 24px;
   background: #1A120D;
   align-items: center;
@@ -274,6 +295,13 @@ input, select, textarea {
   font-weight: 700;
 }
 
+.viewport-dual .dashboard-container {
+  display: grid !important;
+}
+
+/* ==========================================================================
+   CLIENT MOBILE APP CONTENT (ÉPURÉ & CLAIR)
+   ========================================================================== */
 .phone-content {
   flex: 1;
   overflow-y: auto;
@@ -290,7 +318,7 @@ input, select, textarea {
   left: 0;
   right: 0;
   height: 60px;
-  background: rgba(255, 255, 255, 0.96);
+  background: rgba(255, 255, 255, 0.98);
   backdrop-filter: blur(14px);
   border-top: 1px solid var(--dash-border);
   display: grid;
@@ -298,7 +326,7 @@ input, select, textarea {
   align-items: center;
   z-index: 90;
   padding-bottom: env(safe-area-inset-bottom, 0px);
-  max-width: 540px;
+  max-width: 500px;
   margin: 0 auto;
 }
 
@@ -326,19 +354,15 @@ input, select, textarea {
   font-weight: 800;
 }
 
-/* ==========================================================================
-   CLIENT MOBILE SCREENS (ULTRA ÉPURÉ & CLAIR)
-   ========================================================================== */
-.client-screen {
-  display: none;
+/* Screens */
+.client-screen { display: none; }
+.client-screen.active { display: block; animation: fadeIn 0.2s ease; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.client-screen.active {
-  display: block;
-  animation: fadeIn 0.2s ease;
-}
-
-/* Restaurant Header Banner Épurée */
 .restaurant-hero-clean {
   padding: 1.25rem;
   background: linear-gradient(180deg, #FFFFFF 0%, #F5F1EB 100%);
@@ -369,7 +393,6 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
-/* Points Card (Whitey Gold Minimalist) */
 .points-card-clean {
   margin: 1rem;
   background: #FFFFFF;
@@ -413,11 +436,6 @@ input, select, textarea {
   box-shadow: 0 4px 14px rgba(217, 119, 6, 0.25);
 }
 
-.btn-scan-main:hover {
-  transform: translateY(-1px);
-}
-
-/* Simple Rewards Catalogue */
 .rewards-list-clean {
   padding: 0 1rem;
   display: flex;
@@ -434,11 +452,6 @@ input, select, textarea {
   align-items: center;
   justify-content: space-between;
   gap: 0.85rem;
-  transition: all 0.2s ease;
-}
-
-.reward-card-clean:hover {
-  border-color: var(--gold-accent);
 }
 
 .reward-info-clean h3 {
@@ -470,7 +483,7 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   DESKTOP RESTAURATEUR SAAS DASHBOARD (PROFESSIONNEL & ÉPURÉ)
+   DESKTOP RESTAURATEUR SAAS DASHBOARD
    ========================================================================== */
 .dashboard-container {
   background: #FFFFFF;
@@ -555,7 +568,6 @@ input, select, textarea {
 .dash-section { display: none; }
 .dash-section.active { display: block; animation: fadeIn 0.2s ease; }
 
-/* Metrics Overview Cards */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -588,7 +600,6 @@ input, select, textarea {
   color: var(--marron-dark);
 }
 
-/* CRM Table */
 .data-table-container {
   background: #FFFFFF;
   border: 1px solid var(--dash-border);
@@ -632,9 +643,7 @@ input, select, textarea {
   gap: 0.4rem;
 }
 
-.btn-primary:hover {
-  background: var(--primary-gold);
-}
+.btn-primary:hover { background: var(--primary-gold); }
 
 .btn-secondary {
   background: var(--bg-subtle);
@@ -646,7 +655,7 @@ input, select, textarea {
   border: 1px solid var(--dash-border);
 }
 
-/* Scanner & Modals */
+/* Modals & Toast */
 .scanner-modal {
   position: fixed;
   inset: 0;
@@ -659,7 +668,6 @@ input, select, textarea {
   justify-content: space-between;
   padding: 2rem 1.5rem;
 }
-
 .scanner-modal.active { display: flex; }
 
 .scanner-target {
@@ -682,7 +690,6 @@ input, select, textarea {
   align-items: center;
   justify-content: center;
 }
-
 .nexa-modal-backdrop.active { display: flex; }
 
 .nexa-modal-card {
@@ -695,7 +702,6 @@ input, select, textarea {
   border: 1px solid var(--dash-border);
 }
 
-/* Toast */
 .notification-toast {
   position: fixed;
   top: 75px;
@@ -712,11 +718,14 @@ input, select, textarea {
   gap: 0.75rem;
   max-width: 340px;
 }
-
 .notification-toast.active { display: flex; }
 
-/* Responsive Adjustments for Mobile Screens */
+/* Responsive Media Queries for Mobile Screens */
 @media (max-width: 768px) {
+  .viewport-dual {
+    grid-template-columns: 1fr !important;
+    padding: 0 !important;
+  }
   .dashboard-container {
     grid-template-columns: 1fr;
   }
