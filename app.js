@@ -380,7 +380,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     const twoHoursMs = 2 * 60 * 60 * 1000;
     const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
     const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
-    const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
+
+    let lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
+
+    // FETCH VERIFIED LAST SCAN TIMESTAMP FROM CLOUD SUPABASE POSTGRESQL!
+    if (window.nexaBackend) {
+      try {
+        const cloudLastScan = await window.nexaBackend.checkClientCooldownCloud(state.restaurant.name, state.clientSession.whatsapp);
+        if (cloudLastScan > 0) {
+          lastScanTime = Math.max(lastScanTime, cloudLastScan);
+        }
+      } catch (err) {
+        console.log('Cloud cooldown check info:', err);
+      }
+    }
 
     // ⛔ ABSOLUTE 2-HOUR ANTI-CHEAT PRE-CHECK BEFORE ADDING ANY POINTS!
     if (lastScanTime > 0 && (now - lastScanTime < twoHoursMs)) {

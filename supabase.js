@@ -214,7 +214,8 @@ class NexaProductionBackend {
           return {
             points: data.points_balance || 0,
             visits: data.visits_count || 0,
-            name: data.full_name || 'Client Nexa'
+            name: data.full_name || 'Client Nexa',
+            lastScanAt: data.last_scan_at ? new Date(data.last_scan_at).getTime() : 0
           };
         }
       } catch (e) {
@@ -224,7 +225,29 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 10. Record Single Scan & Save Client in CRM (Robust Insert/Update Engine)
+  // 10. Check Client Cooldown directly on Cloud PostgreSQL!
+  async checkClientCooldownCloud(restoName, whatsappPhone) {
+    if (this.isLiveSupabase && this.client && whatsappPhone) {
+      try {
+        const slug = this.getSlug(restoName);
+        const compositeKey = `${whatsappPhone}_${slug}`;
+        const { data } = await this.client
+          .from('clients')
+          .select('last_scan_at')
+          .eq('whatsapp_phone', compositeKey)
+          .maybeSingle();
+
+        if (data && data.last_scan_at) {
+          return new Date(data.last_scan_at).getTime();
+        }
+      } catch (e) {
+        console.log('Cooldown check cloud error:', e);
+      }
+    }
+    return 0;
+  }
+
+  // 11. Record Single Scan & Save Client in CRM
   async recordScanCloud(restoName, tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -279,7 +302,7 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 11. Deduct Points on Reward Redemption
+  // 12. Deduct Points on Reward Redemption
   async deductPointsCloud(restoName, whatsappPhone, pointsDeducted) {
     if (this.isLiveSupabase && this.client && whatsappPhone) {
       try {
