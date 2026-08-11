@@ -318,9 +318,24 @@
               </button>
             </div>
 
-            <div class="data-table-container" style="padding: 1.25rem;">
+            <div class="data-table-container" style="padding: 1.25rem; margin-bottom: 1.5rem;">
               <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 1rem;">Évolution des Scans QR (Cloud PostgreSQL)</h3>
               <canvas id="scansChart" height="120"></canvas>
+            </div>
+
+            <!-- NEW: ELIGIBLE REWARDS & 1-CLICK CASHIER VALIDATION FEED -->
+            <div class="data-table-container" style="padding: 1.25rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">🎁 Échanges & Cadeaux Éligibles en Caisse</h3>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Validez les réductions et cadeaux attribués à vos clients en 1 clic pour déduire leurs points.</p>
+                </div>
+                <span style="font-size: 0.75rem; background: var(--marron-light); color: var(--primary-gold); font-weight: 800; padding: 4px 10px; border-radius: 12px;" id="eligible-claims-count-badge">0 éligible(s)</span>
+              </div>
+
+              <div id="merchant-eligible-rewards-feed">
+                <!-- Dynamically populated by app.js -->
+              </div>
             </div>
           </div>
 

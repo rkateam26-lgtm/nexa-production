@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & CASHIER VALIDATION ENGINE
+   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & 1-CLICK MERCHANT CASHIER VALIDATION
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             id: c.id,
             name: c.full_name || 'Client Nexa',
             phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : c.whatsapp_phone,
-            points: c.points_balance || state.restaurant.pointsPerScan,
+            points: c.points_balance || 0,
             visits: c.visits_count || 1,
             lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
             segment: (c.visits_count || 1) >= 3 ? 'Membre VIP' : 'Nouveau Client'
@@ -363,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. STRICT 2-HOUR COOLDOWN ANTI-CHEAT SCANNER ENGINE (PHONE-SPECIFIC!)
+     4. STRICT 2-HOUR ANTI-CHEAT SCANNER ENGINE (ABSUTE BLOCK BEFORE CREDITING POINTS!)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -383,14 +383,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
     const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
 
-    // STRICT 2-HOUR ANTI-CHEAT COOLDOWN PER PHONE NUMBER!
+    // ⛔ ABSOLUTE 2-HOUR ANTI-CHEAT BLOCK! DO NOT GRANT ANY POINTS IF LESS THAN 2 HOURS!
     if (now - lastScanTime < twoHoursMs) {
       const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
-      showToast('⏳ Anti-Triche NEXA', `Prochain scan disponible dans ${remainingMinutes} min.`);
-      alert(`⏳ Anti-Triche NEXA :\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nPour éviter les abus de points, le prochain scan sera disponible dans ${remainingMinutes} minutes.`);
+      
+      showToast('⚠️ Anti-Triche NEXA', `0 point ajouté. Prochain scan dans ${remainingMinutes} min.`);
+      
+      // Inject prominent red warning alert inside Client UI!
+      const clientWarningBox = document.getElementById('client-login-banner');
+      if (clientWarningBox) {
+        clientWarningBox.style.display = 'block';
+        clientWarningBox.style.background = '#FEE2E2';
+        clientWarningBox.style.borderColor = '#EF4444';
+        clientWarningBox.style.color = '#991B1B';
+        clientWarningBox.innerHTML = `
+          <strong>⚠️ Anti-Triche NEXA : 0 point attribué !</strong><br/>
+          Vous avez déjà crédité vos points pour ce repas à la Table #${tableParam}.<br/>
+          Prochain scan disponible dans <strong>${remainingMinutes} minutes</strong>.
+        `;
+      }
+
+      alert(`⚠️ Anti-Triche NEXA :\n\n0 point attribué !\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
+      stopCameraScanner();
       return;
     }
 
+    // ONLY REACHED IF > 2 HOURS SINCE LAST SCAN!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
@@ -453,18 +471,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // AUTOMATIC INITIAL POINT CREDIT IF SCANNED DIRECTLY FROM TABLE
   if (isDirectTableScan && state.clientSession.whatsapp) {
-    const now = Date.now();
-    const twoHoursMs = 2 * 60 * 60 * 1000;
-    const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
-    const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
-    const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
-    if (now - lastScanTime >= twoHoursMs) {
-      setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 1000);
-    }
+    setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 800);
   }
 
   /* ==========================================================================
-     5. MERCHANT CASHIER VALIDATION SYSTEM (DUAL-SIDED REDEMPTION WORKFLOW)
+     5. MERCHANT 1-CLICK CASHIER VALIDATION & ELIGIBLE GIFTS ENGINE
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -488,13 +499,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (btnScanLabel) btnScanLabel.textContent = `📷 Valider mes Points Table #${tableParam} (+${state.restaurant.pointsPerScan} Pts)`;
 
     if (state.clientSession.whatsapp) {
-      if (clientLoginBanner) clientLoginBanner.style.display = 'none';
       document.getElementById('profile-display-name').textContent = state.clientSession.name || 'Membre Client';
       document.getElementById('profile-display-phone').textContent = state.clientSession.whatsapp;
       document.getElementById('profile-display-tier').textContent = state.clientSession.points >= 200 ? 'Membre VIP' : 'Membre Silver';
       document.getElementById('client-avatar-letters').textContent = (state.clientSession.name || 'MC').substring(0, 2).toUpperCase();
-    } else {
-      if (clientLoginBanner) clientLoginBanner.style.display = 'block';
     }
 
     const rewardsContainer = document.getElementById('client-rewards-list');
@@ -569,7 +577,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // INTERACTIVE REWARD CLICK (CREATES PENDING CLAIM PASS FOR CASHIER VALIDATION!)
+  // INTERACTIVE REWARD CLICK
   window.handleRewardClick = function(rewardId, requiredPts, title) {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
@@ -591,7 +599,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // CLIENT CREATES PENDING CLAIM (WAITING FOR MERCHANT CASHIER VALIDATION!)
+  // CLIENT CREATES PENDING CLAIM
   window.claimReward = function(rewardId) {
     const reward = state.rewards.find(r => String(r.id) === String(rewardId));
     if (!reward || state.clientSession.points < reward.pts) return;
@@ -607,7 +615,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       status: 'pending'
     };
 
-    // Store pending claim for Merchant Dashboard
     state.pendingClaims.unshift(claimObj);
     localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(state.pendingClaims));
 
@@ -616,57 +623,48 @@ document.addEventListener('DOMContentLoaded', async () => {
     showRedemptionPassModal(reward, claimObj.id);
   };
 
-  // MERCHANT CASHIER VALIDATES REDEMPTION & DEDUCTS POINTS!
-  window.validateClaimByMerchant = async function(claimId) {
-    const claim = state.pendingClaims.find(c => c.id === claimId);
-    if (!claim) return;
+  // MERCHANT VALIDATES REWARD IN 1-CLICK & DEDUCTS CLIENT POINTS!
+  window.validateClaimByMerchantDirect = async function(clientPhone, rewardTitle, requiredPts) {
+    if (!clientPhone || !requiredPts) return;
 
-    // Deduct client points locally & on Cloud
-    if (state.clientSession.whatsapp === claim.clientPhone) {
-      state.clientSession.points = Math.max(0, state.clientSession.points - claim.pts);
-      localStorage.setItem('nexa_client_points', state.clientSession.points);
-    }
-
+    // Deduct client points on Cloud Supabase!
     if (window.nexaBackend) {
       try {
-        await window.nexaBackend.deductPointsCloud(state.restaurant.name, claim.clientPhone, claim.pts);
+        await window.nexaBackend.deductPointsCloud(state.restaurant.name, clientPhone, requiredPts);
       } catch (err) {
-        console.log('Merchant deduct cloud info:', err);
+        console.log('Deduct cloud error:', err);
       }
     }
 
-    state.stats.rewardsRedeemed += 1;
-    claim.status = 'validated';
-    localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(state.pendingClaims));
+    // Update local client profile points
+    if (state.clientSession.whatsapp && state.clientSession.whatsapp.includes(clientPhone)) {
+      state.clientSession.points = Math.max(0, state.clientSession.points - requiredPts);
+      localStorage.setItem('nexa_client_points', state.clientSession.points);
+    }
 
-    // Client Notification
-    const notifMsg = `🎉 Validé en Caisse ! Votre cadeau "${claim.rewardTitle}" (${claim.pts} pts) a été validé par le restaurateur chez ${state.restaurant.name}.`;
+    state.stats.rewardsRedeemed += 1;
+
+    // Add Notification to Client Feed
     state.notifications.unshift({
       id: Date.now(),
-      title: `✅ Échange Validé en Caisse`,
-      text: notifMsg,
+      title: `✅ Cadeau Validé par le Restaurateur !`,
+      text: `🎉 Félicitations ! Votre cadeau "${rewardTitle}" (${requiredPts} pts) a été validé par ${state.restaurant.name}.`,
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
     });
     localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
 
     state.clientSession.history.unshift({
       id: Date.now(),
-      title: `🎁 Échange Validé : ${claim.rewardTitle}`,
+      title: `🎁 Échange Validé : ${rewardTitle}`,
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
       date: new Date().toLocaleDateString('fr-FR'),
-      pts: `-${claim.pts}`
+      pts: `-${requiredPts}`
     });
     localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
-    // Update Pass Modal status if active
-    const passStatusBadge = document.getElementById('pass-status-badge');
-    if (passStatusBadge) {
-      passStatusBadge.innerHTML = `<span style="background: #10B981; color: white; padding: 6px 16px; border-radius: 20px; font-weight: 800; font-size: 0.85rem;">✅ VALIDÉ EN CAISSE (-${claim.pts} PTS)</span>`;
-    }
-
-    renderClientUI();
-    renderMerchantUI();
-    showToast('✅ Cadeau Validé !', `Points (-${claim.pts} pts) déduits pour ${claim.clientName}. Notification envoyée.`);
+    await syncCloudData();
+    showToast('✅ Cadeau Validé en Caisse !', `-${requiredPts} points déduits. Notification transmise au client.`);
+    alert(`✅ Validation Réussie !\n\nLe cadeau "${rewardTitle}" (${requiredPts} pts) a été validé.\n\n-${requiredPts} points déduits du solde du client !`);
   };
 
   window.showPassModalFirst = function() {
@@ -688,19 +686,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       </div>
     `;
-
-    const passStatusBadge = document.getElementById('pass-status-badge');
-    if (passStatusBadge) {
-      passStatusBadge.innerHTML = `
-        <div style="margin-top: 0.5rem;">
-          <span style="background: #F59E0B; color: #2A1D15; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.75rem;">⏳ EN ATTENTE DE VALIDATION EN CAISSE</span>
-          <button class="btn-primary" style="margin-top: 0.6rem; width: 100%; justify-content: center; background: #10B981; font-size: 0.8rem;" onclick="validateClaimByMerchant(${claimId})">
-            ✅ [Mode Test Gérant] Valider la Réduction en Caisse
-          </button>
-        </div>
-      `;
-    }
-
     passModal.classList.add('active');
   }
 
@@ -746,6 +731,57 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
+    // 🎁 RENDER ELIGIBLE REWARDS & 1-CLICK CASHIER VALIDATION FEED IN OVERVIEW TAB!
+    const eligibleFeed = document.getElementById('merchant-eligible-rewards-feed');
+    const eligibleBadge = document.getElementById('eligible-claims-count-badge');
+
+    if (eligibleFeed) {
+      let eligibleItems = [];
+
+      state.clientsList.forEach(client => {
+        state.rewards.forEach(reward => {
+          if (client.points >= reward.pts) {
+            eligibleItems.push({ client, reward });
+          }
+        });
+      });
+
+      if (eligibleBadge) eligibleBadge.textContent = `${eligibleItems.length} éligible(s)`;
+
+      if (eligibleItems.length === 0) {
+        eligibleFeed.innerHTML = `
+          <div style="text-align:center; padding: 2rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🎁</div>
+            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucun client éligible pour l'instant</p>
+            <p style="font-size: 0.75rem; margin: 0;">Dès qu'un client accumule assez de points pour débloquer un cadeau, son option d'échange 1-clic apparaîtra ici !</p>
+          </div>
+        `;
+      } else {
+        eligibleFeed.innerHTML = eligibleItems.map(item => {
+          const titleEscaped = item.reward.title.replace(/'/g, "\\'");
+          return `
+            <div style="background: white; border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+              <div style="display: flex; align-items: center; gap: 0.85rem;">
+                <span style="font-size: 1.8rem;">${item.reward.icon}</span>
+                <div>
+                  <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">
+                    ${item.client.name} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">(${item.client.phone})</span>
+                  </h4>
+                  <p style="font-size: 0.8rem; color: var(--primary-gold); font-weight: 700; margin: 0;">
+                    🎁 ${item.reward.title} • <strong>-${item.reward.pts} pts</strong> (Solde actuel: ${item.client.points} pts)
+                  </p>
+                </div>
+              </div>
+              <button class="btn-primary" onclick="validateClaimByMerchantDirect('${item.client.phone}', '${titleEscaped}', ${item.reward.pts})" style="background: #10B981; border-color: #10B981; font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem;">
+                ✅ Valider l'Échange & Déduire ${item.reward.pts} Pts
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Render CRM Table
     const crmTableBody = document.getElementById('crm-table-body');
     if (crmTableBody) {
       if (state.clientsList.length === 0) {
