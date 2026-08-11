@@ -149,7 +149,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableBadge = document.getElementById('mobile-table-badge');
   if (tableBadge) tableBadge.textContent = `Table #${tableParam}`;
 
-  if (roleParam === 'client' || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
+  // FORCE CLIENT MOBILE VIEW IF SCANNING TABLE OR ROLE IS CLIENT
+  if (roleParam === 'client' || isDirectTableScan || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
     if (demoHeader) demoHeader.style.display = 'none';
     viewportContainer.className = 'main-viewport viewport-mobile';
   } else if (roleParam === 'merchant') {
