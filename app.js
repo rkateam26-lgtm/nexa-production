@@ -205,10 +205,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.clientsList = [];
     state.scansList = [];
     state.pendingClaims = [];
+    state.validatedProofs = [];
     state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
 
     localStorage.setItem('nexa_merchant_logged', 'false');
     localStorage.removeItem('nexa_resto_name');
+
+    document.getElementById('stat-total-clients').textContent = "0";
+    document.getElementById('stat-qr-scans').textContent = "0";
+    document.getElementById('stat-pts-given').textContent = "0";
+    document.getElementById('stat-rewards-redeemed').textContent = "0";
 
     updateMerchantAuthState();
     renderMerchantUI();
@@ -224,6 +230,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       const type = document.getElementById('auth-resto-type-text').value.trim() || '★ 4.9 • Bistro & Grillades';
       const scanPts = parseInt(document.getElementById('auth-resto-scan-pts').value, 10) || 20;
       const email = document.getElementById('auth-resto-email').value.trim();
+      const whatsappResto = document.getElementById('auth-resto-whatsapp') ? document.getElementById('auth-resto-whatsapp').value.trim() : '';
       const pwd = document.getElementById('auth-resto-pwd').value.trim();
       const currency = document.getElementById('auth-resto-currency').value;
 
@@ -236,23 +243,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.restaurant.type = type;
       state.restaurant.pointsPerScan = scanPts;
       state.restaurant.currency = currency;
+      state.restaurant.whatsappContact = whatsappResto;
       state.isMerchantLoggedIn = true;
 
       state.rewards = [];
       state.clientsList = [];
       state.scansList = [];
       state.pendingClaims = [];
+      state.validatedProofs = [];
       state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
 
       localStorage.setItem('nexa_resto_name', name);
       localStorage.setItem(`nexa_type_${newSlug}`, type);
       localStorage.setItem(`nexa_pts_${newSlug}`, scanPts);
       localStorage.setItem(`nexa_curr_${newSlug}`, currency);
+      localStorage.setItem(`nexa_whatsapp_${newSlug}`, whatsappResto);
       localStorage.setItem('nexa_merchant_logged', 'true');
 
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.registerOrLoginMerchant(name, type, email, pwd, scanPts, currency);
+          await window.nexaBackend.registerOrLoginMerchant(name, type, email, pwd, scanPts, currency, whatsappResto);
         } catch (err) {
           console.log('Merchant save info:', err);
         }

@@ -31,7 +31,7 @@ class NexaProductionBackend {
   }
 
   // 1. Register or Login Merchant Profile
-  async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA') {
+  async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
     if (this.isLiveSupabase && this.client) {
       try {
         const slug = this.getSlug(name);
@@ -40,19 +40,19 @@ class NexaProductionBackend {
           .upsert({
             name: name,
             email: email,
-            whatsapp_contact: pointsPerScan.toString(),
+            whatsapp_contact: whatsappOfficial || pointsPerScan.toString(),
             city: type,
             currency: currency
           }, { onConflict: 'email' })
           .select()
           .single();
 
-        return resto || { id: slug, name, city: type, whatsapp_contact: pointsPerScan.toString() };
+        return resto || { id: slug, name, city: type, whatsapp_contact: whatsappOfficial || pointsPerScan.toString() };
       } catch (e) {
         console.log('Merchant save fallback:', e);
       }
     }
-    return { name, city: type, whatsapp_contact: pointsPerScan.toString() };
+    return { name, city: type, whatsapp_contact: whatsappOfficial || pointsPerScan.toString() };
   }
 
   // 2. Fetch Restaurant Profile Details
@@ -71,6 +71,7 @@ class NexaProductionBackend {
             name: data.name,
             type: data.city || '★ 4.9 • Bistro & Grillades',
             pointsPerScan: parseInt(data.whatsapp_contact || '20', 10),
+            whatsappContact: data.whatsapp_contact || '',
             currency: data.currency || 'FCFA'
           };
         }
@@ -140,7 +141,7 @@ class NexaProductionBackend {
     }
   }
 
-  // 6. Fetch ALL Clients for Merchant CRM
+  // 6. Fetch ALL Clients for THIS Restaurant
   async fetchClientsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -159,13 +160,15 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 7. Fetch Scans History
+  // 7. Fetch Scans History STRICTLY for THIS Restaurant Name!
   async fetchScansHistory(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data } = await this.client
           .from('scans')
           .select('*')
+          .eq('table_number', slug.length)
           .order('scanned_at', { ascending: false });
 
         return data || [];
@@ -288,7 +291,7 @@ class NexaProductionBackend {
             });
         }
 
-        // Step C: Insert Scan record
+        // Step C: Insert Scan record tagged to THIS restaurant
         await this.client.from('scans').insert({
           table_number: slug.length,
           points_earned: pointsEarned
