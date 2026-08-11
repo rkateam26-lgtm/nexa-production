@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (ZERO DATA LEAKS)
+   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (FULL NOTIFS & CRM ENGINE)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,10 +39,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       name: localStorage.getItem('nexa_client_name') || '',
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
       lastScanTime: parseInt(localStorage.getItem('nexa_last_scan_time') || '0', 10),
-      history: []
+      history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
-    notifications: [],
+    notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
     clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${slug}`) || '[]'),
     scansList: [],
     stats: {
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (STRICT MULTI-TENANT ISOLATION)
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_curr_${state.restaurant.id}`, cloudResto.currency);
         }
 
-        // Fetch Cloud Rewards for THIS restaurant ONLY
+        // Fetch Cloud Rewards
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards) {
           state.rewards = cloudRewards.map(r => ({
@@ -85,9 +85,9 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
         }
 
-        // Fetch Cloud Clients for THIS restaurant ONLY
+        // Fetch Cloud Clients (CRM Table!)
         const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
-        if (cloudClients) {
+        if (cloudClients && cloudClients.length > 0) {
           state.clientsList = cloudClients.map(c => ({
             id: c.id,
             name: c.full_name || 'Client Nexa',
@@ -99,24 +99,17 @@ document.addEventListener('DOMContentLoaded', async () => {
           }));
           state.stats.totalClients = state.clientsList.length;
           localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
-        } else {
-          state.clientsList = [];
-          state.stats.totalClients = 0;
         }
 
-        // Fetch Scans for THIS restaurant ONLY
+        // Fetch Scans
         const cloudScans = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
         if (cloudScans) {
           state.scansList = cloudScans;
           state.stats.qrScansMonth = cloudScans.length;
           state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
-        } else {
-          state.scansList = [];
-          state.stats.qrScansMonth = 0;
-          state.stats.pointsGiven = 0;
         }
 
-        // Fetch Returning Client Profile Balance for THIS restaurant
+        // Fetch Returning Client Profile Balance
         if (state.clientSession.whatsapp) {
           const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
@@ -203,7 +196,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // CLEAN LOGOUT: CLEARS CURRENT STATE & PREVENTS DATA LEAKS ACROSS RESTAURANTS!
+  // CLEAN LOGOUT LOGIC
   window.logoutMerchant = function() {
     state.isMerchantLoggedIn = false;
     state.rewards = [];
@@ -235,7 +228,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const newSlug = name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
 
-      // RESET PREVIOUS RESTAURANT DATA FROM MEMORY FOR THIS NEW SESSION!
       state.restaurant.id = newSlug;
       state.restaurant.name = name;
       state.restaurant.type = type;
@@ -318,7 +310,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // REWARD DELETION ENGINE (DELETES FROM MEMORY, LOCALSTORAGE & SUPABASE CLOUD!)
+  // REWARD DELETION ENGINE (100% OPERATIONAL ON MEMORY & SUPABASE CLOUD!)
   window.deleteReward = async function(rewardId) {
     const targetReward = state.rewards.find(r => r.id === rewardId);
     const title = targetReward ? targetReward.title : '';
@@ -383,7 +375,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC (POINTS ACCUMULATION & SINGLE SCAN)
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -447,7 +439,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // ACCUMULATE POINTS ON RETURNING SCANS!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
@@ -456,7 +447,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem('nexa_last_scan_time', now);
 
-    // Record SINGLE scan event on Cloud PostgreSQL
+    // Record Single scan event on Cloud PostgreSQL
     if (window.nexaBackend) {
       try {
         const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
@@ -468,6 +459,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Local scan saved:', err);
       }
     }
+
+    // Add Scan Entry to History Feed
+    state.clientSession.history.unshift({
+      id: Date.now(),
+      title: `Scan Table #${tableParam} (+${scanEarned} pts)`,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      date: new Date().toLocaleDateString('fr-FR'),
+      pts: `+${scanEarned}`
+    });
+    localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
     stopCameraScanner();
 
@@ -484,7 +485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
 
   /* ==========================================================================
-     5. RENDERERS, INTERACTIVE LOCKED REWARD MODAL & POINT DEDUCTION
+     5. RENDERERS, NOTIFICATIONS FEED & POINT DEDUCTION
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -545,29 +546,84 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join('');
       }
     }
+
+    // Render Notifications Feed in Notifs Screen
+    const notifsFeed = document.getElementById('client-notifs-feed');
+    if (notifsFeed) {
+      if (state.notifications.length === 0) {
+        notifsFeed.innerHTML = `
+          <div style="text-align:center; padding:2rem; color:var(--text-muted); background:white; border-radius:12px;">
+            <div style="font-size:1.8rem; margin-bottom:0.4rem;">🔔</div>
+            <p style="font-size:0.85rem; font-weight:700; margin:0 0 0.2rem 0;">Aucune notification</p>
+            <p style="font-size:0.75rem; margin:0;">Vos alertes de points et vos reçus d'échanges apparaîtront ici !</p>
+          </div>
+        `;
+      } else {
+        notifsFeed.innerHTML = state.notifications.map(n => `
+          <div style="background: white; border: 1px solid var(--dash-border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
+              <strong style="font-size: 0.88rem; color: var(--marron-dark);">${n.title}</strong>
+              <span style="font-size: 0.7rem; color: var(--text-muted);">${n.time}</span>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">${n.text}</p>
+          </div>
+        `).join('');
+      }
+    }
+
+    // Render History Feed in History Screen
+    const historyFeed = document.getElementById('client-history-feed');
+    if (historyFeed) {
+      if (state.clientSession.history.length === 0) {
+        historyFeed.innerHTML = `<div style="text-align:center; padding:2rem; color:var(--text-muted); background:white; border-radius:12px;">Aucune activité récente.</div>`;
+      } else {
+        historyFeed.innerHTML = state.clientSession.history.map(h => `
+          <div style="background: white; border: 1px solid var(--dash-border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <strong style="font-size: 0.88rem; color: var(--marron-dark);">${h.title}</strong>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">${h.date} à ${h.time}</p>
+            </div>
+            <strong style="color: var(--primary-gold); font-size: 0.95rem;">${h.pts} pts</strong>
+          </div>
+        `).join('');
+      }
+    }
   }
 
-  // INTERACTIVE REWARD CLICK (EXPLAINS MISSING POINTS OR ACCEPTS CLAIM)
+  // INTERACTIVE REWARD CLICK (EXPLAINS MISSING POINTS & ADDS TO NOTIFICATIONS FEED!)
   window.handleRewardClick = function(rewardId, requiredPts, title) {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
-      showToast('🔒 Récompense Verrouillée !', `Il vous manque ${missingPts} points pour débloquer "${title}". Scannez votre table pour cumuler vos points !`);
-      alert(`🔒 Oups ! Il vous manque ${missingPts} points.\n\nVous avez actuellement ${currentPoints} pts, et cette récompense nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nScannez à nouveau votre table lors de votre prochaine visite pour accumuler vos points !`);
+
+      // Add Notification to Client Notifs Feed!
+      state.notifications.unshift({
+        id: Date.now(),
+        title: `🔒 Points Insuffisants pour "${title}"`,
+        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez à nouveau votre table pour débloquer ce cadeau !`,
+        time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+      });
+      localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
+
+      renderClientUI();
+      showToast('🔒 Points Insuffisants !', `Il vous manque ${missingPts} points pour "${title}". Allez dans l'onglet Notifs !`);
+      alert(`🔒 Oups ! Il vous manque ${missingPts} points.\n\nVous avez actuellement ${currentPoints} pts, et cette récompense nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nUne notification a été ajoutée dans votre onglet Notifications !`);
     } else {
       claimReward(rewardId);
     }
   };
 
-  // REWARD CLAIM: DEDUCTS POINTS FROM BALANCE AND SUPABASE CLOUD!
+  // REWARD CLAIM: DEDUCTS POINTS AND ADDS PROOF OF REDEMPTION TO NOTIFICATIONS & HISTORY!
   window.claimReward = async function(rewardId) {
     const reward = state.rewards.find(r => r.id === rewardId);
     if (!reward || state.clientSession.points < reward.pts) return;
 
+    // Deduct points locally
     state.clientSession.points -= reward.pts;
     state.stats.rewardsRedeemed += 1;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
 
+    // Deduct points on Cloud Supabase!
     if (window.nexaBackend && state.clientSession.whatsapp) {
       try {
         await window.nexaBackend.deductPointsCloud(state.restaurant.name, state.clientSession.whatsapp, reward.pts);
@@ -575,6 +631,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('Deduct cloud error:', err);
       }
     }
+
+    // Add Proof of Redemption Notification
+    const notifMsg = `🎉 Pass Récompense Activé ! Vous avez échangé "${reward.title}" contre ${reward.pts} pts chez ${state.restaurant.name}. Présentez votre Pass QR en caisse.`;
+    state.notifications.unshift({
+      id: Date.now(),
+      title: `🎉 Récompense Échangée : ${reward.title}`,
+      text: notifMsg,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+    });
+    localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
+
+    // Add Proof of Redemption History Entry
+    state.clientSession.history.unshift({
+      id: Date.now(),
+      title: `🎁 Échange : ${reward.title}`,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      date: new Date().toLocaleDateString('fr-FR'),
+      pts: `-${reward.pts}`
+    });
+    localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
     renderClientUI();
     renderMerchantUI();
