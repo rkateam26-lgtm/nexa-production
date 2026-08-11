@@ -226,11 +226,15 @@
         const count = parseInt(inputTableCount.value, 10) || 10;
         const tagline = inputTagline.value.trim() || 'Flashez pour cumuler vos points !';
 
-        const baseHost = window.location.origin + window.location.pathname.replace('qr-generator.html', 'index.html');
+        // Use public production domain when deployed or dynamic origin
+        let baseHost = window.location.origin;
+        if (baseHost.includes('localhost') || baseHost.includes('127.0.0.1') || baseHost.startsWith('file:')) {
+          baseHost = 'https://rkateam26-lgtm-nexa-production.vercel.app';
+        }
 
         let htmlBuffer = '';
         for (let i = 1; i <= count; i++) {
-          const targetUrl = `${baseHost}?role=client&table=${i}`;
+          const targetUrl = `${baseHost}/index.html?role=client&table=${i}`;
 
           // Generate QR Code SVG string
           const qr = qrcode(0, 'M');
