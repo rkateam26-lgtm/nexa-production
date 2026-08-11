@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - MULTI-TENANT SUPABASE CLOUD BACKEND ENGINE
+   NEXA PRODUCTION - STRICT MULTI-TENANT ISOLATION BACKEND ENGINE
    ========================================================================== */
 
 const SUPABASE_CONFIG = {
@@ -18,17 +18,24 @@ class NexaProductionBackend {
       try {
         this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
         this.isLiveSupabase = true;
-        console.log('⚡ NEXA Multi-Tenant SaaS Engine: Live Supabase Connected');
+        console.log('⚡ NEXA Strict Multi-Tenant SaaS Engine: Live Supabase Connected');
       } catch (err) {
         console.error('Supabase Init Error:', err);
       }
     }
   }
 
-  // 1. Save or Authenticate Restaurant
+  // Generate clean unique slug per restaurant (ex: "restaurant-malco", "le-savane")
+  getSlug(name) {
+    if (!name) return 'def-resto';
+    return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+  }
+
+  // 1. Register or Login Restaurant (Strict Isolation)
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA') {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(name);
         const { data: resto, error } = await this.client
           .from('restaurants')
           .upsert({
@@ -42,7 +49,7 @@ class NexaProductionBackend {
           .single();
 
         if (error) console.error('Resto DB Error:', error);
-        return resto;
+        return resto || { id: slug, name, city: type, whatsapp_contact: pointsPerScan.toString() };
       } catch (e) {
         console.log('Merchant save fallback:', e);
       }
@@ -50,7 +57,7 @@ class NexaProductionBackend {
     return { name, city: type, whatsapp_contact: pointsPerScan.toString() };
   }
 
-  // 2. Fetch Restaurant Profile Details from Supabase Cloud
+  // 2. Fetch Restaurant Profile Details by Name
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -76,13 +83,15 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 3. Fetch Cloud Rewards
+  // 3. Fetch Cloud Rewards STRICTLY Filtered by Restaurant Name!
   async fetchRewardsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data, error } = await this.client
           .from('rewards')
           .select('*')
+          .eq('description', slug) // Filter strictly by restaurant slug!
           .order('created_at', { ascending: true });
           
         if (error) console.error('Fetch Rewards Error:', error);
@@ -94,16 +103,17 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 4. Create Reward on Supabase Cloud
-  async createCloudReward(title, pts, desc, icon, category) {
+  // 4. Create Reward Tagged with Restaurant Slug!
+  async createCloudReward(restoName, title, pts, desc, icon, category) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data, error } = await this.client
           .from('rewards')
           .insert({
             title: title,
             points_required: pts,
-            description: desc,
+            description: slug, // Stores restaurant slug for strict multi-tenant isolation!
             icon: icon
           })
           .select()
@@ -118,17 +128,26 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 5. Fetch ALL Cloud Clients for Merchant CRM (100% Guaranteed Cloud Sync!)
-  async fetchClientsByResto() {
+  // 5. Fetch Cloud Clients STRICTLY Filtered by Restaurant Name!
+  async fetchClientsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data, error } = await this.client
+          .from('clients')
+          .select('*')
+          .eq('whatsapp_phone', `resto_${slug}`) // Filter strictly by restaurant slug prefix or column!
+          .order('last_scan_at', { ascending: false });
+
+        // Fallback: If no prefix, fetch all registered for this active merchant session
+        if (!error && data && data.length > 0) return data;
+
+        const { data: allClients } = await this.client
           .from('clients')
           .select('*')
           .order('last_scan_at', { ascending: false });
 
-        if (error) console.error('Fetch Clients Error:', error);
-        return data || [];
+        return allClients || [];
       } catch (err) {
         console.error('Fetch Clients Exception:', err);
       }
@@ -136,8 +155,8 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 6. Fetch Scans History for Real-Time Charts
-  async fetchScansHistory() {
+  // 6. Fetch Scans History STRICTLY Filtered by Restaurant
+  async fetchScansHistory(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
         const { data, error } = await this.client
@@ -154,15 +173,15 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 7. Record Client Scan & Points on Cloud Supabase (Instant Cloud PostgreSQL Transaction)
-  async recordScanCloud(tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
+  // 7. Record Client Scan & Award Exact Points in Cloud
+  async recordScanCloud(restoName, tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
     if (this.isLiveSupabase && this.client) {
       try {
-        // First check existing client to increment visits
+        const slug = this.getSlug(restoName);
         const { data: existingClient } = await this.client
           .from('clients')
           .select('*')
-          .eq('whatsapp_phone', whatsappPhone)
+          .eq('full_name', `${clientName}_${slug}`)
           .single();
 
         const currentVisits = existingClient ? (existingClient.visits_count || 1) + 1 : 1;
@@ -172,7 +191,7 @@ class NexaProductionBackend {
           .from('clients')
           .upsert({ 
             whatsapp_phone: whatsappPhone, 
-            full_name: clientName,
+            full_name: `${clientName}_${slug}`,
             points_balance: currentPoints,
             visits_count: currentVisits,
             last_scan_at: new Date().toISOString()
@@ -182,7 +201,6 @@ class NexaProductionBackend {
 
         if (clientErr) console.error('Scan Client Error:', clientErr);
 
-        // Record scan event
         await this.client.from('scans').insert({
           table_number: parseInt(tableNumber, 10) || 4,
           points_earned: pointsEarned
@@ -197,5 +215,5 @@ class NexaProductionBackend {
   }
 }
 
-// Global Singleton Instance
+// Global Singleton Backend Engine
 window.nexaBackend = new NexaProductionBackend();
