@@ -61,33 +61,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
-    // ⛔ IF MERCHANT IS NOT LOGGED IN, KEEP MERCHANT DASHBOARD STRICTLY AT ZERO!
-    if (!state.isMerchantLoggedIn) {
-      state.rewards = [];
-      state.clientsList = [];
-      state.scansList = [];
-      state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
-      renderMerchantUI();
-      renderClientUI();
-      return;
-    }
-
     if (window.nexaBackend) {
       try {
-        const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
-        if (cloudResto) {
-          state.restaurant.type = cloudResto.type;
-          state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
-          state.restaurant.currency = cloudResto.currency;
-
-          localStorage.setItem(`nexa_type_${state.restaurant.id}`, cloudResto.type);
-          localStorage.setItem(`nexa_pts_${state.restaurant.id}`, cloudResto.pointsPerScan);
-          localStorage.setItem(`nexa_curr_${state.restaurant.id}`, cloudResto.currency);
-        }
-
-        // Fetch Cloud Rewards
+        // 1. ALWAYS FETCH REWARDS CATALOGUE FOR CLIENT & MERCHANT!
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
-        if (cloudRewards) {
+        if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.map(r => ({
             id: String(r.id),
             title: r.title,
@@ -98,33 +76,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
         }
 
-        // Fetch Cloud Clients (CRM Table!)
-        const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
-        if (cloudClients) {
-          state.clientsList = cloudClients.map(c => ({
-            id: c.id,
-            name: c.full_name || 'Client Nexa',
-            phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : c.whatsapp_phone,
-            points: c.points_balance || 0,
-            visits: c.visits_count || 1,
-            lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
-            segment: (c.visits_count || 1) >= 3 ? 'Membre VIP' : 'Nouveau Client'
-          }));
-          state.stats.totalClients = state.clientsList.length;
-          localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
-        } else {
-          state.clientsList = [];
-          state.stats.totalClients = 0;
-        }
-
-        // Fetch Scans History strictly for THIS restaurant
-        const scanStats = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
-        if (scanStats) {
-          state.stats.qrScansMonth = scanStats.totalScans || 0;
-          state.stats.pointsGiven = scanStats.totalPts || 0;
-        }
-
-        // Fetch Returning Client Profile Balance
+        // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE!
         if (state.clientSession.whatsapp) {
           const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
@@ -132,6 +84,49 @@ document.addEventListener('DOMContentLoaded', async () => {
             localStorage.setItem('nexa_client_points', profile.points);
           }
         }
+
+        // 3. FETCH MERCHANT DASHBOARD DATA ONLY IF MERCHANT LOGGED IN
+        if (state.isMerchantLoggedIn) {
+          const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
+          if (cloudResto) {
+            state.restaurant.type = cloudResto.type;
+            state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+            state.restaurant.currency = cloudResto.currency;
+          }
+
+          // Fetch Cloud Clients for Merchant CRM
+          const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
+          if (cloudClients) {
+            state.clientsList = cloudClients.map(c => ({
+              id: c.id,
+              name: c.full_name || 'Client Nexa',
+              phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : c.whatsapp_phone,
+              points: c.points_balance || 0,
+              visits: c.visits_count || 1,
+              lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
+              segment: (c.visits_count || 1) >= 3 ? 'Membre VIP' : 'Nouveau Client'
+            }));
+            state.stats.totalClients = state.clientsList.length;
+          }
+
+          // Fetch Scans History strictly for THIS restaurant
+          const scanStats = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
+          if (scanStats) {
+            state.stats.qrScansMonth = scanStats.totalScans || 0;
+            state.stats.pointsGiven = scanStats.totalPts || 0;
+          }
+        } else {
+          state.clientsList = [];
+          state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
+        }
+      } catch (err) {
+        console.log('Cloud sync info:', err);
+      }
+    }
+    renderClientUI();
+    renderMerchantUI();
+    updateChartData();
+  }
       } catch (err) {
         console.log('Cloud sync info:', err);
       }
@@ -683,11 +678,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Update local client profile points
-    if (state.clientSession.whatsapp && state.clientSession.whatsapp.includes(clientPhone)) {
-      state.clientSession.points = Math.max(0, state.clientSession.points - requiredPts);
-      localStorage.setItem('nexa_client_points', state.clientSession.points);
-    }
+    // Update local client profile points unconditionally
+    state.clientSession.points = Math.max(0, state.clientSession.points - requiredPts);
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
 
     state.stats.rewardsRedeemed += 1;
 
