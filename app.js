@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - MULTI-TENANT SAAS ENGINE (CLOUD SYNC & ISOLATION)
+   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE REAL-TIME SYNC)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
 
-  // Multi-Tenant Restaurant Name Sync
   let currentRestoName = 'Le Savane';
   if (urlRestoName) {
     currentRestoName = decodeURIComponent(urlRestoName);
@@ -41,6 +40,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       history: []
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${currentRestoName}`) || '[]'),
+    notifications: [],
     clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${currentRestoName}`) || '[]'),
     stats: {
       totalClients: 0,
@@ -54,10 +54,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (HYBRID CLOUD + MULTI-TENANT ISOLATION)
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
+        // Fetch exact cloud restaurant pointsPerScan & details!
+        const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
+        if (cloudResto) {
+          state.restaurant.type = cloudResto.type;
+          state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+          state.restaurant.currency = cloudResto.currency;
+
+          localStorage.setItem(`nexa_type_${state.restaurant.name}`, cloudResto.type);
+          localStorage.setItem(`nexa_pts_${state.restaurant.name}`, cloudResto.pointsPerScan);
+          localStorage.setItem(`nexa_curr_${state.restaurant.name}`, cloudResto.currency);
+        }
+
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.map(r => ({
@@ -317,7 +329,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT CUSTOM POINTS)
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT CUSTOM POINTS ENFORCEMENT)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');

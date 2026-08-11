@@ -30,28 +30,13 @@ class NexaProductionBackend {
     if (this.isLiveSupabase && this.client) {
       const slug = name.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
-      // Try Auth Sign In or Sign Up
-      let userId = null;
-      try {
-        const { data: signInData, error: signInErr } = await this.client.auth.signInWithPassword({ email, password: pwd });
-        if (signInErr) {
-          const { data: signUpData, error: signUpErr } = await this.client.auth.signUp({ email, password: pwd });
-          if (signUpErr) console.log('Auth note:', signUpErr.message);
-          userId = signUpData ? (signUpData.user ? signUpData.user.id : null) : null;
-        } else {
-          userId = signInData.user.id;
-        }
-      } catch (e) {
-        console.log('Auth fallback:', e);
-      }
-
-      // Upsert Restaurant Record in Database Table
+      // Save/Update Restaurant Record in Supabase Cloud
       const { data: resto, error: restoErr } = await this.client
         .from('restaurants')
         .upsert({
           name: name,
           email: email,
-          whatsapp_contact: pointsPerScan.toString(), // Stores points_per_scan
+          whatsapp_contact: pointsPerScan.toString(), // Stores exact custom scan points!
           city: type, // Stores specialty description
           currency: currency
         }, { onConflict: 'email' })
@@ -64,7 +49,33 @@ class NexaProductionBackend {
     return { name, city: type, whatsapp_contact: pointsPerScan.toString() };
   }
 
-  // 2. Fetch Multi-Tenant Rewards by Restaurant Name / ID
+  // 2. Fetch Restaurant Profile Details from Supabase Cloud
+  async getRestaurantByName(name) {
+    if (this.isLiveSupabase && this.client) {
+      try {
+        const { data, error } = await this.client
+          .from('restaurants')
+          .select('*')
+          .ilike('name', `%${name}%`)
+          .limit(1)
+          .single();
+
+        if (!error && data) {
+          return {
+            name: data.name,
+            type: data.city || '★ 4.9 • Bistro & Grillades',
+            pointsPerScan: parseInt(data.whatsapp_contact || '20', 10),
+            currency: data.currency || 'FCFA'
+          };
+        }
+      } catch (err) {
+        console.log('Fetch resto info:', err);
+      }
+    }
+    return null;
+  }
+
+  // 3. Fetch Multi-Tenant Rewards by Restaurant Name / ID
   async fetchRewardsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -82,7 +93,7 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 3. Create Reward in Supabase Cloud
+  // 4. Create Reward in Supabase Cloud
   async createCloudReward(title, pts, desc, icon, category) {
     if (this.isLiveSupabase && this.client) {
       const { data, error } = await this.client
@@ -102,7 +113,7 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 4. Fetch Multi-Tenant Clients for Merchant CRM
+  // 5. Fetch Multi-Tenant Clients for Merchant CRM
   async fetchClientsByResto() {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -120,11 +131,10 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 5. Record Client Scan & Award Exact Points in Supabase Cloud
+  // 6. Record Client Scan & Award Exact Points in Supabase Cloud
   async recordScanCloud(tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
     if (this.isLiveSupabase && this.client) {
       try {
-        // Upsert Client Points in PostgreSQL Table
         const { data: client, error: clientErr } = await this.client
           .from('clients')
           .upsert({ 
@@ -138,7 +148,6 @@ class NexaProductionBackend {
 
         if (clientErr) console.error('Scan Client Error:', clientErr);
 
-        // Record Scan Event
         await this.client.from('scans').insert({
           table_number: parseInt(tableNumber, 10) || 4,
           points_earned: pointsEarned
