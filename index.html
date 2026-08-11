@@ -237,7 +237,11 @@
             </button>
             <button class="dash-menu-item" data-section="loyalty">
               <i data-lucide="award"></i>
-              <span>Récompenses</span>
+              <span>Gestion des Récompenses</span>
+            </button>
+            <button class="dash-menu-item" data-section="claims">
+              <i data-lucide="gift"></i>
+              <span>Attribution des Récompenses</span>
             </button>
             <button class="dash-menu-item" data-section="qrcodes">
               <i data-lucide="qr-code"></i>
@@ -404,7 +408,26 @@
             </div>
           </div>
 
-          <!-- Section 4: QR Codes & Printable Generator -->
+          <!-- Section 4: Attribution des Récompenses (DEDICATED MERCHANT VALIDATION TAB) -->
+          <div class="dash-section" id="dash-sec-claims">
+            <div class="data-table-container" style="padding: 1.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.25rem 0;">🎁 Attribution & Validation des Récompenses</h3>
+                  <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+                    Consultez pour chaque client les cadeaux éligibles débloqués selon son solde de points actuel, et validez les échanges en 1 clic pour déduire ses points.
+                  </p>
+                </div>
+                <span style="font-size: 0.8rem; background: var(--marron-light); color: var(--primary-gold); font-weight: 800; padding: 6px 14px; border-radius: 16px;" id="dedicated-claims-count-badge">0 client(s) éligible(s)</span>
+              </div>
+
+              <div id="dedicated-claims-cards-feed" style="margin-top: 1rem;">
+                <!-- Dynamically rendered by app.js -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 5: QR Codes & Liens -->
           <div class="dash-section" id="dash-sec-qrcodes">
             <div class="data-table-container" style="padding: 1.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Impression PLV</h3>

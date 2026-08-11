@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & 1-CLICK MERCHANT CASHIER VALIDATION
+   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & DEDICATED REWARD ATTRIBUTION TAB
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -336,7 +336,6 @@ document.addEventListener('DOMContentLoaded', async () => {
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
-  const clientLoginBanner = document.getElementById('client-login-banner');
 
   window.openClientAuthModal = () => modalClientAuth && modalClientAuth.classList.add('active');
   window.closeClientAuthModal = () => modalClientAuth && modalClientAuth.classList.remove('active');
@@ -363,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. STRICT 2-HOUR ANTI-CHEAT SCANNER ENGINE (ABSUTE BLOCK BEFORE CREDITING POINTS!)
+     4. ABSOLUTE 2-HOUR ANTI-CHEAT SCANNER ENGINE (STRICT PRE-CHECK BEFORE ADDING POINTS)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -383,13 +382,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
     const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
 
-    // ⛔ ABSOLUTE 2-HOUR ANTI-CHEAT BLOCK! DO NOT GRANT ANY POINTS IF LESS THAN 2 HOURS!
-    if (now - lastScanTime < twoHoursMs) {
+    // ⛔ ABSOLUTE 2-HOUR ANTI-CHEAT PRE-CHECK BEFORE ADDING ANY POINTS!
+    if (lastScanTime > 0 && (now - lastScanTime < twoHoursMs)) {
       const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
       
-      showToast('⚠️ Anti-Triche NEXA', `0 point ajouté. Prochain scan dans ${remainingMinutes} min.`);
+      showToast('⚠️ Anti-Triche NEXA', `0 point ajouté. Prochain scan disponible dans ${remainingMinutes} min.`);
       
-      // Inject prominent red warning alert inside Client UI!
       const clientWarningBox = document.getElementById('client-login-banner');
       if (clientWarningBox) {
         clientWarningBox.style.display = 'block';
@@ -403,12 +401,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
       }
 
-      alert(`⚠️ Anti-Triche NEXA :\n\n0 point attribué !\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
+      alert(`⚠️ Anti-Triche NEXA :\n\n0 POINT ATTRIBUÉ !\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
       stopCameraScanner();
-      return;
+      return; // STOP EXECUTION COMPLETELY! ZERO POINTS GRANTED!
     }
 
-    // ONLY REACHED IF > 2 HOURS SINCE LAST SCAN!
+    // REACHED ONLY IF > 2 HOURS!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
@@ -475,19 +473,28 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     5. MERCHANT 1-CLICK CASHIER VALIDATION & ELIGIBLE GIFTS ENGINE
+     5. MERCHANT 1-CLICK CASHIER VALIDATION & DEDICATED CLAIMS TAB ENGINE
      ========================================================================== */
-  const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
-  const clientScreens = document.querySelectorAll('.client-screen');
+  const dashMenuItems = document.querySelectorAll('.dash-menu-item');
+  const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
+  const dashSections = document.querySelectorAll('.dash-section');
 
-  navTabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      clientScreens.forEach(s => s.classList.remove('active'));
-      navTabs.forEach(t => t.classList.remove('active'));
-      document.getElementById(`screen-${tab.dataset.tab}`).classList.add('active');
-      tab.classList.add('active');
-    });
-  });
+  function activateSection(sectionId) {
+    dashSections.forEach(s => s.classList.remove('active'));
+    dashMenuItems.forEach(m => m.classList.remove('active'));
+    dashDockTabs.forEach(t => t.classList.remove('active'));
+
+    const targetSection = document.getElementById(`dash-sec-${sectionId}`);
+    const matchDesktop = document.querySelector(`.dash-menu-item[data-section="${sectionId}"]`);
+    const matchDock = document.querySelector(`.dash-dock-tab[data-section="${sectionId}"]`);
+
+    if (targetSection) targetSection.classList.add('active');
+    if (matchDesktop) matchDesktop.classList.add('active');
+    if (matchDock) matchDock.classList.add('active');
+  }
+
+  dashMenuItems.forEach(item => item.addEventListener('click', () => activateSection(item.dataset.section)));
+  dashDockTabs.forEach(tab => tab.addEventListener('click', () => activateSection(tab.dataset.section)));
 
   function renderClientUI() {
     document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
@@ -693,27 +700,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('redemption-pass-modal').classList.remove('active');
   });
 
-  const dashMenuItems = document.querySelectorAll('.dash-menu-item');
-  const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
-  const dashSections = document.querySelectorAll('.dash-section');
-
-  function activateSection(sectionId) {
-    dashSections.forEach(s => s.classList.remove('active'));
-    dashMenuItems.forEach(m => m.classList.remove('active'));
-    dashDockTabs.forEach(t => t.classList.remove('active'));
-
-    const targetSection = document.getElementById(`dash-sec-${sectionId}`);
-    const matchDesktop = document.querySelector(`.dash-menu-item[data-section="${sectionId}"]`);
-    const matchDock = document.querySelector(`.dash-dock-tab[data-section="${sectionId}"]`);
-
-    if (targetSection) targetSection.classList.add('active');
-    if (matchDesktop) matchDesktop.classList.add('active');
-    if (matchDock) matchDock.classList.add('active');
-  }
-
-  dashMenuItems.forEach(item => item.addEventListener('click', () => activateSection(item.dataset.section)));
-  dashDockTabs.forEach(tab => tab.addEventListener('click', () => activateSection(tab.dataset.section)));
-
   function renderMerchantUI() {
     document.getElementById('dash-brand-name-el').textContent = state.restaurant.name.toUpperCase();
     document.getElementById('dash-brand-sub-el').textContent = state.restaurant.type;
@@ -731,55 +717,56 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // 🎁 RENDER ELIGIBLE REWARDS & 1-CLICK CASHIER VALIDATION FEED IN OVERVIEW TAB!
-    const eligibleFeed = document.getElementById('merchant-eligible-rewards-feed');
-    const eligibleBadge = document.getElementById('eligible-claims-count-badge');
+    // 🎁 RENDER ELIGIBLE REWARDS IN BOTH OVERVIEW TAB AND DEDICATED TAB!
+    const eligibleOverviewFeed = document.getElementById('merchant-eligible-rewards-feed');
+    const eligibleOverviewBadge = document.getElementById('eligible-claims-count-badge');
 
-    if (eligibleFeed) {
-      let eligibleItems = [];
+    const dedicatedClaimsFeed = document.getElementById('dedicated-claims-cards-feed');
+    const dedicatedClaimsBadge = document.getElementById('dedicated-claims-count-badge');
 
-      state.clientsList.forEach(client => {
-        state.rewards.forEach(reward => {
-          if (client.points >= reward.pts) {
-            eligibleItems.push({ client, reward });
-          }
-        });
+    let eligibleItems = [];
+    state.clientsList.forEach(client => {
+      state.rewards.forEach(reward => {
+        if (client.points >= reward.pts) {
+          eligibleItems.push({ client, reward });
+        }
       });
+    });
 
-      if (eligibleBadge) eligibleBadge.textContent = `${eligibleItems.length} éligible(s)`;
+    const badgeText = `${eligibleItems.length} éligible(s)`;
+    if (eligibleOverviewBadge) eligibleOverviewBadge.textContent = badgeText;
+    if (dedicatedClaimsBadge) dedicatedClaimsBadge.textContent = badgeText;
 
-      if (eligibleItems.length === 0) {
-        eligibleFeed.innerHTML = `
-          <div style="text-align:center; padding: 2rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
-            <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🎁</div>
-            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucun client éligible pour l'instant</p>
-            <p style="font-size: 0.75rem; margin: 0;">Dès qu'un client accumule assez de points pour débloquer un cadeau, son option d'échange 1-clic apparaîtra ici !</p>
-          </div>
-        `;
-      } else {
-        eligibleFeed.innerHTML = eligibleItems.map(item => {
-          const titleEscaped = item.reward.title.replace(/'/g, "\\'");
-          return `
-            <div style="background: white; border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
-              <div style="display: flex; align-items: center; gap: 0.85rem;">
-                <span style="font-size: 1.8rem;">${item.reward.icon}</span>
-                <div>
-                  <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">
-                    ${item.client.name} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">(${item.client.phone})</span>
-                  </h4>
-                  <p style="font-size: 0.8rem; color: var(--primary-gold); font-weight: 700; margin: 0;">
-                    🎁 ${item.reward.title} • <strong>-${item.reward.pts} pts</strong> (Solde actuel: ${item.client.points} pts)
-                  </p>
-                </div>
-              </div>
-              <button class="btn-primary" onclick="validateClaimByMerchantDirect('${item.client.phone}', '${titleEscaped}', ${item.reward.pts})" style="background: #10B981; border-color: #10B981; font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem;">
-                ✅ Valider l'Échange & Déduire ${item.reward.pts} Pts
-              </button>
+    const cardsHtml = eligibleItems.length === 0 ? `
+      <div style="text-align:center; padding: 2rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
+        <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🎁</div>
+        <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucun client éligible pour l'instant</p>
+        <p style="font-size: 0.75rem; margin: 0;">Dès qu'un client accumule assez de points pour débloquer un cadeau, son option d'échange 1-clic apparaîtra ici !</p>
+      </div>
+    ` : eligibleItems.map(item => {
+      const titleEscaped = item.reward.title.replace(/'/g, "\\'");
+      return `
+        <div style="background: white; border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 1rem; margin-bottom: 0.75rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <span style="font-size: 1.8rem;">${item.reward.icon}</span>
+            <div>
+              <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">
+                ${item.client.name} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 400;">(${item.client.phone})</span>
+              </h4>
+              <p style="font-size: 0.8rem; color: var(--primary-gold); font-weight: 700; margin: 0;">
+                🎁 ${item.reward.title} • <strong>-${item.reward.pts} pts</strong> (Solde actuel: ${item.client.points} pts)
+              </p>
             </div>
-          `;
-        }).join('');
-      }
-    }
+          </div>
+          <button class="btn-primary" onclick="validateClaimByMerchantDirect('${item.client.phone}', '${titleEscaped}', ${item.reward.pts})" style="background: #10B981; border-color: #10B981; font-weight: 800; font-size: 0.8rem; padding: 0.5rem 1rem;">
+            ✅ Valider l'Échange & Déduire ${item.reward.pts} Pts
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    if (eligibleOverviewFeed) eligibleOverviewFeed.innerHTML = cardsHtml;
+    if (dedicatedClaimsFeed) dedicatedClaimsFeed.innerHTML = cardsHtml;
 
     // Render CRM Table
     const crmTableBody = document.getElementById('crm-table-body');
