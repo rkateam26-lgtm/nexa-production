@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (2-HOUR ANTI-CHEAT COOLDOWN)
+   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & CASHIER VALIDATION ENGINE
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,11 +39,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
       name: localStorage.getItem('nexa_client_name') || '',
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
-      lastScanTime: parseInt(localStorage.getItem(`nexa_last_scan_${slug}_${localStorage.getItem('nexa_client_whatsapp')}`) || '0', 10),
       history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
     notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
+    pendingClaims: JSON.parse(localStorage.getItem(`nexa_pending_claims_${slug}`) || '[]'),
     clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${slug}`) || '[]'),
     scansList: [],
     stats: {
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
         }
 
-        // Fetch Returning Client Profile Balance & Last Scan Time
+        // Fetch Returning Client Profile Balance
         if (state.clientSession.whatsapp) {
           const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
@@ -203,6 +203,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.rewards = [];
     state.clientsList = [];
     state.scansList = [];
+    state.pendingClaims = [];
     state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
 
     localStorage.setItem('nexa_merchant_logged', 'false');
@@ -239,6 +240,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.rewards = [];
       state.clientsList = [];
       state.scansList = [];
+      state.pendingClaims = [];
       state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
 
       localStorage.setItem('nexa_resto_name', name);
@@ -311,7 +313,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // 100% OPERATIONAL REWARD DELETION
   window.deleteReward = async function(rewardId, rewardTitle) {
     const targetIdStr = String(rewardId);
     state.rewards = state.rewards.filter(r => String(r.id) !== targetIdStr && r.title !== rewardTitle);
@@ -362,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. STRICT 2-HOUR COOLDOWN ANTI-CHEAT SCANNER ENGINE
+     4. STRICT 2-HOUR COOLDOWN ANTI-CHEAT SCANNER ENGINE (PHONE-SPECIFIC!)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -378,11 +379,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const now = Date.now();
     const twoHoursMs = 2 * 60 * 60 * 1000;
-    const lastScan = state.clientSession.lastScanTime || 0;
+    const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
+    const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
+    const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
 
-    // STRICT 2-HOUR ANTI-CHEAT COOLDOWN FOR SAME CUSTOMER!
-    if (now - lastScan < twoHoursMs) {
-      const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScan)) / 60000);
+    // STRICT 2-HOUR ANTI-CHEAT COOLDOWN PER PHONE NUMBER!
+    if (now - lastScanTime < twoHoursMs) {
+      const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
       showToast('⏳ Anti-Triche NEXA', `Prochain scan disponible dans ${remainingMinutes} min.`);
       alert(`⏳ Anti-Triche NEXA :\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nPour éviter les abus de points, le prochain scan sera disponible dans ${remainingMinutes} minutes.`);
       return;
@@ -391,10 +394,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
-    state.clientSession.lastScanTime = now;
-
     localStorage.setItem('nexa_client_points', state.clientSession.points);
-    localStorage.setItem(`nexa_last_scan_${slug}_${state.clientSession.whatsapp}`, now);
+    localStorage.setItem(lastScanStorageKey, now.toString());
 
     // Record Single scan event on Cloud PostgreSQL
     if (window.nexaBackend) {
@@ -454,14 +455,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (isDirectTableScan && state.clientSession.whatsapp) {
     const now = Date.now();
     const twoHoursMs = 2 * 60 * 60 * 1000;
-    const lastScan = state.clientSession.lastScanTime || 0;
-    if (now - lastScan >= twoHoursMs) {
+    const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
+    const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
+    const lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
+    if (now - lastScanTime >= twoHoursMs) {
       setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 1000);
     }
   }
 
   /* ==========================================================================
-     5. RENDERERS, INTERACTIVE REWARDS & NOTIFICATIONS
+     5. MERCHANT CASHIER VALIDATION SYSTEM (DUAL-SIDED REDEMPTION WORKFLOW)
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -566,13 +569,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // INTERACTIVE REWARD CLICK (TRIGGERS MODAL POPUP & NOTIFICATIONS FEED ENTRY!)
+  // INTERACTIVE REWARD CLICK (CREATES PENDING CLAIM PASS FOR CASHIER VALIDATION!)
   window.handleRewardClick = function(rewardId, requiredPts, title) {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
 
-      // Add Notification
       state.notifications.unshift({
         id: Date.now(),
         title: `🔒 Points Insuffisants pour "${title}"`,
@@ -589,27 +591,59 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // REWARD CLAIM
-  window.claimReward = async function(rewardId) {
+  // CLIENT CREATES PENDING CLAIM (WAITING FOR MERCHANT CASHIER VALIDATION!)
+  window.claimReward = function(rewardId) {
     const reward = state.rewards.find(r => String(r.id) === String(rewardId));
     if (!reward || state.clientSession.points < reward.pts) return;
 
-    state.clientSession.points -= reward.pts;
-    state.stats.rewardsRedeemed += 1;
-    localStorage.setItem('nexa_client_points', state.clientSession.points);
+    const claimObj = {
+      id: Date.now(),
+      rewardId: reward.id,
+      rewardTitle: reward.title,
+      pts: reward.pts,
+      clientName: state.clientSession.name || 'Client Nexa',
+      clientPhone: state.clientSession.whatsapp || '+226 ...',
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      status: 'pending'
+    };
 
-    if (window.nexaBackend && state.clientSession.whatsapp) {
+    // Store pending claim for Merchant Dashboard
+    state.pendingClaims.unshift(claimObj);
+    localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(state.pendingClaims));
+
+    renderClientUI();
+    renderMerchantUI();
+    showRedemptionPassModal(reward, claimObj.id);
+  };
+
+  // MERCHANT CASHIER VALIDATES REDEMPTION & DEDUCTS POINTS!
+  window.validateClaimByMerchant = async function(claimId) {
+    const claim = state.pendingClaims.find(c => c.id === claimId);
+    if (!claim) return;
+
+    // Deduct client points locally & on Cloud
+    if (state.clientSession.whatsapp === claim.clientPhone) {
+      state.clientSession.points = Math.max(0, state.clientSession.points - claim.pts);
+      localStorage.setItem('nexa_client_points', state.clientSession.points);
+    }
+
+    if (window.nexaBackend) {
       try {
-        await window.nexaBackend.deductPointsCloud(state.restaurant.name, state.clientSession.whatsapp, reward.pts);
+        await window.nexaBackend.deductPointsCloud(state.restaurant.name, claim.clientPhone, claim.pts);
       } catch (err) {
-        console.log('Deduct cloud error:', err);
+        console.log('Merchant deduct cloud info:', err);
       }
     }
 
-    const notifMsg = `🎉 Pass Récompense Activé ! Vous avez échangé "${reward.title}" contre ${reward.pts} pts chez ${state.restaurant.name}. Présentez votre Pass QR en caisse.`;
+    state.stats.rewardsRedeemed += 1;
+    claim.status = 'validated';
+    localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(state.pendingClaims));
+
+    // Client Notification
+    const notifMsg = `🎉 Validé en Caisse ! Votre cadeau "${claim.rewardTitle}" (${claim.pts} pts) a été validé par le restaurateur chez ${state.restaurant.name}.`;
     state.notifications.unshift({
       id: Date.now(),
-      title: `🎉 Récompense Échangée : ${reward.title}`,
+      title: `✅ Échange Validé en Caisse`,
       text: notifMsg,
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
     });
@@ -617,16 +651,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.clientSession.history.unshift({
       id: Date.now(),
-      title: `🎁 Échange : ${reward.title}`,
+      title: `🎁 Échange Validé : ${claim.rewardTitle}`,
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
       date: new Date().toLocaleDateString('fr-FR'),
-      pts: `-${reward.pts}`
+      pts: `-${claim.pts}`
     });
     localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
+    // Update Pass Modal status if active
+    const passStatusBadge = document.getElementById('pass-status-badge');
+    if (passStatusBadge) {
+      passStatusBadge.innerHTML = `<span style="background: #10B981; color: white; padding: 6px 16px; border-radius: 20px; font-weight: 800; font-size: 0.85rem;">✅ VALIDÉ EN CAISSE (-${claim.pts} PTS)</span>`;
+    }
+
     renderClientUI();
     renderMerchantUI();
-    showRedemptionPassModal(reward);
+    showToast('✅ Cadeau Validé !', `Points (-${claim.pts} pts) déduits pour ${claim.clientName}. Notification envoyée.`);
   };
 
   window.showPassModalFirst = function() {
@@ -637,7 +677,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  function showRedemptionPassModal(reward) {
+  function showRedemptionPassModal(reward, claimId = Date.now()) {
     const passModal = document.getElementById('redemption-pass-modal');
     document.getElementById('pass-reward-title').textContent = reward.title;
     document.getElementById('pass-qr-box').innerHTML = `
@@ -648,6 +688,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         </svg>
       </div>
     `;
+
+    const passStatusBadge = document.getElementById('pass-status-badge');
+    if (passStatusBadge) {
+      passStatusBadge.innerHTML = `
+        <div style="margin-top: 0.5rem;">
+          <span style="background: #F59E0B; color: #2A1D15; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.75rem;">⏳ EN ATTENTE DE VALIDATION EN CAISSE</span>
+          <button class="btn-primary" style="margin-top: 0.6rem; width: 100%; justify-content: center; background: #10B981; font-size: 0.8rem;" onclick="validateClaimByMerchant(${claimId})">
+            ✅ [Mode Test Gérant] Valider la Réduction en Caisse
+          </button>
+        </div>
+      `;
+    }
+
     passModal.classList.add('active');
   }
 
