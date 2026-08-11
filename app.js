@@ -1,10 +1,10 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (FULL NOTIFS & DUAL WORKFLOW)
+   NEXA PRODUCTION - ULTRA-ROBUST MULTI-TENANT SAAS ENGINE
    ========================================================================== */
 
-document.addEventListener('DOMContentLoaded', async () => {
+function initNexaApp() {
 
-  // Unregister SW
+  // Unregister SW to prevent cache stale
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(e => {});
   }
@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const roleParam = urlParams.get('role') || urlParams.get('mode');
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
-  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto');
+  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto') || urlParams.has('t') || urlParams.has('r');
 
   let currentRestoName = 'Le Savane';
   if (urlRestoName) {
@@ -57,7 +57,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   state.stats.totalClients = state.clientsList.length;
 
-  if (window.lucide) lucide.createIcons();
+  if (window.lucide) {
+    try { lucide.createIcons(); } catch (e) {}
+  }
 
   // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
@@ -128,14 +130,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderMerchantUI();
     updateChartData();
   }
-      } catch (err) {
-        console.log('Cloud sync info:', err);
-      }
-    }
-    renderClientUI();
-    renderMerchantUI();
-    updateChartData();
-  }
 
   // Auto-Poll Cloud Database every 4 Seconds for Live CRM Updates!
   setInterval(syncCloudData, 4000);
@@ -143,7 +137,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* ==========================================================================
      0. SMART ROUTER (ROLE & TABLE)
      ========================================================================== */
-  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto') || urlParams.has('t') || urlParams.has('r');
   const isMobileScreen = window.innerWidth <= 768;
   const viewportContainer = document.getElementById('viewport-container');
   const demoHeader = document.querySelector('.nexa-header');
@@ -621,6 +614,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         `).join('');
       }
     }
+
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
   }
 
   // INTERACTIVE REWARD CLICK
@@ -974,6 +971,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).join('');
       }
     }
+
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
   }
 
   function showToast(title, text) {
@@ -1021,5 +1022,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   updateMerchantAuthState();
-  await syncCloudData();
-});
+  syncCloudData();
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initNexaApp);
+} else {
+  initNexaApp();
+}
