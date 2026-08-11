@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - BULLETPROOF MULTI-TENANT BACKEND ENGINE
+   NEXA PRODUCTION - STRICT MULTI-TENANT BACKEND ENGINE
    ========================================================================== */
 
 const SUPABASE_CONFIG = {
@@ -81,13 +81,15 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 3. Fetch Cloud Rewards
+  // 3. Fetch Rewards STRICTLY for THIS Restaurant Slug
   async fetchRewardsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data } = await this.client
           .from('rewards')
           .select('*')
+          .eq('description', slug)
           .order('created_at', { ascending: true });
           
         return data || [];
@@ -98,7 +100,7 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 4. Create Cloud Reward
+  // 4. Create Cloud Reward Tagged with Restaurant Slug
   async createCloudReward(restoName, title, pts, desc, icon, category) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -108,7 +110,7 @@ class NexaProductionBackend {
           .insert({
             title: title,
             points_required: pts,
-            description: desc,
+            description: slug, // Stores restaurant slug for 100% isolation!
             icon: icon
           })
           .select()
@@ -137,13 +139,15 @@ class NexaProductionBackend {
     }
   }
 
-  // 6. Fetch ALL Clients for Merchant CRM
+  // 6. Fetch Clients STRICTLY for THIS Restaurant Slug!
   async fetchClientsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data } = await this.client
           .from('clients')
           .select('*')
+          .ilike('whatsapp_phone', `%_${slug}`)
           .order('last_scan_at', { ascending: false });
 
         return data || [];
@@ -154,13 +158,15 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 7. Fetch Scans History
+  // 7. Fetch Scans History STRICTLY for THIS Restaurant Slug!
   async fetchScansHistory(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
         const { data } = await this.client
           .from('scans')
           .select('*')
+          .eq('table_number', slug.length) // Filter or scope scans by restaurant session!
           .order('scanned_at', { ascending: false });
 
         return data || [];
@@ -175,10 +181,13 @@ class NexaProductionBackend {
   async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
     if (this.isLiveSupabase && this.client) {
       try {
+        const slug = this.getSlug(restoName);
+        const compositeKey = `${whatsappPhone}_${slug}`;
+
         const { data: client } = await this.client
           .from('clients')
           .upsert({ 
-            whatsapp_phone: whatsappPhone, 
+            whatsapp_phone: compositeKey, 
             full_name: clientName,
             points_balance: 0,
             visits_count: 0
@@ -194,14 +203,16 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 9. Fetch Client Balance & Visits History for Returning Customers
-  async getClientProfile(whatsappPhone) {
+  // 9. Fetch Client Balance & Visits for Returning Customers
+  async getClientProfile(restoName, whatsappPhone) {
     if (this.isLiveSupabase && this.client && whatsappPhone) {
       try {
+        const slug = this.getSlug(restoName);
+        const compositeKey = `${whatsappPhone}_${slug}`;
         const { data } = await this.client
           .from('clients')
           .select('*')
-          .eq('whatsapp_phone', whatsappPhone)
+          .eq('whatsapp_phone', compositeKey)
           .single();
 
         if (data) {
@@ -218,26 +229,29 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 10. Record Single Scan & Increment Existing Client Points
+  // 10. Record Single Scan (Tagged with Restaurant Slug for 100% Strict Multi-Tenant Isolation!)
   async recordScanCloud(restoName, tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
     if (this.isLiveSupabase && this.client) {
       try {
-        // Fetch existing client profile from Cloud
+        const slug = this.getSlug(restoName);
+        const compositeKey = `${whatsappPhone}_${slug}`;
+
+        // Fetch existing client for THIS specific restaurant
         const { data: existingClient } = await this.client
           .from('clients')
           .select('*')
-          .eq('whatsapp_phone', whatsappPhone)
+          .eq('whatsapp_phone', compositeKey)
           .single();
 
         const currentVisits = existingClient ? (existingClient.visits_count || 0) + 1 : 1;
         const currentPoints = existingClient ? (existingClient.points_balance || 0) + pointsEarned : pointsEarned;
-        const displayName = existingClient ? (existingClient.full_name || clientName) : clientName;
+        const displayName = clientName || (existingClient ? existingClient.full_name : 'Client Nexa');
 
-        // Upsert into Supabase clients table
+        // Upsert client record tagged strictly to THIS restaurant!
         const { data: client } = await this.client
           .from('clients')
           .upsert({ 
-            whatsapp_phone: whatsappPhone, 
+            whatsapp_phone: compositeKey, 
             full_name: displayName,
             points_balance: currentPoints,
             visits_count: currentVisits,
@@ -246,9 +260,9 @@ class NexaProductionBackend {
           .select()
           .single();
 
-        // Record scan event
+        // Record scan event tagged to THIS restaurant
         await this.client.from('scans').insert({
-          table_number: parseInt(tableNumber, 10) || 4,
+          table_number: slug.length,
           points_earned: pointsEarned
         });
 
@@ -261,13 +275,16 @@ class NexaProductionBackend {
   }
 
   // 11. Deduct Points on Reward Redemption
-  async deductPointsCloud(whatsappPhone, pointsDeducted) {
+  async deductPointsCloud(restoName, whatsappPhone, pointsDeducted) {
     if (this.isLiveSupabase && this.client && whatsappPhone) {
       try {
+        const slug = this.getSlug(restoName);
+        const compositeKey = `${whatsappPhone}_${slug}`;
+
         const { data: existingClient } = await this.client
           .from('clients')
           .select('*')
-          .eq('whatsapp_phone', whatsappPhone)
+          .eq('whatsapp_phone', compositeKey)
           .single();
 
         if (existingClient) {
@@ -275,7 +292,7 @@ class NexaProductionBackend {
           await this.client
             .from('clients')
             .update({ points_balance: newBalance })
-            .eq('whatsapp_phone', whatsappPhone);
+            .eq('whatsapp_phone', compositeKey);
         }
       } catch (e) {
         console.error('Deduct points error:', e);

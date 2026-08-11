@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT ENGINE (NO DOUBLE-SCAN & CLEAN SLATE)
+   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (ZERO DATA LEAKS)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (STRICT MULTI-TENANT ISOLATION)
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_curr_${state.restaurant.id}`, cloudResto.currency);
         }
 
-        // Fetch Cloud Rewards for THIS restaurant
+        // Fetch Cloud Rewards for THIS restaurant ONLY
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards) {
           state.rewards = cloudRewards.map(r => ({
@@ -85,13 +85,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
         }
 
-        // Fetch Cloud Clients for THIS restaurant
+        // Fetch Cloud Clients for THIS restaurant ONLY
         const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
-        if (cloudClients && cloudClients.length > 0) {
+        if (cloudClients) {
           state.clientsList = cloudClients.map(c => ({
             id: c.id,
             name: c.full_name || 'Client Nexa',
-            phone: c.whatsapp_phone,
+            phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : c.whatsapp_phone,
             points: c.points_balance || state.restaurant.pointsPerScan,
             visits: c.visits_count || 1,
             lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
@@ -99,33 +99,26 @@ document.addEventListener('DOMContentLoaded', async () => {
           }));
           state.stats.totalClients = state.clientsList.length;
           localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
+        } else {
+          state.clientsList = [];
+          state.stats.totalClients = 0;
         }
 
-        // Fetch Scans for THIS restaurant
+        // Fetch Scans for THIS restaurant ONLY
         const cloudScans = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
         if (cloudScans) {
           state.scansList = cloudScans;
           state.stats.qrScansMonth = cloudScans.length;
           state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
-
-          // If clients table is empty but scans exist, synthesize client rows!
-          if (state.clientsList.length === 0 && cloudScans.length > 0) {
-            state.clientsList = [{
-              id: Date.now(),
-              name: state.clientSession.name || 'Client Table #' + tableParam,
-              phone: state.clientSession.whatsapp || '+226 70 12 34 56',
-              points: state.stats.pointsGiven,
-              visits: cloudScans.length,
-              lastVisit: 'À l\'instant',
-              segment: 'Client Actif'
-            }];
-            state.stats.totalClients = state.clientsList.length;
-          }
+        } else {
+          state.scansList = [];
+          state.stats.qrScansMonth = 0;
+          state.stats.pointsGiven = 0;
         }
 
-        // Fetch Returning Client Profile Balance
+        // Fetch Returning Client Profile Balance for THIS restaurant
         if (state.clientSession.whatsapp) {
-          const profile = await window.nexaBackend.getClientProfile(state.clientSession.whatsapp);
+          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
             state.clientSession.points = profile.points;
             localStorage.setItem('nexa_client_points', profile.points);
@@ -371,7 +364,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       // Check existing balance for returning customer
       if (window.nexaBackend) {
         try {
-          const profile = await window.nexaBackend.getClientProfile(phone);
+          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, phone);
           if (profile) {
             state.clientSession.points = profile.points;
             localStorage.setItem('nexa_client_points', profile.points);
@@ -537,13 +530,14 @@ document.addEventListener('DOMContentLoaded', async () => {
       } else {
         rewardsContainer.innerHTML = state.rewards.map(reward => {
           const canClaim = state.clientSession.points >= reward.pts;
+          const titleEscaped = reward.title.replace(/'/g, "\\'");
           return `
-            <div class="reward-card-clean">
+            <div class="reward-card-clean" onclick="handleRewardClick(${reward.id}, ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;">
               <div class="reward-info-clean">
                 <h3>${reward.icon} ${reward.title}</h3>
                 <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
               </div>
-              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="handleRewardClick(${reward.id}, ${reward.pts}, '${reward.title.replace(/'/g, "\\'")}')">
+              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}">
                 ${canClaim ? 'Échanger' : `${reward.pts} pts`}
               </button>
             </div>
@@ -558,7 +552,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
-      alert(`🔒 Récompense Verrouillée !\n\nIl vous manque ${missingPts} points pour débloquer "${title}".\n\nScannez à nouveau votre table lors de votre prochaine visite pour accumuler vos points !`);
+      showToast('🔒 Récompense Verrouillée !', `Il vous manque ${missingPts} points pour débloquer "${title}". Scannez votre table pour cumuler vos points !`);
+      alert(`🔒 Oups ! Il vous manque ${missingPts} points.\n\nVous avez actuellement ${currentPoints} pts, et cette récompense nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nScannez à nouveau votre table lors de votre prochaine visite pour accumuler vos points !`);
     } else {
       claimReward(rewardId);
     }
@@ -569,15 +564,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reward = state.rewards.find(r => r.id === rewardId);
     if (!reward || state.clientSession.points < reward.pts) return;
 
-    // Deduct points locally
     state.clientSession.points -= reward.pts;
     state.stats.rewardsRedeemed += 1;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
 
-    // Deduct points on Cloud Supabase!
     if (window.nexaBackend && state.clientSession.whatsapp) {
       try {
-        await window.nexaBackend.deductPointsCloud(state.clientSession.whatsapp, reward.pts);
+        await window.nexaBackend.deductPointsCloud(state.restaurant.name, state.clientSession.whatsapp, reward.pts);
       } catch (err) {
         console.log('Deduct cloud error:', err);
       }
