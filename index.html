@@ -67,7 +67,7 @@
   <main class="main-viewport viewport-dual" id="viewport-container">
 
     <!-- ==========================================================================
-         LEFT: MOBILE SMARTPHONE APP (VUE CLIENT ÉPURÉE & SANCTUARISÉE)
+         LEFT: MOBILE SMARTPHONE APP (VUE CLIENT PRODUCTION)
          ========================================================================== -->
     <div class="phone-wrapper">
       <div class="phone-screen">
@@ -94,15 +94,25 @@
             </span>
           </div>
 
+          <!-- CLIENT REGISTRATION BANNER (Visible if customer not logged in yet) -->
+          <div id="client-login-banner" style="background: linear-gradient(135deg, rgba(217,119,6,0.15), rgba(42,29,21,0.08)); border: 1.5px solid var(--primary-gold); margin: 0.75rem; padding: 1rem; border-radius: 14px; text-align: center;">
+            <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">📲 Inscription / Connexion Client</h3>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.75rem 0;">Entrez votre WhatsApp pour débloquer votre solde et cumuler vos points.</p>
+            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; font-size: 0.85rem; font-weight: 800; background: var(--primary-gold); color: #2A1D15;">
+              <i data-lucide="user-plus"></i>
+              <span>Créer mon Compte Client (10 Sec)</span>
+            </button>
+          </div>
+
           <!-- SCREEN 1: LOYALTY HOME (DEFAULT ACTIVE) -->
           <div class="client-screen active" id="screen-home">
             
             <!-- Clean Points Card -->
             <div class="points-card-clean">
               <span class="points-label-clean">Votre Solde de Points</span>
-              <div class="points-val-clean" id="user-points-val">140</div>
+              <div class="points-val-clean" id="user-points-val">0</div>
               <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom: 0.5rem;">
-                Objectif Dessert Offert : <strong id="user-progress-lbl" style="color:var(--primary-gold);">70% (200 pts)</strong>
+                Objectif Dessert Offert : <strong id="user-progress-lbl" style="color:var(--primary-gold);">0% (200 pts)</strong>
               </p>
 
               <!-- Main Action Scan Button -->
@@ -151,22 +161,26 @@
           <!-- SCREEN 4: CLIENT PROFILE -->
           <div class="client-screen" id="screen-profile">
             <div style="padding: 1.5rem 1rem; text-align: center;">
-              <div style="width: 64px; height: 64px; background: var(--marron-dark); color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;">
-                TL
+              <div style="width: 64px; height: 64px; background: var(--marron-dark); color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;" id="client-avatar-letters">
+                NC
               </div>
-              <h2 style="color: var(--marron-dark); font-size: 1.1rem; font-weight: 800;">Thomas Laurent</h2>
-              <p style="color: var(--text-muted); font-size: 0.8rem;">+33 6 42 19 88 30 (WhatsApp)</p>
+              <h2 style="color: var(--marron-dark); font-size: 1.1rem; font-weight: 800;" id="profile-display-name">Nouveau Client</h2>
+              <p style="color: var(--text-muted); font-size: 0.8rem;" id="profile-display-phone">Non enregistré</p>
 
               <div style="margin-top: 1.5rem; background: #FFFFFF; border: 1px solid var(--dash-border); border-radius: 12px; padding: 1rem; text-align: left;">
                 <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
                   <span style="color: var(--text-muted); font-size: 0.85rem;">Statut</span>
-                  <strong style="color: var(--primary-gold); font-size: 0.85rem;">Membre Silver</strong>
+                  <strong style="color: var(--primary-gold); font-size: 0.85rem;" id="profile-display-tier">Membre Débutant</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Visites au Savane</span>
-                  <strong style="color: var(--marron-dark); font-size: 0.85rem;">8 visites</strong>
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Visites à l'établissement</span>
+                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-visits">1 visite</strong>
                 </div>
               </div>
+
+              <button class="btn-secondary" onclick="openClientAuthModal()" style="margin-top: 1rem; width: 100%;">
+                ⚙️ Modifier mon Numéro WhatsApp
+              </button>
             </div>
           </div>
 
@@ -233,8 +247,13 @@
           </div>
         </div>
 
-        <div style="color: var(--text-light); font-size: 0.75rem;">
-          Connecté : <strong style="color:#10B981;">● Supabase Cloud BDD Live</strong>
+        <div style="padding: 0.75rem; background: rgba(255,255,255,0.05); border-radius: 10px; margin-top: 1rem;">
+          <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.4rem;">
+            Base de Données : <strong style="color:#10B981;">● Supabase Cloud Live</strong>
+          </div>
+          <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15;">
+            🔑 Connexion / Inscription Restaurant
+          </button>
         </div>
       </aside>
 
@@ -246,10 +265,15 @@
             <h2 style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800;" id="dash-title">Vue d'ensemble</h2>
             <p style="font-size: 0.8rem; color: var(--text-muted);">Suivi en temps réel de votre programme de fidélité sur Supabase Cloud</p>
           </div>
-          <button class="btn-primary" id="btn-open-add-reward">
-            <i data-lucide="plus"></i>
-            <span>Créer une Récompense</span>
-          </button>
+          <div style="display: flex; gap: 0.75rem;">
+            <button class="btn-secondary" onclick="openMerchantAuthModal()">
+              🔑 Espace Gérant
+            </button>
+            <button class="btn-primary" id="btn-open-add-reward">
+              <i data-lucide="plus"></i>
+              <span>Créer une Récompense</span>
+            </button>
+          </div>
         </header>
 
         <div class="dash-body">
@@ -445,8 +469,66 @@
 
 
   <!-- ==========================================================================
-       MODALS
+       MODALS DE PRODUCTION (CLIENT AUTH & RESTAURANT AUTH)
        ========================================================================== -->
+
+  <!-- MODAL INSCRIPTION CLIENT WHATSAPP -->
+  <div class="nexa-modal-backdrop" id="modal-client-auth">
+    <div class="nexa-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800;">📲 Créer / Connexion Compte Client</h3>
+        <button onclick="closeClientAuthModal()" style="font-size: 1.2rem;">✕</button>
+      </div>
+      <form id="form-client-auth">
+        <div class="form-group">
+          <label>Votre Numéro WhatsApp</label>
+          <input type="tel" id="auth-client-phone" placeholder="+226 70 12 34 56" required>
+        </div>
+        <div class="form-group">
+          <label>Votre Prénom (Optionnel)</label>
+          <input type="text" id="auth-client-name" placeholder="ex: Moussa">
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+          ⚡ Valider & Recevoir mes +10 Points
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL CONNEXION / INSCRIPTION RESTAURATEUR -->
+  <div class="nexa-modal-backdrop" id="modal-merchant-auth">
+    <div class="nexa-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800;">🔑 Espace Restaurateur Supabase</h3>
+        <button onclick="closeMerchantAuthModal()" style="font-size: 1.2rem;">✕</button>
+      </div>
+      <form id="form-merchant-auth">
+        <div class="form-group">
+          <label>Nom de l'Établissement</label>
+          <input type="text" id="auth-resto-name" placeholder="ex: Le Savane" required>
+        </div>
+        <div class="form-group">
+          <label>Email du Gérant</label>
+          <input type="email" id="auth-resto-email" placeholder="gerant@lesavane.bf" required>
+        </div>
+        <div class="form-group">
+          <label>Mot de passe</label>
+          <input type="password" id="auth-resto-pwd" placeholder="••••••••" required>
+        </div>
+        <div class="form-group">
+          <label>Devise Principale</label>
+          <select id="auth-resto-currency">
+            <option value="FCFA">FCFA (Franc CFA)</option>
+            <option value="EUR">EUR (€ Euro)</option>
+          </select>
+        </div>
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
+          🚀 Enregistrer mon Restaurant sur le Cloud
+        </button>
+      </form>
+    </div>
+  </div>
+
   <div class="scanner-modal" id="scanner-modal">
     <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
       <h3 style="color: white; font-size: 1.1rem;">Scanner le QR Code Table</h3>

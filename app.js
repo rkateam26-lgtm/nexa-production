@@ -17,14 +17,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const state = {
     restaurant: {
       id: 'savane-paris-001',
-      name: 'Le Savane',
+      name: localStorage.getItem('nexa_resto_name') || 'Le Savane',
       city: 'Ouagadougou',
-      currency: 'FCFA'
+      currency: localStorage.getItem('nexa_resto_currency') || 'FCFA'
     },
     clientSession: {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
       name: localStorage.getItem('nexa_client_name') || '',
-      points: 140,
+      points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
       history: []
     },
     rewards: [
@@ -87,7 +87,96 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* ==========================================================================
-     1. CLIENT REGISTRATION & SCAN (+10 PTS) SUPABASE TRANSACTION
+     1. CLIENT AUTHENTICATION MODAL (WHATSAPP REGISTRATION)
+     ========================================================================== */
+  const modalClientAuth = document.getElementById('modal-client-auth');
+  const formClientAuth = document.getElementById('form-client-auth');
+  const clientLoginBanner = document.getElementById('client-login-banner');
+
+  window.openClientAuthModal = function() {
+    if (modalClientAuth) modalClientAuth.classList.add('active');
+  };
+
+  window.closeClientAuthModal = function() {
+    if (modalClientAuth) modalClientAuth.classList.remove('active');
+  };
+
+  if (formClientAuth) {
+    formClientAuth.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phone = document.getElementById('auth-client-phone').value.trim();
+      const name = document.getElementById('auth-client-name').value.trim() || 'Client Nexa';
+
+      if (!phone) return;
+
+      state.clientSession.whatsapp = phone;
+      state.clientSession.name = name;
+      localStorage.setItem('nexa_client_whatsapp', phone);
+      localStorage.setItem('nexa_client_name', name);
+
+      // Save to Supabase Cloud
+      if (window.nexaBackend) {
+        try {
+          await window.nexaBackend.recordScan(state.restaurant.id, tableParam, phone, name);
+          console.log('✅ Supabase: Client Registered on PostgreSQL Cloud!');
+        } catch (err) {
+          console.log('Local client registration saved:', err);
+        }
+      }
+
+      closeClientAuthModal();
+      renderClientUI();
+      showToast('🎉 Inscription Réussie !', `Bienvenue ${name} ! Votre compte est actif.`);
+    });
+  }
+
+  /* ==========================================================================
+     2. MERCHANT AUTHENTICATION MODAL (RESTAURANT SETUP)
+     ========================================================================== */
+  const modalMerchantAuth = document.getElementById('modal-merchant-auth');
+  const formMerchantAuth = document.getElementById('form-merchant-auth');
+
+  window.openMerchantAuthModal = function() {
+    if (modalMerchantAuth) modalMerchantAuth.classList.add('active');
+  };
+
+  window.closeMerchantAuthModal = function() {
+    if (modalMerchantAuth) modalMerchantAuth.classList.remove('active');
+  };
+
+  if (formMerchantAuth) {
+    formMerchantAuth.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('auth-resto-name').value.trim();
+      const email = document.getElementById('auth-resto-email').value.trim();
+      const pwd = document.getElementById('auth-resto-pwd').value.trim();
+      const currency = document.getElementById('auth-resto-currency').value;
+
+      if (!name || !email || !pwd) return;
+
+      state.restaurant.name = name;
+      state.restaurant.currency = currency;
+      localStorage.setItem('nexa_resto_name', name);
+      localStorage.setItem('nexa_resto_currency', currency);
+
+      if (window.nexaBackend) {
+        try {
+          await window.nexaBackend.loginMerchant(email, pwd);
+          console.log('✅ Supabase: Merchant Authenticated on PostgreSQL Cloud!');
+        } catch (err) {
+          console.log('Local merchant saved:', err);
+        }
+      }
+
+      closeMerchantAuthModal();
+      renderMerchantUI();
+      renderClientUI();
+      showToast('🏢 Restaurant Connecté !', `Bienvenue gérant de ${name}.`);
+    });
+  }
+
+  /* ==========================================================================
+     3. SCAN QR TRANSACTION (+10 PTS)
      ========================================================================== */
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
   const scannerModal = document.getElementById('scanner-modal');
@@ -98,26 +187,24 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseScanner) btnCloseScanner.addEventListener('click', () => scannerModal.classList.remove('active'));
 
   window.triggerQRScan = async function() {
-    // Ask for customer WhatsApp registration if not registered
-    let clientPhone = state.clientSession.whatsapp;
-    if (!clientPhone) {
-      clientPhone = prompt("📱 Entrez votre numéro WhatsApp pour créer votre compte fidélité et recevoir vos 10 points :", "+226 70 00 00 00");
-      if (!clientPhone) return;
-      state.clientSession.whatsapp = clientPhone;
-      localStorage.setItem('nexa_client_whatsapp', clientPhone);
+    // Prompt WhatsApp registration if not logged in
+    if (!state.clientSession.whatsapp) {
+      openClientAuthModal();
+      return;
     }
 
     state.clientSession.points += 10;
     state.stats.qrScansMonth += 1;
     state.stats.pointsGiven += 10;
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
 
-    // Send real transaction to Supabase Cloud PostgreSQL
+    // Send transaction to Supabase Cloud PostgreSQL
     if (window.nexaBackend) {
       try {
-        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, clientPhone, state.clientSession.name || 'Client Table');
-        console.log('✅ Supabase: Scan & Points Cloud Transaction Saved!');
+        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
+        console.log('✅ Supabase: +10 Points Saved in PostgreSQL Cloud!');
       } catch (err) {
-        console.log('Local fallback scan recorded:', err);
+        console.log('Local scan points saved:', err);
       }
     }
 
@@ -129,7 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderClientUI();
     renderMerchantUI();
-    showToast('✨ +10 Points crédités !', `Scan Table #${tableParam} enregistré sur le Cloud.`);
+    showToast('✨ +10 Points crédités !', `Scan Table #${tableParam} validé.`);
   };
 
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', triggerQRScan);
@@ -137,31 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnFastScan) btnFastScan.addEventListener('click', triggerQRScan);
 
   /* ==========================================================================
-     2. RESTAURANT MANAGER REGISTRATION & LOGIN
-     ========================================================================== */
-  window.registerRestaurant = async function() {
-    const name = prompt("Nom de votre Restaurant :", "Le Savane");
-    if (!name) return;
-    const email = prompt("Email du Gérant pour la connexion :", "gerant@savane.bf");
-    if (!email) return;
-    const pwd = prompt("Mot de passe sécurisé :", "Nexa2026!");
-    if (!pwd) return;
-
-    if (window.nexaBackend) {
-      try {
-        await window.nexaBackend.loginMerchant(email, pwd);
-        state.restaurant.name = name;
-        document.getElementById('mobile-resto-name').textContent = name;
-        document.getElementById('dash-brand-name-el').textContent = name.toUpperCase();
-        showToast('🎉 Restaurant Enregistré !', `Compte Supabase créé pour ${name}.`);
-      } catch (err) {
-        alert("Erreur d'inscription Supabase : " + err.message);
-      }
-    }
-  };
-
-  /* ==========================================================================
-     3. RENDERERS & NAVIGATION
+     4. RENDERERS & NAVIGATION
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -176,7 +239,23 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function renderClientUI() {
+    document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
     document.getElementById('user-points-val').textContent = state.clientSession.points;
+
+    const nextRewardGoal = 200;
+    const progressPercent = Math.min(100, Math.round((state.clientSession.points / nextRewardGoal) * 100));
+    document.getElementById('user-progress-lbl').textContent = `${progressPercent}% (200 pts)`;
+
+    // Banner visibility
+    if (state.clientSession.whatsapp) {
+      if (clientLoginBanner) clientLoginBanner.style.display = 'none';
+      document.getElementById('profile-display-name').textContent = state.clientSession.name || 'Membre Client';
+      document.getElementById('profile-display-phone').textContent = state.clientSession.whatsapp;
+      document.getElementById('profile-display-tier').textContent = state.clientSession.points >= 200 ? 'Membre VIP' : 'Membre Silver';
+      document.getElementById('client-avatar-letters').textContent = (state.clientSession.name || 'MC').substring(0, 2).toUpperCase();
+    } else {
+      if (clientLoginBanner) clientLoginBanner.style.display = 'block';
+    }
 
     const rewardsContainer = document.getElementById('client-rewards-list');
     if (rewardsContainer) {
@@ -203,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     state.clientSession.points -= reward.pts;
     state.stats.rewardsRedeemed += 1;
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
+
     renderClientUI();
     renderMerchantUI();
     showRedemptionPassModal(reward);
@@ -248,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
   dashDockTabs.forEach(tab => tab.addEventListener('click', () => activateSection(tab.dataset.section)));
 
   function renderMerchantUI() {
+    document.getElementById('dash-brand-name-el').textContent = state.restaurant.name.toUpperCase();
     document.getElementById('stat-total-clients').textContent = state.stats.totalClients.toLocaleString();
     document.getElementById('stat-qr-scans').textContent = state.stats.qrScansMonth.toLocaleString();
     document.getElementById('stat-pts-given').textContent = state.stats.pointsGiven.toLocaleString();
