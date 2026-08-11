@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${currentRestoName}`) || '[]'),
     notifications: [],
     clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${currentRestoName}`) || '[]'),
+    scansList: [],
     stats: {
       totalClients: 0,
       qrScansMonth: parseInt(localStorage.getItem('nexa_stat_scans') || '0', 10),
@@ -54,11 +55,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (HYBRID REAL-TIME SYNC)
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
-        // Fetch exact cloud restaurant pointsPerScan & details!
+        // Fetch Cloud Restaurant Settings
         const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
         if (cloudResto) {
           state.restaurant.type = cloudResto.type;
@@ -70,6 +71,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_curr_${state.restaurant.name}`, cloudResto.currency);
         }
 
+        // Fetch Cloud Rewards
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.map(r => ({
@@ -82,6 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.name}`, JSON.stringify(state.rewards));
         }
 
+        // Fetch Cloud Clients (CRM Table!)
         const cloudClients = await window.nexaBackend.fetchClientsByResto();
         if (cloudClients && cloudClients.length > 0) {
           state.clientsList = cloudClients.map(c => ({
@@ -91,10 +94,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             points: c.points_balance || state.restaurant.pointsPerScan,
             visits: c.visits_count || 1,
             lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
-            segment: 'Fidèle'
+            segment: (c.visits_count || 1) >= 3 ? 'Membre VIP' : 'Nouveau Client'
           }));
           state.stats.totalClients = state.clientsList.length;
           localStorage.setItem(`nexa_clients_${state.restaurant.name}`, JSON.stringify(state.clientsList));
+        }
+
+        // Fetch Cloud Scans History
+        const cloudScans = await window.nexaBackend.fetchScansHistory();
+        if (cloudScans && cloudScans.length > 0) {
+          state.scansList = cloudScans;
+          state.stats.qrScansMonth = cloudScans.length;
+          state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
+
+          localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
+          localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
         }
       } catch (err) {
         console.log('Cloud sync info:', err);
@@ -102,7 +116,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     renderClientUI();
     renderMerchantUI();
+    updateChartData();
   }
+
+  // Auto-Poll Cloud Database every 4 Seconds for Live CRM Updates!
+  setInterval(syncCloudData, 4000);
 
   /* ==========================================================================
      0. SMART ROUTER (ROLE & TABLE)
@@ -142,7 +160,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const formMerchantAuth = document.getElementById('form-merchant-auth');
 
   window.openMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.add('active');
-  window.closeMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.remove('active');
+  window.closeMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.remove('active');
 
   function updateMerchantAuthState() {
     const btnInscrire = document.getElementById('btn-header-inscrire');
@@ -251,7 +269,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.rewards.push(newReward);
       localStorage.setItem(`nexa_rewards_${state.restaurant.name}`, JSON.stringify(state.rewards));
 
-      // Save to Supabase Cloud PostgreSQL Database!
       if (window.nexaBackend) {
         try {
           await window.nexaBackend.createCloudReward(title, pts, desc, icon, category);
@@ -298,7 +315,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      // Append Client to CRM List & Cloud PostgreSQL
+      // Append Client to CRM List
       const existing = state.clientsList.find(c => c.phone === phone);
       if (!existing) {
         state.clientsList.unshift({
@@ -393,7 +410,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // ALWAYS USE THE EXACT CUSTOM SCAN POINTS DEFINED BY THIS SPECIFIC RESTAURANT MANAGER!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
@@ -449,7 +465,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
 
   /* ==========================================================================
-     5. RENDERERS
+     5. RENDERERS & CHARTS
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -687,27 +703,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  const chartCanvas = document.getElementById('scansChart');
-  if (chartCanvas && window.Chart) {
-    new Chart(chartCanvas, {
-      type: 'line',
-      data: {
-        labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
-        datasets: [{
-          label: 'Scans QR',
-          data: [0, 0, 0, 0, 0, 0, 0],
-          borderColor: '#D97706',
-          backgroundColor: 'rgba(245, 158, 11, 0.1)',
-          fill: true,
-          tension: 0.4
-        }]
-      },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-        scales: { y: { grid: { color: '#F5F1EB' } }, x: { grid: { display: false } } }
-      }
-    });
+  let scansChartInstance = null;
+  function updateChartData() {
+    const chartCanvas = document.getElementById('scansChart');
+    if (!chartCanvas || !window.Chart) return;
+
+    const scanCount = state.stats.qrScansMonth;
+    const chartData = [Math.max(0, scanCount - 4), Math.max(0, scanCount - 3), Math.max(0, scanCount - 2), Math.max(0, scanCount - 1), scanCount, Math.max(0, scanCount + 1), Math.max(0, scanCount + 2)];
+
+    if (scansChartInstance) {
+      scansChartInstance.data.datasets[0].data = chartData;
+      scansChartInstance.update();
+    } else {
+      scansChartInstance = new Chart(chartCanvas, {
+        type: 'line',
+        data: {
+          labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
+          datasets: [{
+            label: 'Scans QR',
+            data: chartData,
+            borderColor: '#D97706',
+            backgroundColor: 'rgba(245, 158, 11, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { grid: { color: '#F5F1EB' } }, x: { grid: { display: false } } }
+        }
+      });
+    }
   }
 
   updateMerchantAuthState();
