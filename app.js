@@ -1,10 +1,10 @@
 /* ==========================================================================
-   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE CONNECTED)
+   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE & REAL CAMERA INTEGRATED)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Force Unregister Old Service Worker to Clear Mobile Browser Cache
+  // Unregister Old Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
       for (let registration of registrations) {
@@ -13,11 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }).catch(err => console.log('SW unregister:', err));
   }
 
-  // App Production State
+  // Persistent Production State (Starts Empty for New Production Restaurants!)
+  const savedRewards = localStorage.getItem('nexa_prod_rewards');
+  const initialRewards = savedRewards ? JSON.parse(savedRewards) : [];
+
+  const savedClients = localStorage.getItem('nexa_prod_clients');
+  const initialClients = savedClients ? JSON.parse(savedClients) : [];
+
   const state = {
     restaurant: {
-      id: 'savane-paris-001',
-      name: localStorage.getItem('nexa_resto_name') || 'Le Savane',
+      id: 'savane-prod-001',
+      name: localStorage.getItem('nexa_resto_name') || 'Mon Restaurant',
       city: 'Ouagadougou',
       currency: localStorage.getItem('nexa_resto_currency') || 'FCFA'
     },
@@ -27,25 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
       history: []
     },
-    rewards: [
-      { id: 1, title: 'Café Gourmand', desc: 'Espresso + 3 mini gourmandises.', pts: 50, icon: '☕' },
-      { id: 2, title: 'Boisson fraîche au choix', desc: 'Soda, jus artisanal ou verre de vin.', pts: 100, icon: '🥤' },
-      { id: 3, title: 'Dessert de la maison', desc: 'Fondant au chocolat ou Tiramisu.', pts: 200, icon: '🍰' },
-      { id: 4, title: 'Plat signature au choix', desc: 'Entrecôte grillée 250g ou Burger Le Savane.', pts: 500, icon: '🥩' }
-    ],
-    notifications: [
-      { id: 101, title: '✨ Offre du Soir', text: '-20% sur la carte ce soir pour nos membres VIP !', time: 'Il y a 10 min' }
-    ],
-    clientsList: [
-      { id: 1, name: 'Thomas Laurent', phone: '+226 70 12 34 56', points: 140, visits: 8, lastVisit: 'Aujourd\'hui, 12:45', segment: 'VIP' },
-      { id: 2, name: 'Sophie Martin', phone: '+226 78 42 90 11', points: 280, visits: 14, lastVisit: 'Hier, 19:30', segment: 'VIP' },
-      { id: 3, name: 'Moussa Sawadogo', phone: '+226 76 99 88 12', points: 40, visits: 2, lastVisit: '05/08/2026', segment: 'Nouveau' }
-    ],
+    rewards: initialRewards,
+    notifications: [],
+    clientsList: initialClients,
     stats: {
-      totalClients: 1248,
-      qrScansMonth: 3890,
-      pointsGiven: 38900,
-      rewardsRedeemed: 245
+      totalClients: initialClients.length,
+      qrScansMonth: parseInt(localStorage.getItem('nexa_stat_scans') || '0', 10),
+      pointsGiven: parseInt(localStorage.getItem('nexa_stat_points') || '0', 10),
+      rewardsRedeemed: parseInt(localStorage.getItem('nexa_stat_redeemed') || '0', 10)
     }
   };
 
@@ -79,7 +74,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const baseHost = window.location.origin + window.location.pathname;
   document.getElementById('link-url-client').textContent = `${baseHost}?role=client&table=${tableParam}`;
   document.getElementById('link-url-merchant').textContent = `${baseHost}?role=merchant`;
-  document.getElementById('link-url-demo').textContent = `${baseHost}?role=demo`;
 
   window.copyRoleLink = function(role) {
     const targetUrl = role === 'client' ? `${baseHost}?role=client&table=${tableParam}` : `${baseHost}?role=${role}`;
@@ -87,26 +81,162 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* ==========================================================================
-     1. CLIENT AUTHENTICATION MODAL (WHATSAPP REGISTRATION)
+     1. REAL SMARTPHONE CAMERA QR CODE SCANNER (HTML5 CAMERA STREAM)
+     ========================================================================== */
+  const scannerModal = document.getElementById('scanner-modal');
+  const btnTriggerScan = document.getElementById('btn-trigger-scan');
+  const btnCloseScanner = document.getElementById('btn-close-scanner');
+  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
+  let html5QrCode = null;
+
+  async function startRealCameraScanner() {
+    if (!state.clientSession.whatsapp) {
+      openClientAuthModal();
+      return;
+    }
+
+    scannerModal.classList.add('active');
+
+    // Initialize Html5Qrcode Camera Engine
+    if (window.Html5Qrcode && !html5QrCode) {
+      html5QrCode = new Html5Qrcode("html5-qr-reader");
+    }
+
+    if (html5QrCode) {
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" }, // Rear Smartphone Camera
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText, decodedResult) => {
+            // QR Code Successfully Scanned by Camera!
+            stopCameraScanner();
+            triggerQRScanSuccess(decodedText);
+          },
+          (errorMessage) => {
+            // Camera scanning...
+          }
+        );
+      } catch (err) {
+        console.log('Camera access prompt or fallback:', err);
+      }
+    }
+  }
+
+  function stopCameraScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => {
+        html5QrCode.clear();
+      }).catch(err => console.error(err));
+    }
+    scannerModal.classList.remove('active');
+  }
+
+  if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
+  if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
+
+  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
+    state.clientSession.points += 10;
+    state.stats.qrScansMonth += 1;
+    state.stats.pointsGiven += 10;
+    
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
+    localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
+    localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
+
+    // Record Transaction on Supabase Cloud PostgreSQL
+    if (window.nexaBackend) {
+      try {
+        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
+        console.log('✅ Supabase: Camera Scan Transaction Saved!');
+      } catch (err) {
+        console.log('Local scan points saved:', err);
+      }
+    }
+
+    stopCameraScanner();
+
+    if (window.confetti) {
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
+    }
+
+    renderClientUI();
+    renderMerchantUI();
+    showToast('✨ +10 Points Crédités !', `Scan de ${qrContent} validé par la caméra.`);
+  }
+
+  if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+  const btnFastScan = document.getElementById('btn-fast-scan');
+  if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+
+  /* ==========================================================================
+     2. RICH REWARD CREATION FOR RESTAURANT MANAGER
+     ========================================================================== */
+  const modalAddReward = document.getElementById('modal-add-reward');
+  const formAddReward = document.getElementById('form-add-reward');
+
+  window.openAddRewardModal = function() {
+    if (modalAddReward) modalAddReward.classList.add('active');
+  };
+
+  window.closeAddRewardModal = function() {
+    if (modalAddReward) modalAddReward.classList.remove('active');
+  };
+
+  if (formAddReward) {
+    formAddReward.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('reward-title-input').value.trim();
+      const category = document.getElementById('reward-category-input').value;
+      const icon = document.getElementById('reward-icon-input').value;
+      const pts = parseInt(document.getElementById('reward-pts-input').value, 10);
+      const desc = document.getElementById('reward-desc-input').value.trim();
+
+      if (!title || !pts) return;
+
+      const newReward = {
+        id: Date.now(),
+        category,
+        icon,
+        title,
+        pts,
+        desc
+      };
+
+      state.rewards.push(newReward);
+      localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
+
+      closeAddRewardModal();
+      formAddReward.reset();
+
+      renderClientUI();
+      renderMerchantUI();
+      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est disponible pour vos clients.`);
+    });
+  }
+
+  window.deleteReward = function(rewardId) {
+    state.rewards = state.rewards.filter(r => r.id !== rewardId);
+    localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
+    renderClientUI();
+    renderMerchantUI();
+    showToast('🗑️ Récompense Supprimée', 'Catalogue mis à jour.');
+  };
+
+  /* ==========================================================================
+     3. CLIENT & MERCHANT AUTH MODALS
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
   const clientLoginBanner = document.getElementById('client-login-banner');
 
-  window.openClientAuthModal = function() {
-    if (modalClientAuth) modalClientAuth.classList.add('active');
-  };
-
-  window.closeClientAuthModal = function() {
-    if (modalClientAuth) modalClientAuth.classList.remove('active');
-  };
+  window.openClientAuthModal = () => modalClientAuth && modalClientAuth.classList.add('active');
+  window.closeClientAuthModal = () => modalClientAuth && modalClientAuth.classList.remove('active');
 
   if (formClientAuth) {
     formClientAuth.addEventListener('submit', async (e) => {
       e.preventDefault();
       const phone = document.getElementById('auth-client-phone').value.trim();
       const name = document.getElementById('auth-client-name').value.trim() || 'Client Nexa';
-
       if (!phone) return;
 
       state.clientSession.whatsapp = phone;
@@ -114,35 +244,17 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      // Save to Supabase Cloud
-      if (window.nexaBackend) {
-        try {
-          await window.nexaBackend.recordScan(state.restaurant.id, tableParam, phone, name);
-          console.log('✅ Supabase: Client Registered on PostgreSQL Cloud!');
-        } catch (err) {
-          console.log('Local client registration saved:', err);
-        }
-      }
-
       closeClientAuthModal();
       renderClientUI();
-      showToast('🎉 Inscription Réussie !', `Bienvenue ${name} ! Votre compte est actif.`);
+      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} !`);
     });
   }
 
-  /* ==========================================================================
-     2. MERCHANT AUTHENTICATION MODAL (RESTAURANT SETUP)
-     ========================================================================== */
   const modalMerchantAuth = document.getElementById('modal-merchant-auth');
   const formMerchantAuth = document.getElementById('form-merchant-auth');
 
-  window.openMerchantAuthModal = function() {
-    if (modalMerchantAuth) modalMerchantAuth.classList.add('active');
-  };
-
-  window.closeMerchantAuthModal = function() {
-    if (modalMerchantAuth) modalMerchantAuth.classList.remove('active');
-  };
+  window.openMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.add('active');
+  window.closeMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.remove('active');
 
   if (formMerchantAuth) {
     formMerchantAuth.addEventListener('submit', async (e) => {
@@ -152,76 +264,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const pwd = document.getElementById('auth-resto-pwd').value.trim();
       const currency = document.getElementById('auth-resto-currency').value;
 
-      if (!name || !email || !pwd) return;
+      if (!name) return;
 
       state.restaurant.name = name;
       state.restaurant.currency = currency;
       localStorage.setItem('nexa_resto_name', name);
       localStorage.setItem('nexa_resto_currency', currency);
 
-      if (window.nexaBackend) {
-        try {
-          await window.nexaBackend.loginMerchant(email, pwd);
-          console.log('✅ Supabase: Merchant Authenticated on PostgreSQL Cloud!');
-        } catch (err) {
-          console.log('Local merchant saved:', err);
-        }
-      }
-
       closeMerchantAuthModal();
       renderMerchantUI();
       renderClientUI();
-      showToast('🏢 Restaurant Connecté !', `Bienvenue gérant de ${name}.`);
+      showToast('🏢 Restaurant Connecté !', `${name} est prêt pour la production.`);
     });
   }
-
-  /* ==========================================================================
-     3. SCAN QR TRANSACTION (+10 PTS)
-     ========================================================================== */
-  const btnTriggerScan = document.getElementById('btn-trigger-scan');
-  const scannerModal = document.getElementById('scanner-modal');
-  const btnCloseScanner = document.getElementById('btn-close-scanner');
-  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
-
-  if (btnTriggerScan) btnTriggerScan.addEventListener('click', () => scannerModal.classList.add('active'));
-  if (btnCloseScanner) btnCloseScanner.addEventListener('click', () => scannerModal.classList.remove('active'));
-
-  window.triggerQRScan = async function() {
-    // Prompt WhatsApp registration if not logged in
-    if (!state.clientSession.whatsapp) {
-      openClientAuthModal();
-      return;
-    }
-
-    state.clientSession.points += 10;
-    state.stats.qrScansMonth += 1;
-    state.stats.pointsGiven += 10;
-    localStorage.setItem('nexa_client_points', state.clientSession.points);
-
-    // Send transaction to Supabase Cloud PostgreSQL
-    if (window.nexaBackend) {
-      try {
-        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
-        console.log('✅ Supabase: +10 Points Saved in PostgreSQL Cloud!');
-      } catch (err) {
-        console.log('Local scan points saved:', err);
-      }
-    }
-
-    scannerModal.classList.remove('active');
-
-    if (window.confetti) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
-    }
-
-    renderClientUI();
-    renderMerchantUI();
-    showToast('✨ +10 Points crédités !', `Scan Table #${tableParam} validé.`);
-  };
-
-  if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', triggerQRScan);
-  const btnFastScan = document.getElementById('btn-fast-scan');
-  if (btnFastScan) btnFastScan.addEventListener('click', triggerQRScan);
 
   /* ==========================================================================
      4. RENDERERS & NAVIGATION
@@ -242,11 +297,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
     document.getElementById('user-points-val').textContent = state.clientSession.points;
 
-    const nextRewardGoal = 200;
-    const progressPercent = Math.min(100, Math.round((state.clientSession.points / nextRewardGoal) * 100));
-    document.getElementById('user-progress-lbl').textContent = `${progressPercent}% (200 pts)`;
-
-    // Banner visibility
     if (state.clientSession.whatsapp) {
       if (clientLoginBanner) clientLoginBanner.style.display = 'none';
       document.getElementById('profile-display-name').textContent = state.clientSession.name || 'Membre Client';
@@ -259,20 +309,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const rewardsContainer = document.getElementById('client-rewards-list');
     if (rewardsContainer) {
-      rewardsContainer.innerHTML = state.rewards.map(reward => {
-        const canClaim = state.clientSession.points >= reward.pts;
-        return `
-          <div class="reward-card-clean">
-            <div class="reward-info-clean">
-              <h3>${reward.icon} ${reward.title}</h3>
-              <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
-            </div>
-            <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="${canClaim ? `claimReward(${reward.id})` : ''}">
-              ${canClaim ? 'Échanger' : `${reward.pts} pts`}
-            </button>
+      if (state.rewards.length === 0) {
+        rewardsContainer.innerHTML = `
+          <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
+            <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎁</div>
+            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucune récompense configurée</p>
+            <p style="font-size: 0.75rem; margin: 0;">Le gérant du restaurant ajoutera bientôt ses boissons et privilèges offerts !</p>
           </div>
         `;
-      }).join('');
+      } else {
+        rewardsContainer.innerHTML = state.rewards.map(reward => {
+          const canClaim = state.clientSession.points >= reward.pts;
+          return `
+            <div class="reward-card-clean">
+              <div class="reward-info-clean">
+                <h3>${reward.icon} ${reward.title}</h3>
+                <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
+              </div>
+              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="${canClaim ? `claimReward(${reward.id})` : ''}">
+                ${canClaim ? 'Échanger' : `${reward.pts} pts`}
+              </button>
+            </div>
+          `;
+        }).join('');
+      }
     }
   }
 
@@ -287,6 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
     renderClientUI();
     renderMerchantUI();
     showRedemptionPassModal(reward);
+  };
+
+  window.showPassModalFirst = function() {
+    if (state.rewards.length > 0) {
+      showRedemptionPassModal(state.rewards[0]);
+    } else {
+      alert("Aucune récompense disponible pour le moment.");
+    }
   };
 
   function showRedemptionPassModal(reward) {
@@ -337,48 +405,63 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const crmTableBody = document.getElementById('crm-table-body');
     if (crmTableBody) {
-      crmTableBody.innerHTML = state.clientsList.map(c => `
-        <tr>
-          <td style="font-weight: 700;">${c.name}</td>
-          <td style="color: var(--text-muted);">${c.phone}</td>
-          <td><strong style="color: var(--primary-gold);">${c.points} pts</strong></td>
-          <td>${c.visits} visites</td>
-          <td style="color: var(--text-muted);">${c.lastVisit}</td>
-          <td><button class="btn-secondary" onclick="alert('Message WhatsApp envoyé à ${c.name}')">📱 Contact</button></td>
-        </tr>
-      `).join('');
+      if (state.clientsList.length === 0) {
+        crmTableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Aucun client enregistré pour l'instant. Les nouveaux clients apparaîtront ici dès leur premier scan de table !</td></tr>`;
+      } else {
+        crmTableBody.innerHTML = state.clientsList.map(c => `
+          <tr>
+            <td style="font-weight: 700;">${c.name}</td>
+            <td style="color: var(--text-muted);">${c.phone}</td>
+            <td><strong style="color: var(--primary-gold);">${c.points} pts</strong></td>
+            <td>${c.visits} visites</td>
+            <td style="color: var(--text-muted);">${c.lastVisit}</td>
+            <td><button class="btn-secondary" onclick="alert('Message WhatsApp envoyé à ${c.name}')">📱 Contact</button></td>
+          </tr>
+        `).join('');
+      }
     }
 
-    const crmMobileCardsFeed = document.getElementById('crm-mobile-cards-feed');
-    if (crmMobileCardsFeed) {
-      crmMobileCardsFeed.innerHTML = state.clientsList.map(c => `
-        <div class="crm-mobile-card">
-          <div class="crm-card-header">
-            <div>
-              <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${c.name}</h3>
-              <p style="font-size: 0.75rem; color: var(--text-muted);">${c.phone}</p>
+    const rewardsAdminBody = document.getElementById('rewards-admin-body');
+    if (rewardsAdminBody) {
+      if (state.rewards.length === 0) {
+        rewardsAdminBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Aucune récompense configurée. Cliquez sur "Créer une Récompense" ci-dessus pour ajouter vos privilèges !</td></tr>`;
+      } else {
+        rewardsAdminBody.innerHTML = state.rewards.map(r => `
+          <tr>
+            <td style="font-size: 1.3rem;">${r.icon}</td>
+            <td><span style="font-size: 0.75rem; background: var(--marron-light); color: var(--marron-dark); font-weight: 700; padding: 2px 8px; border-radius: 10px;">${r.category || 'Privilège'}</span></td>
+            <td style="font-weight: 700;">${r.title}</td>
+            <td style="color: var(--text-muted);">${r.desc}</td>
+            <td><strong style="color: var(--primary-gold);">${r.pts} pts</strong></td>
+            <td><button class="btn-secondary" style="color:var(--primary-gold);" onclick="deleteReward(${r.id})">Supprimer</button></td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    const rewardsMobileCardsFeed = document.getElementById('rewards-mobile-cards-feed');
+    if (rewardsMobileCardsFeed) {
+      if (state.rewards.length === 0) {
+        rewardsMobileCardsFeed.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:2rem; background:white; border-radius:12px;">Aucune récompense configurée pour le moment.</div>`;
+      } else {
+        rewardsMobileCardsFeed.innerHTML = state.rewards.map(r => `
+          <div class="crm-mobile-card">
+            <div class="crm-card-header">
+              <div style="display: flex; align-items: center; gap: 0.75rem;">
+                <span style="font-size: 1.5rem;">${r.icon}</span>
+                <div>
+                  <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${r.title}</h3>
+                  <p style="font-size: 0.75rem; color: var(--text-muted);">${r.desc}</p>
+                </div>
+              </div>
+              <strong style="color: var(--primary-gold); font-size: 0.95rem;">${r.pts} pts</strong>
             </div>
-            <span style="font-size: 0.7rem; font-weight: 800; background: var(--marron-light); color: var(--primary-gold); padding: 2px 8px; border-radius: 12px;">${c.segment}</span>
+            <button class="btn-secondary" style="width: 100%; color: var(--primary-gold); font-weight: 700; margin-top: 0.5rem;" onclick="deleteReward(${r.id})">
+              Supprimer la Récompense
+            </button>
           </div>
-          <div class="crm-card-metrics">
-            <div class="crm-metric-pill">
-              <span style="font-size: 0.7rem; color: var(--text-muted);">Points</span>
-              <strong style="font-size: 1rem; color: var(--primary-gold);">${c.points} pts</strong>
-            </div>
-            <div class="crm-metric-pill">
-              <span style="font-size: 0.7rem; color: var(--text-muted);">Visites</span>
-              <strong style="font-size: 1rem; color: var(--marron-dark);">${c.visits} visites</strong>
-            </div>
-            <div class="crm-metric-pill">
-              <span style="font-size: 0.7rem; color: var(--text-muted);">Dernier scan</span>
-              <strong style="font-size: 0.8rem; color: var(--text-main);">${c.lastVisit}</strong>
-            </div>
-          </div>
-          <button class="btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem; font-size: 0.8rem;" onclick="alert('Message WhatsApp envoyé à ${c.name}')">
-            📱 Envoyer un message WhatsApp
-          </button>
-        </div>
-      `).join('');
+        `).join('');
+      }
     }
   }
 
@@ -400,7 +483,7 @@ document.addEventListener('DOMContentLoaded', () => {
         labels: ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'],
         datasets: [{
           label: 'Scans QR',
-          data: [320, 450, 510, 680, 940, 1120, 880],
+          data: [0, 0, 0, 0, 0, 0, 0],
           borderColor: '#D97706',
           backgroundColor: 'rgba(245, 158, 11, 0.1)',
           fill: true,

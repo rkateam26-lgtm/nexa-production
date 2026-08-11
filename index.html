@@ -21,6 +21,9 @@
   <!-- Canvas Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
+  <!-- HTML5 Real Camera QR Code Scanner Engine -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
   <!-- Supabase Official JS Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -112,23 +115,23 @@
               <span class="points-label-clean">Votre Solde de Points</span>
               <div class="points-val-clean" id="user-points-val">0</div>
               <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom: 0.5rem;">
-                Objectif Dessert Offert : <strong id="user-progress-lbl" style="color:var(--primary-gold);">0% (200 pts)</strong>
+                Objectif Première Récompense : <strong id="user-progress-lbl" style="color:var(--primary-gold);">0%</strong>
               </p>
 
-              <!-- Main Action Scan Button -->
+              <!-- Main Action Camera Scan Button -->
               <button class="btn-scan-main" id="btn-trigger-scan">
-                <i data-lucide="qr-code"></i>
-                <span>Scanner ma Table (+10 Pts)</span>
+                <i data-lucide="camera"></i>
+                <span>📷 Scanner ma Table (Caméra)</span>
               </button>
 
-              <button style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-decoration: underline;" onclick="claimReward(1)">
+              <button style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-decoration: underline;" onclick="showPassModalFirst()">
                 Afficher mon Pass QR pour la caisse
               </button>
             </div>
 
             <!-- Available Rewards Title -->
             <div style="padding: 0 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-              <h2 style="font-size: 1rem; font-weight: 800; color: var(--marron-dark);">Récompenses Disponibles</h2>
+              <h2 style="font-size: 1rem; font-weight: 800; color: var(--marron-dark);">Récompenses du Restaurant</h2>
             </div>
 
             <!-- Simple Rewards Catalogue -->
@@ -219,7 +222,7 @@
       <aside class="dash-sidebar">
         <div>
           <div class="dash-brand">
-            <div class="dash-brand-name" id="dash-brand-name-el">LE SAVANE</div>
+            <div class="dash-brand-name" id="dash-brand-name-el">MON RESTAURANT</div>
             <div class="dash-brand-sub">Dashboard Production Nexa</div>
           </div>
 
@@ -267,11 +270,11 @@
           </div>
           <div style="display: flex; gap: 0.75rem;">
             <button class="btn-secondary" onclick="openMerchantAuthModal()">
-              🔑 Espace Gérant
+              🔑 Inscrire mon Restaurant
             </button>
-            <button class="btn-primary" id="btn-open-add-reward">
+            <button class="btn-primary" onclick="openAddRewardModal()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
               <i data-lucide="plus"></i>
-              <span>Créer une Récompense</span>
+              <span>✨ Créer une Récompense</span>
             </button>
           </div>
         </header>
@@ -283,20 +286,31 @@
             <div class="stats-grid">
               <div class="stat-card">
                 <span class="stat-title">Clients Enregistrés</span>
-                <span class="stat-value" id="stat-total-clients">1 248</span>
+                <span class="stat-value" id="stat-total-clients">0</span>
               </div>
               <div class="stat-card">
                 <span class="stat-title">Scans QR ce mois</span>
-                <span class="stat-value" id="stat-qr-scans">3 890</span>
+                <span class="stat-value" id="stat-qr-scans">0</span>
               </div>
               <div class="stat-card">
                 <span class="stat-title">Points Distribués</span>
-                <span class="stat-value" id="stat-pts-given" style="color: var(--primary-gold);">38 900</span>
+                <span class="stat-value" id="stat-pts-given" style="color: var(--primary-gold);">0</span>
               </div>
               <div class="stat-card">
                 <span class="stat-title">Récompenses Échangées</span>
-                <span class="stat-value" id="stat-rewards-redeemed">245</span>
+                <span class="stat-value" id="stat-rewards-redeemed">0</span>
               </div>
+            </div>
+
+            <!-- Quick Action Box to Create Rewards -->
+            <div style="background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">🎁 Vous n'avez pas encore de récompenses ?</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Ajoutez vos privilèges (boissons, desserts, réductions FCFA) pour motiver vos clients à scanner.</p>
+              </div>
+              <button class="btn-primary" onclick="openAddRewardModal()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+                ➕ Créer ma Première Récompense
+              </button>
             </div>
 
             <div class="data-table-container" style="padding: 1.25rem;">
@@ -305,11 +319,11 @@
             </div>
           </div>
 
-          <!-- Section 2: CRM Clients (Desktop Table + Mobile Cards Feed) -->
+          <!-- Section 2: CRM Clients -->
           <div class="dash-section" id="dash-sec-clients">
             <div class="data-table-container">
               
-              <!-- Desktop Table (Screen > 768px) -->
+              <!-- Desktop Table -->
               <div class="desktop-table-only">
                 <table class="nexa-table">
                   <thead>
@@ -328,24 +342,30 @@
                 </table>
               </div>
 
-              <!-- Native Mobile Cards (Screen <= 768px - 100% visible info!) -->
+              <!-- Native Mobile Cards -->
               <div class="mobile-cards-only" id="crm-mobile-cards-feed">
-                <!-- Rendered dynamically by app.js -->
+                <!-- Rendered dynamically -->
               </div>
 
             </div>
           </div>
 
-          <!-- Section 3: Rewards / Cadeaux (Desktop Table + Mobile Cards Feed) -->
+          <!-- Section 3: Rewards / Cadeaux -->
           <div class="dash-section" id="dash-sec-loyalty">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="font-size: 1.1rem; font-weight: 800;">Catalogue de Récompenses Configurées</h3>
+              <button class="btn-primary" onclick="openAddRewardModal()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+                ➕ Ajouter une Récompense
+              </button>
+            </div>
+
             <div class="data-table-container">
-              
-              <!-- Desktop Table -->
               <div class="desktop-table-only">
                 <table class="nexa-table">
                   <thead>
                     <tr>
                       <th>Icône</th>
+                      <th>Catégorie</th>
                       <th>Titre de la Récompense</th>
                       <th>Description</th>
                       <th>Points Requis</th>
@@ -358,27 +378,25 @@
                 </table>
               </div>
 
-              <!-- Native Mobile Cards -->
               <div class="mobile-cards-only" id="rewards-mobile-cards-feed">
-                <!-- Rendered dynamically by app.js -->
+                <!-- Rendered dynamically -->
               </div>
-
             </div>
           </div>
 
-          <!-- Section 4: QR Codes & Role Links & Printable Generator -->
+          <!-- Section 4: QR Codes & Printable Generator -->
           <div class="dash-section" id="dash-sec-qrcodes">
             <div class="data-table-container" style="padding: 1.5rem;">
-              <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Impresion PLV</h3>
+              <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Impression PLV</h3>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-                Copiez les liens directs ou générez les visuels de chevalets de table prêts à imprimer.
+                Générez le nombre exact de chevalets de table souhaité (de 1 à 100+ tables) avec impression PDF.
               </p>
 
               <!-- PRINTABLE PLV TENTS GENERATOR LINK -->
               <div style="padding: 1rem; background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 12px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                  <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">🖨️ Chevalets QR Code pour vos Tables (PDF Imprimable)</h4>
-                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Générez et imprimez les visuels A6 / 10x15cm pour les Tables #1 à #20.</p>
+                  <h4 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">🖨️ Générateur de Chevalets QR Code de Table (Illimité)</h4>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Sélectionnez 10, 20, 50 ou 100 tables et générez votre planche PDF imprimable en 1 clic.</p>
                 </div>
                 <a href="qr-generator.html" target="_blank" class="btn-primary" style="text-decoration: none; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
                   <i data-lucide="printer"></i>
@@ -401,14 +419,6 @@
                     <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark); word-break: break-all;" id="link-url-merchant">https://.../?role=merchant</div>
                   </div>
                   <button class="btn-secondary" onclick="copyRoleLink('merchant')">Copier</button>
-                </div>
-
-                <div style="padding: 0.85rem; background: var(--bg-subtle); border-radius: 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
-                  <div>
-                    <strong style="color: var(--marron-dark); font-size: 0.85rem;">👑 Lien Démo Créateur (Pitch Mode)</strong>
-                    <div style="font-family: monospace; font-size: 0.8rem; color: var(--marron-dark); word-break: break-all;" id="link-url-demo">https://.../?role=demo</div>
-                  </div>
-                  <button class="btn-primary" onclick="copyRoleLink('demo')">Copier</button>
                 </div>
               </div>
             </div>
@@ -437,7 +447,6 @@
 
         </div>
 
-        <!-- FIXED BOTTOM NAVIGATION DOCK FOR RESTAURATEUR ON MOBILE SMARTPHONES -->
         <nav class="dash-mobile-dock">
           <button class="dash-dock-tab active" data-section="overview">
             <i data-lucide="layout-dashboard"></i>
@@ -469,14 +478,89 @@
 
 
   <!-- ==========================================================================
-       MODALS DE PRODUCTION (CLIENT AUTH & RESTAURANT AUTH)
+       MODALS
        ========================================================================== -->
+
+  <!-- REAL CAMERA QR CODE SCANNER MODAL -->
+  <div class="scanner-modal" id="scanner-modal">
+    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 0.5rem;">
+      <h3 style="color: white; font-size: 1.1rem; margin: 0;">📷 Scanner le QR Code de votre Table</h3>
+      <button id="btn-close-scanner" style="color: white; font-size: 1.5rem; background: none; border: none; cursor: pointer;">✕</button>
+    </div>
+
+    <p style="color: #D6C8BC; font-size: 0.8rem; text-align: center; margin-bottom: 1rem;">Accordez l'accès à la caméra pour lire le QR Code sur votre table</p>
+
+    <!-- LIVE CAMERA STREAM CONTAINER -->
+    <div id="html5-qr-reader" style="width: 100%; max-width: 320px; border-radius: 16px; overflow: hidden; background: #000; margin: 0 auto 1.5rem auto;"></div>
+
+    <div style="text-align: center; margin-bottom: 1rem;">
+      <button class="btn-primary" id="btn-simulate-scan-ok" style="padding: 0.75rem 1.5rem; background: var(--gold-accent); color: #2A1D15; font-weight: 800;">
+        ⚡ Valider le Scan Table #4 (+10 Pts)
+      </button>
+    </div>
+  </div>
+
+  <!-- RICH REWARD CREATION MODAL FOR RESTAURANT MANAGER -->
+  <div class="nexa-modal-backdrop" id="modal-add-reward">
+    <div class="nexa-modal-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800;">✨ Créer une Récompense Personnalisée</h3>
+        <button onclick="closeAddRewardModal()" style="font-size: 1.2rem; background: none; border: none; cursor: pointer;">✕</button>
+      </div>
+
+      <form id="form-add-reward">
+        <div class="form-group">
+          <label>Catégorie de Récompense</label>
+          <select id="reward-category-input">
+            <option value="Boisson">🥤 Boisson / Rafraîchissement</option>
+            <option value="Dessert">🍰 Dessert / Gourmandise</option>
+            <option value="Plat">🥩 Plat / Entrée Offerte</option>
+            <option value="Réduction">🏷️ Remise % ou FCFA sur l'addition</option>
+            <option value="Privilège">⭐ Privilège VIP / Café offert</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Icône Représentative</label>
+          <select id="reward-icon-input">
+            <option value="☕">☕ Café / Thé</option>
+            <option value="🥤">🥤 Boisson / Soda</option>
+            <option value="🍷">🍷 Verre de vin / Cocktail</option>
+            <option value="🍰">🍰 Dessert / Gâteau</option>
+            <option value="🥩">🥩 Plat / Viande</option>
+            <option value="🍕">🍕 Pizza / Snack</option>
+            <option value="🏷️">🏷️ Remise / Réduction</option>
+            <option value="🎁">🎁 Cadeau Surprise</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Titre de la Récompense</label>
+          <input type="text" id="reward-title-input" placeholder="ex: Café gourmand offert ou -10% sur l'addition" required>
+        </div>
+
+        <div class="form-group">
+          <label>Points Requis pour Échanger</label>
+          <input type="number" id="reward-pts-input" placeholder="50" min="10" step="5" required>
+        </div>
+
+        <div class="form-group">
+          <label>Description & Conditions</label>
+          <input type="text" id="reward-desc-input" placeholder="ex: Valable à partir de 50 points sur présentation en caisse." required>
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+          ➕ Publier la Récompense pour mes Clients
+        </button>
+      </form>
+    </div>
+  </div>
 
   <!-- MODAL INSCRIPTION CLIENT WHATSAPP -->
   <div class="nexa-modal-backdrop" id="modal-client-auth">
     <div class="nexa-modal-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 800;">📲 Créer / Connexion Compte Client</h3>
+        <h3 style="font-size: 1.1rem; font-weight: 800;">📲 Inscription / Connexion Client</h3>
         <button onclick="closeClientAuthModal()" style="font-size: 1.2rem;">✕</button>
       </div>
       <form id="form-client-auth">
@@ -495,11 +579,11 @@
     </div>
   </div>
 
-  <!-- MODAL CONNEXION / INSCRIPTION RESTAURATEUR -->
+  <!-- MODAL CONNEXION RESTAURATEUR -->
   <div class="nexa-modal-backdrop" id="modal-merchant-auth">
     <div class="nexa-modal-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 800;">🔑 Espace Restaurateur Supabase</h3>
+        <h3 style="font-size: 1.1rem; font-weight: 800;">🔑 Espace Gérant Restaurant</h3>
         <button onclick="closeMerchantAuthModal()" style="font-size: 1.2rem;">✕</button>
       </div>
       <form id="form-merchant-auth">
@@ -529,21 +613,6 @@
     </div>
   </div>
 
-  <div class="scanner-modal" id="scanner-modal">
-    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-      <h3 style="color: white; font-size: 1.1rem;">Scanner le QR Code Table</h3>
-      <button id="btn-close-scanner" style="color: white; font-size: 1.5rem;">✕</button>
-    </div>
-
-    <div class="scanner-target"></div>
-
-    <div style="text-align: center; margin-bottom: 2rem;">
-      <button class="btn-primary" id="btn-simulate-scan-ok" style="padding: 0.75rem 1.5rem; background: var(--gold-accent); color: #2A1D15; font-weight: 800;">
-        ⚡ Valider le Scan Table #4 (+10 Pts)
-      </button>
-    </div>
-  </div>
-
   <div class="nexa-modal-backdrop" id="redemption-pass-modal">
     <div class="nexa-modal-card" style="text-align: center;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -556,32 +625,6 @@
 
       <div id="pass-qr-box" style="margin-bottom: 1rem;"></div>
       <p style="font-size: 0.75rem; color: var(--text-muted);">Valable 15 minutes • Usage unique</p>
-    </div>
-  </div>
-
-  <div class="nexa-modal-backdrop" id="modal-add-reward">
-    <div class="nexa-modal-card">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 800;">Créer une Récompense</h3>
-        <button id="btn-close-add-reward" style="font-size: 1.2rem;">✕</button>
-      </div>
-      <form id="form-add-reward">
-        <div class="form-group">
-          <label>Titre de la récompense</label>
-          <input type="text" id="reward-title-input" placeholder="ex: Verre de vin offert" required>
-        </div>
-        <div class="form-group">
-          <label>Points requis</label>
-          <input type="number" id="reward-pts-input" placeholder="150" required>
-        </div>
-        <div class="form-group">
-          <label>Description courte</label>
-          <input type="text" id="reward-desc-input" placeholder="Au choix sur la carte" required>
-        </div>
-        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
-          Ajouter au Programme
-        </button>
-      </form>
     </div>
   </div>
 
