@@ -1,35 +1,37 @@
 /* ==========================================================================
-   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE REAL-TIME SYNC)
+   NEXA PRODUCTION - MULTI-TENANT SAAS ENGINE (CLOUD SYNC & ISOLATION)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
 
-  // Unregister Old Service Worker to Clear Cache
+  // Unregister SW
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) registration.unregister();
-    }).catch(err => console.log('SW unregister:', err));
+    navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(e => {});
   }
 
-  // Parse URL Parameters
+  // Parse URL Parameters for Multi-Tenant Isolation
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = urlParams.get('role') || urlParams.get('mode');
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
 
+  // Multi-Tenant Restaurant Name Sync
+  let currentRestoName = 'Le Savane';
   if (urlRestoName) {
-    localStorage.setItem('nexa_resto_name', decodeURIComponent(urlRestoName));
+    currentRestoName = decodeURIComponent(urlRestoName);
+    localStorage.setItem('nexa_resto_name', currentRestoName);
+  } else if (localStorage.getItem('nexa_resto_name')) {
+    currentRestoName = localStorage.getItem('nexa_resto_name');
   }
 
   const state = {
     isMerchantLoggedIn: localStorage.getItem('nexa_merchant_logged') === 'true',
     restaurant: {
-      id: 'savane-prod-001',
-      name: localStorage.getItem('nexa_resto_name') || 'Le Savane',
-      type: localStorage.getItem('nexa_resto_type') || '★ 4.9 • Bistro & Grillades',
-      pointsPerScan: parseInt(localStorage.getItem('nexa_resto_scan_pts') || '20', 10),
-      city: 'Ouagadougou',
-      currency: localStorage.getItem('nexa_resto_currency') || 'FCFA'
+      id: currentRestoName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+      name: currentRestoName,
+      type: localStorage.getItem(`nexa_type_${currentRestoName}`) || '★ 4.9 • Bistro & Grillades',
+      pointsPerScan: parseInt(localStorage.getItem(`nexa_pts_${currentRestoName}`) || '20', 10),
+      currency: localStorage.getItem(`nexa_curr_${currentRestoName}`) || 'FCFA'
     },
     clientSession: {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
@@ -38,9 +40,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       lastScanTime: parseInt(localStorage.getItem('nexa_last_scan_time') || '0', 10),
       history: []
     },
-    rewards: JSON.parse(localStorage.getItem('nexa_prod_rewards') || '[]'),
-    notifications: [],
-    clientsList: JSON.parse(localStorage.getItem('nexa_prod_clients') || '[]'),
+    rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${currentRestoName}`) || '[]'),
+    clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${currentRestoName}`) || '[]'),
     stats: {
       totalClients: 0,
       qrScansMonth: parseInt(localStorage.getItem('nexa_stat_scans') || '0', 10),
@@ -53,38 +54,42 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // Load Cloud Data from Supabase PostgreSQL Database on Startup!
-  if (window.nexaBackend) {
-    try {
-      const cloudRewards = await window.nexaBackend.fetchRewards();
-      if (cloudRewards && cloudRewards.length > 0) {
-        state.rewards = cloudRewards.map(r => ({
-          id: r.id,
-          title: r.title,
-          pts: r.points_required,
-          desc: r.description,
-          icon: r.icon || '🎁'
-        }));
-        localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
-      }
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (HYBRID CLOUD + MULTI-TENANT ISOLATION)
+  async function syncCloudData() {
+    if (window.nexaBackend) {
+      try {
+        const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
+        if (cloudRewards && cloudRewards.length > 0) {
+          state.rewards = cloudRewards.map(r => ({
+            id: r.id,
+            title: r.title,
+            pts: r.points_required,
+            desc: r.description,
+            icon: r.icon || '🎁'
+          }));
+          localStorage.setItem(`nexa_rewards_${state.restaurant.name}`, JSON.stringify(state.rewards));
+        }
 
-      const cloudClients = await window.nexaBackend.fetchClients();
-      if (cloudClients && cloudClients.length > 0) {
-        state.clientsList = cloudClients.map(c => ({
-          id: c.id,
-          name: c.full_name || 'Client Nexa',
-          phone: c.whatsapp_phone,
-          points: c.points_balance || 20,
-          visits: c.visits_count || 1,
-          lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
-          segment: 'Fidèle'
-        }));
-        state.stats.totalClients = state.clientsList.length;
-        localStorage.setItem('nexa_prod_clients', JSON.stringify(state.clientsList));
+        const cloudClients = await window.nexaBackend.fetchClientsByResto();
+        if (cloudClients && cloudClients.length > 0) {
+          state.clientsList = cloudClients.map(c => ({
+            id: c.id,
+            name: c.full_name || 'Client Nexa',
+            phone: c.whatsapp_phone,
+            points: c.points_balance || state.restaurant.pointsPerScan,
+            visits: c.visits_count || 1,
+            lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
+            segment: 'Fidèle'
+          }));
+          state.stats.totalClients = state.clientsList.length;
+          localStorage.setItem(`nexa_clients_${state.restaurant.name}`, JSON.stringify(state.clientsList));
+        }
+      } catch (err) {
+        console.log('Cloud sync info:', err);
       }
-    } catch (err) {
-      console.log('Cloud sync info:', err);
     }
+    renderClientUI();
+    renderMerchantUI();
   }
 
   /* ==========================================================================
@@ -108,7 +113,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     viewportContainer.className = 'main-viewport viewport-dual';
   }
 
-  // Update Shareable Links
+  // Update Links
   const baseHost = window.location.origin + window.location.pathname;
   document.getElementById('link-url-client').textContent = `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`;
   document.getElementById('link-url-merchant').textContent = `${baseHost}?role=merchant`;
@@ -147,7 +152,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (sidebarAuthBox) {
         sidebarAuthBox.innerHTML = `
           <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
-            🔑 Inscrire mon Restaurant
+            🔑 Inscrire / Connecter mon Restaurant
           </button>
         `;
       }
@@ -181,29 +186,28 @@ document.addEventListener('DOMContentLoaded', async () => {
       state.isMerchantLoggedIn = true;
 
       localStorage.setItem('nexa_resto_name', name);
-      localStorage.setItem('nexa_resto_type', type);
-      localStorage.setItem('nexa_resto_scan_pts', scanPts);
-      localStorage.setItem('nexa_resto_currency', currency);
+      localStorage.setItem(`nexa_type_${name}`, type);
+      localStorage.setItem(`nexa_pts_${name}`, scanPts);
+      localStorage.setItem(`nexa_curr_${name}`, currency);
       localStorage.setItem('nexa_merchant_logged', 'true');
 
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.saveRestaurant(name, type, email, pwd, scanPts, currency);
+          await window.nexaBackend.registerOrLoginMerchant(name, type, email, pwd, scanPts, currency);
         } catch (err) {
-          console.log('Local merchant saved:', err);
+          console.log('Merchant save info:', err);
         }
       }
 
       closeMerchantAuthModal();
       updateMerchantAuthState();
-      renderMerchantUI();
-      renderClientUI();
-      showToast('🎉 Inscription Validée !', `${name} est prêt (+${scanPts} pts par scan).`);
+      await syncCloudData();
+      showToast('🎉 Restaurant Connecté !', `${name} est actif (+${scanPts} pts par scan).`);
     });
   }
 
   /* ==========================================================================
-     2. RICH REWARD CREATION FOR LOGGED-IN RESTAURANT MANAGER
+     2. REWARD CREATION FOR LOGGED-IN RESTAURANT MANAGER
      ========================================================================== */
   const modalAddReward = document.getElementById('modal-add-reward');
   const formAddReward = document.getElementById('form-add-reward');
@@ -233,36 +237,35 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const newReward = { id: Date.now(), category, icon, title, pts, desc };
       state.rewards.push(newReward);
-      localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
+      localStorage.setItem(`nexa_rewards_${state.restaurant.name}`, JSON.stringify(state.rewards));
 
-      // Save to Supabase Cloud PostgreSQL!
+      // Save to Supabase Cloud PostgreSQL Database!
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.createReward(title, pts, desc, icon, category);
+          await window.nexaBackend.createCloudReward(title, pts, desc, icon, category);
         } catch (err) {
-          console.log('Local reward saved:', err);
+          console.log('Reward save info:', err);
         }
       }
 
       closeAddRewardModal();
       formAddReward.reset();
 
-      renderClientUI();
-      renderMerchantUI();
-      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est visible pour vos clients.`);
+      await syncCloudData();
+      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est désormais en ligne pour vos clients.`);
     });
   }
 
   window.deleteReward = function(rewardId) {
     state.rewards = state.rewards.filter(r => r.id !== rewardId);
-    localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
+    localStorage.setItem(`nexa_rewards_${state.restaurant.name}`, JSON.stringify(state.rewards));
     renderClientUI();
     renderMerchantUI();
     showToast('🗑️ Récompense Supprimée', 'Catalogue mis à jour.');
   };
 
   /* ==========================================================================
-     3. CLIENT AUTH & LIVE CRM REGISTRATION
+     3. CLIENT AUTHENTICATION & CRM REGISTRATION
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -283,7 +286,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      // Append Client to CRM List
+      // Append Client to CRM List & Cloud PostgreSQL
       const existing = state.clientsList.find(c => c.phone === phone);
       if (!existing) {
         state.clientsList.unshift({
@@ -296,26 +299,25 @@ document.addEventListener('DOMContentLoaded', async () => {
           segment: 'Nouveau'
         });
         state.stats.totalClients = state.clientsList.length;
-        localStorage.setItem('nexa_prod_clients', JSON.stringify(state.clientsList));
+        localStorage.setItem(`nexa_clients_${state.restaurant.name}`, JSON.stringify(state.clientsList));
       }
 
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.recordScan(tableParam, phone, name, state.restaurant.pointsPerScan);
+          await window.nexaBackend.recordScanCloud(tableParam, phone, name, state.restaurant.pointsPerScan);
         } catch (err) {
-          console.log('Client saved:', err);
+          console.log('Client scan cloud info:', err);
         }
       }
 
       closeClientAuthModal();
-      renderClientUI();
-      renderMerchantUI();
-      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} !`);
+      await syncCloudData();
+      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} chez ${state.restaurant.name} !`);
     });
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC (CUSTOM SCAN POINTS)
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT CUSTOM POINTS)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -379,7 +381,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    const scanEarned = state.restaurant.pointsPerScan || 20;
+    // ALWAYS USE THE EXACT CUSTOM SCAN POINTS DEFINED BY THIS SPECIFIC RESTAURANT MANAGER!
+    const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
     state.clientSession.lastScanTime = now;
@@ -391,7 +394,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
     localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
 
-    // Save Client & Scan in CRM
+    // Update Client in CRM
     const existing = state.clientsList.find(c => c.phone === state.clientSession.whatsapp);
     if (existing) {
       existing.points = state.clientSession.points;
@@ -409,11 +412,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
     }
     state.stats.totalClients = state.clientsList.length;
-    localStorage.setItem('nexa_prod_clients', JSON.stringify(state.clientsList));
+    localStorage.setItem(`nexa_clients_${state.restaurant.name}`, JSON.stringify(state.clientsList));
 
     if (window.nexaBackend) {
       try {
-        await window.nexaBackend.recordScan(tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
+        await window.nexaBackend.recordScanCloud(tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
       } catch (err) {
         console.log('Local scan saved:', err);
       }
@@ -425,8 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
     }
 
-    renderClientUI();
-    renderMerchantUI();
+    await syncCloudData();
     showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}).`);
   }
 
@@ -454,6 +456,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('mobile-resto-type').textContent = state.restaurant.type;
     document.getElementById('user-points-val').textContent = state.clientSession.points;
     document.getElementById('user-scan-pts-badge').textContent = `+${state.restaurant.pointsPerScan} PTS`;
+
+    const btnScanLabel = document.getElementById('btn-scan-label');
+    if (btnScanLabel) btnScanLabel.textContent = `📷 Scanner ma Table (+${state.restaurant.pointsPerScan} Pts)`;
 
     if (state.clientSession.whatsapp) {
       if (clientLoginBanner) clientLoginBanner.style.display = 'none';
@@ -694,6 +699,5 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   updateMerchantAuthState();
-  renderClientUI();
-  renderMerchantUI();
+  await syncCloudData();
 });
