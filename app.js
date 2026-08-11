@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE & ANTI-CHEAT INTEGRATED)
+   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE & REAL-TIME SYNC)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
 
-  // Sync Restaurant Name from URL if scanned from physical QR Code!
   if (urlRestoName) {
     localStorage.setItem('nexa_resto_name', decodeURIComponent(urlRestoName));
   }
@@ -30,9 +29,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const initialClients = savedClients ? JSON.parse(savedClients) : [];
 
   const state = {
+    isMerchantLoggedIn: localStorage.getItem('nexa_merchant_logged') === 'true',
     restaurant: {
       id: 'savane-prod-001',
-      name: localStorage.getItem('nexa_resto_name') || 'Mon Restaurant',
+      name: localStorage.getItem('nexa_resto_name') || 'Le Savane',
+      type: localStorage.getItem('nexa_resto_type') || '★ 4.9 • Bistro & Grillades',
       city: 'Ouagadougou',
       currency: localStorage.getItem('nexa_resto_currency') || 'FCFA'
     },
@@ -55,6 +56,20 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (window.lucide) lucide.createIcons();
+
+  // Listen to Storage Changes for Live Sync Across Tabs/Devices!
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'nexa_prod_rewards') {
+      state.rewards = JSON.parse(e.newValue || '[]');
+      renderClientUI();
+      renderMerchantUI();
+    }
+    if (e.key === 'nexa_prod_clients') {
+      state.clientsList = JSON.parse(e.newValue || '[]');
+      state.stats.totalClients = state.clientsList.length;
+      renderMerchantUI();
+    }
+  });
 
   /* ==========================================================================
      0. SMART ROUTER (ROLE & TABLE)
@@ -88,113 +103,99 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* ==========================================================================
-     1. ANTI-CHEAT SCAN RULES & TRANSACTION (+10 PTS)
+     1. MERCHANT AUTH & BUTTON SWAPPER LOGIC
      ========================================================================== */
-  const scannerModal = document.getElementById('scanner-modal');
-  const btnTriggerScan = document.getElementById('btn-trigger-scan');
-  const btnCloseScanner = document.getElementById('btn-close-scanner');
-  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
-  let html5QrCode = null;
+  const modalMerchantAuth = document.getElementById('modal-merchant-auth');
+  const formMerchantAuth = document.getElementById('form-merchant-auth');
 
-  async function startRealCameraScanner() {
-    if (!state.clientSession.whatsapp) {
-      openClientAuthModal();
-      return;
-    }
+  window.openMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.add('active');
+  window.closeMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.remove('active');
 
-    // Anti-cheat Cooldown check (2 hours between table scans)
-    const now = Date.now();
-    const twoHoursInMs = 2 * 60 * 60 * 1000;
-    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
-      const remainingMinutes = Math.ceil((twoHoursInMs - (now - state.clientSession.lastScanTime)) / 60000);
-      alert(`⚠️ Anti-Triche NEXA :\nVous avez déjà scanné une table aujourd'hui !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
-      return;
-    }
+  function updateMerchantAuthState() {
+    const btnInscrire = document.getElementById('btn-header-inscrire');
+    const btnAddReward = document.getElementById('btn-header-add-reward');
+    const sidebarAuthBox = document.getElementById('sidebar-auth-button-box');
+    const overviewCreateBanner = document.getElementById('overview-create-reward-banner');
 
-    scannerModal.classList.add('active');
-
-    if (window.Html5Qrcode && !html5QrCode) {
-      html5QrCode = new Html5Qrcode("html5-qr-reader");
-    }
-
-    if (html5QrCode) {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (decodedText) => {
-            stopCameraScanner();
-            triggerQRScanSuccess(decodedText);
-          },
-          (err) => {}
-        );
-      } catch (err) {
-        console.log('Camera access fallback:', err);
+    if (state.isMerchantLoggedIn) {
+      if (btnInscrire) btnInscrire.style.display = 'none';
+      if (btnAddReward) btnAddReward.style.display = 'inline-flex';
+      if (sidebarAuthBox) {
+        sidebarAuthBox.innerHTML = `
+          <div style="color: #10B981; font-weight: 800; font-size: 0.8rem; margin-bottom: 0.3rem;">✓ Restaurant Inscrit</div>
+          <button class="btn-secondary" onclick="logoutMerchant()" style="width: 100%; font-size: 0.7rem; padding: 0.3rem;">Deconnexion</button>
+        `;
       }
-    }
-  }
-
-  function stopCameraScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-      html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
-    }
-    scannerModal.classList.remove('active');
-  }
-
-  if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
-  if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
-
-  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
-    // Anti-cheat Check
-    const now = Date.now();
-    const twoHoursInMs = 2 * 60 * 60 * 1000;
-    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
-      alert(`⚠️ Anti-Triche NEXA : Vous avez déjà scanné votre table pour ce repas !`);
-      stopCameraScanner();
-      return;
-    }
-
-    state.clientSession.points += 10;
-    state.clientSession.lastScanTime = now;
-    state.stats.qrScansMonth += 1;
-    state.stats.pointsGiven += 10;
-
-    localStorage.setItem('nexa_client_points', state.clientSession.points);
-    localStorage.setItem('nexa_last_scan_time', now);
-    localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
-    localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
-
-    // Save to Supabase PostgreSQL Cloud
-    if (window.nexaBackend) {
-      try {
-        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
-      } catch (err) {
-        console.log('Local scan saved:', err);
+      if (overviewCreateBanner) overviewCreateBanner.style.display = 'flex';
+    } else {
+      if (btnInscrire) btnInscrire.style.display = 'inline-flex';
+      if (btnAddReward) btnAddReward.style.display = 'none';
+      if (sidebarAuthBox) {
+        sidebarAuthBox.innerHTML = `
+          <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+            🔑 Inscrire mon Restaurant
+          </button>
+        `;
       }
+      if (overviewCreateBanner) overviewCreateBanner.style.display = 'none';
     }
-
-    stopCameraScanner();
-
-    if (window.confetti) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
-    }
-
-    renderClientUI();
-    renderMerchantUI();
-    showToast('✨ +10 Points Crédités !', `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}).`);
   }
 
-  if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
-  const btnFastScan = document.getElementById('btn-fast-scan');
-  if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+  window.logoutMerchant = function() {
+    state.isMerchantLoggedIn = false;
+    localStorage.setItem('nexa_merchant_logged', 'false');
+    updateMerchantAuthState();
+    showToast('🔒 Déconnexion', 'Vous êtes déconnecté.');
+  };
+
+  if (formMerchantAuth) {
+    formMerchantAuth.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('auth-resto-name').value.trim();
+      const type = document.getElementById('auth-resto-type').value;
+      const email = document.getElementById('auth-resto-email').value.trim();
+      const pwd = document.getElementById('auth-resto-pwd').value.trim();
+      const currency = document.getElementById('auth-resto-currency').value;
+
+      if (!name) return;
+
+      state.restaurant.name = name;
+      state.restaurant.type = type;
+      state.restaurant.currency = currency;
+      state.isMerchantLoggedIn = true;
+
+      localStorage.setItem('nexa_resto_name', name);
+      localStorage.setItem('nexa_resto_type', type);
+      localStorage.setItem('nexa_resto_currency', currency);
+      localStorage.setItem('nexa_merchant_logged', 'true');
+
+      if (window.nexaBackend) {
+        try {
+          await window.nexaBackend.loginMerchant(email, pwd);
+        } catch (err) {
+          console.log('Local merchant saved:', err);
+        }
+      }
+
+      closeMerchantAuthModal();
+      updateMerchantAuthState();
+      renderMerchantUI();
+      renderClientUI();
+      showToast('🎉 Inscription Validée !', `${name} est configuré.`);
+    });
+  }
 
   /* ==========================================================================
-     2. RICH REWARD CREATION FOR RESTAURANT MANAGER
+     2. RICH REWARD CREATION FOR LOGGED-IN RESTAURANT MANAGER
      ========================================================================== */
   const modalAddReward = document.getElementById('modal-add-reward');
   const formAddReward = document.getElementById('form-add-reward');
 
   window.openAddRewardModal = function() {
+    if (!state.isMerchantLoggedIn) {
+      openMerchantAuthModal();
+      return;
+    }
     if (modalAddReward) modalAddReward.classList.add('active');
   };
 
@@ -222,7 +223,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderClientUI();
       renderMerchantUI();
-      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est désormais visible pour tous vos clients.`);
+      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est visible pour tous vos clients.`);
     });
   }
 
@@ -235,7 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   /* ==========================================================================
-     3. CLIENT & MERCHANT AUTH MODALS
+     3. CLIENT AUTH & LIVE CRM REGISTRATION
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -256,42 +257,149 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
+      // Append Client to Merchant's CRM List!
+      const existing = state.clientsList.find(c => c.phone === phone);
+      if (!existing) {
+        state.clientsList.unshift({
+          id: Date.now(),
+          name,
+          phone,
+          points: 10,
+          visits: 1,
+          lastVisit: 'À l\'instant (Table #' + tableParam + ')',
+          segment: 'Nouveau'
+        });
+        state.stats.totalClients = state.clientsList.length;
+        localStorage.setItem('nexa_prod_clients', JSON.stringify(state.clientsList));
+      }
+
       closeClientAuthModal();
       renderClientUI();
+      renderMerchantUI();
       showToast('🎉 Compte Client Actif !', `Bienvenue ${name} !`);
     });
   }
 
-  const modalMerchantAuth = document.getElementById('modal-merchant-auth');
-  const formMerchantAuth = document.getElementById('form-merchant-auth');
+  /* ==========================================================================
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC
+     ========================================================================== */
+  const scannerModal = document.getElementById('scanner-modal');
+  const btnTriggerScan = document.getElementById('btn-trigger-scan');
+  const btnCloseScanner = document.getElementById('btn-close-scanner');
+  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
+  let html5QrCode = null;
 
-  window.openMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.add('active');
-  window.closeMerchantAuthModal = () => modalMerchantAuth && modalMerchantAuth.classList.remove('active');
+  async function startRealCameraScanner() {
+    if (!state.clientSession.whatsapp) {
+      openClientAuthModal();
+      return;
+    }
 
-  if (formMerchantAuth) {
-    formMerchantAuth.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const name = document.getElementById('auth-resto-name').value.trim();
-      const email = document.getElementById('auth-resto-email').value.trim();
-      const pwd = document.getElementById('auth-resto-pwd').value.trim();
-      const currency = document.getElementById('auth-resto-currency').value;
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
+      const remainingMinutes = Math.ceil((twoHoursInMs - (now - state.clientSession.lastScanTime)) / 60000);
+      alert(`⚠️ Anti-Triche NEXA :\nVous avez déjà scanné une table aujourd'hui !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
+      return;
+    }
 
-      if (!name) return;
+    scannerModal.classList.add('active');
 
-      state.restaurant.name = name;
-      state.restaurant.currency = currency;
-      localStorage.setItem('nexa_resto_name', name);
-      localStorage.setItem('nexa_resto_currency', currency);
+    if (window.Html5Qrcode && !html5QrCode) {
+      html5QrCode = new Html5Qrcode("html5-qr-reader");
+    }
 
-      closeMerchantAuthModal();
-      renderMerchantUI();
-      renderClientUI();
-      showToast('🏢 Restaurant Connecté !', `${name} est prêt pour la production.`);
-    });
+    if (html5QrCode) {
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          (decodedText) => {
+            stopCameraScanner();
+            triggerQRScanSuccess(decodedText);
+          },
+          (err) => {}
+        );
+      } catch (err) {
+        console.log('Camera fallback:', err);
+      }
+    }
   }
 
+  function stopCameraScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
+    }
+    scannerModal.classList.remove('active');
+  }
+
+  if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
+  if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
+
+  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
+      alert(`⚠️ Anti-Triche NEXA : Vous avez déjà scanné votre table pour ce repas !`);
+      stopCameraScanner();
+      return;
+    }
+
+    state.clientSession.points += 10;
+    state.clientSession.lastScanTime = now;
+    state.stats.qrScansMonth += 1;
+    state.stats.pointsGiven += 10;
+
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
+    localStorage.setItem('nexa_last_scan_time', now);
+    localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
+    localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
+
+    // Save Client & Scan in CRM
+    const existing = state.clientsList.find(c => c.phone === state.clientSession.whatsapp);
+    if (existing) {
+      existing.points = state.clientSession.points;
+      existing.visits += 1;
+      existing.lastVisit = 'À l\'instant (Table #' + tableParam + ')';
+    } else if (state.clientSession.whatsapp) {
+      state.clientsList.unshift({
+        id: Date.now(),
+        name: state.clientSession.name || 'Client Table #' + tableParam,
+        phone: state.clientSession.whatsapp,
+        points: state.clientSession.points,
+        visits: 1,
+        lastVisit: 'À l\'instant (Table #' + tableParam + ')',
+        segment: 'Nouveau'
+      });
+    }
+    state.stats.totalClients = state.clientsList.length;
+    localStorage.setItem('nexa_prod_clients', JSON.stringify(state.clientsList));
+
+    if (window.nexaBackend) {
+      try {
+        await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
+      } catch (err) {
+        console.log('Local scan saved:', err);
+      }
+    }
+
+    stopCameraScanner();
+
+    if (window.confetti) {
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
+    }
+
+    renderClientUI();
+    renderMerchantUI();
+    showToast('✨ +10 Points Crédités !', `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}).`);
+  }
+
+  if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+  const btnFastScan = document.getElementById('btn-fast-scan');
+  if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+
   /* ==========================================================================
-     4. RENDERERS & NAVIGATION
+     5. RENDERERS
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -307,6 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderClientUI() {
     document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
+    document.getElementById('mobile-resto-type').textContent = state.restaurant.type;
     document.getElementById('user-points-val').textContent = state.clientSession.points;
 
     if (state.clientSession.whatsapp) {
@@ -410,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderMerchantUI() {
     document.getElementById('dash-brand-name-el').textContent = state.restaurant.name.toUpperCase();
+    document.getElementById('dash-brand-sub-el').textContent = state.restaurant.type;
     document.getElementById('stat-total-clients').textContent = state.stats.totalClients.toLocaleString();
     document.getElementById('stat-qr-scans').textContent = state.stats.qrScansMonth.toLocaleString();
     document.getElementById('stat-pts-given').textContent = state.stats.pointsGiven.toLocaleString();
@@ -510,6 +620,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  updateMerchantAuthState();
   renderClientUI();
   renderMerchantUI();
 });

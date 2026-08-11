@@ -86,10 +86,10 @@
           <!-- Clean Restaurant Header -->
           <div class="restaurant-hero-clean">
             <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <img src="./assets/savane_dish.jpg" alt="Le Savane" class="restaurant-logo-clean">
+              <img src="./assets/savane_dish.jpg" alt="Logo" class="restaurant-logo-clean">
               <div class="restaurant-title-clean">
                 <h1 id="mobile-resto-name">Le Savane</h1>
-                <p>★ 4.9 • Bistro & Grill Raffiné</p>
+                <p id="mobile-resto-type">★ 4.9 • Bistro & Grillades</p>
               </div>
             </div>
             <span style="font-size:0.75rem; background:var(--marron-light); padding:0.25rem 0.6rem; border-radius:20px; font-weight:700; color:var(--marron-dark);" id="mobile-table-badge">
@@ -223,7 +223,7 @@
         <div>
           <div class="dash-brand">
             <div class="dash-brand-name" id="dash-brand-name-el">MON RESTAURANT</div>
-            <div class="dash-brand-sub">Dashboard Production Nexa</div>
+            <div class="dash-brand-sub" id="dash-brand-sub-el">Dashboard Production Nexa</div>
           </div>
 
           <div class="dash-menu">
@@ -254,9 +254,12 @@
           <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.4rem;">
             Base de Données : <strong style="color:#10B981;">● Supabase Cloud Live</strong>
           </div>
-          <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15;">
-            🔑 Connexion / Inscription Restaurant
-          </button>
+          <!-- DYNAMIC ACTION BUTTON (INSCRIRE VS CONNECTÉ) -->
+          <div id="sidebar-auth-button-box">
+            <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15;">
+              🔑 Inscrire mon Restaurant
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -268,11 +271,13 @@
             <h2 style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800;" id="dash-title">Vue d'ensemble</h2>
             <p style="font-size: 0.8rem; color: var(--text-muted);">Suivi en temps réel de votre programme de fidélité sur Supabase Cloud</p>
           </div>
-          <div style="display: flex; gap: 0.75rem;">
-            <button class="btn-secondary" onclick="openMerchantAuthModal()">
+
+          <!-- DYNAMIC HEADER BUTTONS (SWAPS INSCRIRE <-> CRÉER RÉCOMPENSE) -->
+          <div style="display: flex; gap: 0.75rem;" id="header-action-buttons">
+            <button class="btn-secondary" id="btn-header-inscrire" onclick="openMerchantAuthModal()">
               🔑 Inscrire mon Restaurant
             </button>
-            <button class="btn-primary" onclick="openAddRewardModal()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+            <button class="btn-primary" id="btn-header-add-reward" onclick="openAddRewardModal()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800; display: none;">
               <i data-lucide="plus"></i>
               <span>✨ Créer une Récompense</span>
             </button>
@@ -303,7 +308,7 @@
             </div>
 
             <!-- Quick Action Box to Create Rewards -->
-            <div style="background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
+            <div id="overview-create-reward-banner" style="background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
               <div>
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">🎁 Vous n'avez pas encore de récompenses ?</h3>
                 <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Ajoutez vos privilèges (boissons, desserts, réductions FCFA) pour motiver vos clients à scanner.</p>
@@ -579,17 +584,27 @@
     </div>
   </div>
 
-  <!-- MODAL CONNEXION RESTAURATEUR -->
+  <!-- MODAL CONNEXION & CONFIGURATION RESTAURATEUR -->
   <div class="nexa-modal-backdrop" id="modal-merchant-auth">
     <div class="nexa-modal-card">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h3 style="font-size: 1.1rem; font-weight: 800;">🔑 Espace Gérant Restaurant</h3>
+        <h3 style="font-size: 1.1rem; font-weight: 800;">🔑 Inscription / Connexion Restaurant</h3>
         <button onclick="closeMerchantAuthModal()" style="font-size: 1.2rem;">✕</button>
       </div>
       <form id="form-merchant-auth">
         <div class="form-group">
           <label>Nom de l'Établissement</label>
           <input type="text" id="auth-resto-name" placeholder="ex: Le Savane" required>
+        </div>
+        <div class="form-group">
+          <label>Spécialité & Genre d'Établissement</label>
+          <select id="auth-resto-type">
+            <option value="Bistro & Grillades">★ 4.9 • Bistro & Grillades</option>
+            <option value="Maquis & Spécialités Locales">★ 4.8 • Maquis & Spécialités Locales</option>
+            <option value="Pizzeria & Fast Food">★ 4.7 • Pizzeria & Fast Food</option>
+            <option value="Salon de Thé & Pâtisserie">★ 4.9 • Salon de Thé & Pâtisserie</option>
+            <option value="Restaurant Gastronomique">★ 5.0 • Restaurant Gastronomique</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Email du Gérant</label>
@@ -607,7 +622,7 @@
           </select>
         </div>
         <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
-          🚀 Enregistrer mon Restaurant sur le Cloud
+          🚀 Valider mon Inscription Restaurant
         </button>
       </form>
     </div>
