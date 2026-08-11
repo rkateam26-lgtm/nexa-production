@@ -467,24 +467,45 @@
             </div>
           </div>
 
-          <!-- Section 5: Notifications -->
+          <!-- Section 6: Notifications & Preuves d'Échanges -->
           <div class="dash-section" id="dash-sec-notifs">
-            <div class="data-table-container" style="padding: 1.5rem; max-width: 600px;">
-              <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Envoyer une Notification Push</h3>
-              <form id="form-send-notif">
-                <div class="form-group">
-                  <label>Titre de l'Offre</label>
-                  <input type="text" id="notif-title-input" placeholder="ex: ✨ Offre Spéciale du Soir" required>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+              
+              <!-- Left: Push Notification Sender -->
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.4rem;">📣 Envoyer une Notification Push Client</h3>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;">Diffusez une offre spéciale ou une alerte à l'ensemble de vos clients fidèles.</p>
+                
+                <form id="form-send-notif">
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">Titre de l'Offre</label>
+                    <input type="text" id="notif-title-input" placeholder="ex: ✨ Heure Joyeuse : -20% ce soir" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--dash-border);" required>
+                  </div>
+                  <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.8rem; font-weight: 700; margin-bottom: 0.3rem;">Message</label>
+                    <textarea id="notif-text-input" rows="3" placeholder="ex: Venez profiter de -20% sur l'addition ce soir chez Restaurant Malco !" style="width: 100%; padding: 0.6rem; border-radius: 8px; border: 1px solid var(--dash-border);" required></textarea>
+                  </div>
+                  <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+                    <i data-lucide="send"></i>
+                    <span>Envoyer la Notification aux Clients</span>
+                  </button>
+                </form>
+              </div>
+
+              <!-- Right: Official History & Proofs of Redemptions Feed -->
+              <div class="data-table-container" style="padding: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                  <div>
+                    <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">📜 Historique des Preuves d'Échanges</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Registre officiel de toutes les réductions et cadeaux validés en caisse.</p>
+                  </div>
                 </div>
-                <div class="form-group">
-                  <label>Message</label>
-                  <textarea id="notif-text-input" rows="3" placeholder="ex: -20% sur l'addition ce soir pour nos membres !" required></textarea>
+
+                <div id="merchant-proofs-history-feed">
+                  <!-- Dynamically rendered by app.js -->
                 </div>
-                <button type="submit" class="btn-primary" style="width: 100%; justify-content: center;">
-                  <i data-lucide="send"></i>
-                  <span>Envoyer la Notification</span>
-                </button>
-              </form>
+              </div>
+
             </div>
           </div>
 

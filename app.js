@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT 2-HOUR ANTI-CHEAT & DEDICATED REWARD ATTRIBUTION TAB
+   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (FULL NOTIFS & DUAL WORKFLOW)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
     notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
+    validatedProofs: JSON.parse(localStorage.getItem(`nexa_validated_proofs_${slug}`) || '[]'),
     pendingClaims: JSON.parse(localStorage.getItem(`nexa_pending_claims_${slug}`) || '[]'),
     clientsList: JSON.parse(localStorage.getItem(`nexa_clients_${slug}`) || '[]'),
     scansList: [],
@@ -362,7 +363,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. ABSOLUTE 2-HOUR ANTI-CHEAT SCANNER ENGINE (STRICT PRE-CHECK BEFORE ADDING POINTS)
+     4. ABSOLUTE 2-HOUR ANTI-CHEAT SCANNER ENGINE
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -486,28 +487,24 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     5. MERCHANT 1-CLICK CASHIER VALIDATION & DEDICATED CLAIMS TAB ENGINE
+     5. MOBILE NAVIGATION & MERCHANT 1-CLICK VALIDATION ENGINE
      ========================================================================== */
-  const dashMenuItems = document.querySelectorAll('.dash-menu-item');
-  const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
-  const dashSections = document.querySelectorAll('.dash-section');
+  // RE-BIND MOBILE TAB SWITCHING GLOBALLY SCRIPT
+  const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
+  const clientScreens = document.querySelectorAll('.client-screen');
 
-  function activateSection(sectionId) {
-    dashSections.forEach(s => s.classList.remove('active'));
-    dashMenuItems.forEach(m => m.classList.remove('active'));
-    dashDockTabs.forEach(t => t.classList.remove('active'));
+  navTabs.forEach(tab => {
+    tab.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetTab = tab.getAttribute('data-tab');
+      clientScreens.forEach(s => s.classList.remove('active'));
+      navTabs.forEach(t => t.classList.remove('active'));
 
-    const targetSection = document.getElementById(`dash-sec-${sectionId}`);
-    const matchDesktop = document.querySelector(`.dash-menu-item[data-section="${sectionId}"]`);
-    const matchDock = document.querySelector(`.dash-dock-tab[data-section="${sectionId}"]`);
-
-    if (targetSection) targetSection.classList.add('active');
-    if (matchDesktop) matchDesktop.classList.add('active');
-    if (matchDock) matchDock.classList.add('active');
-  }
-
-  dashMenuItems.forEach(item => item.addEventListener('click', () => activateSection(item.dataset.section)));
-  dashDockTabs.forEach(tab => tab.addEventListener('click', () => activateSection(tab.dataset.section)));
+      const targetScreen = document.getElementById(`screen-${targetTab}`);
+      if (targetScreen) targetScreen.classList.add('active');
+      tab.classList.add('active');
+    });
+  });
 
   function renderClientUI() {
     document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
@@ -554,7 +551,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Render Notifications Feed
+    // Render Notifications Feed in Client App
     const notifsFeed = document.getElementById('client-notifs-feed');
     if (notifsFeed) {
       if (state.notifications.length === 0) {
@@ -562,12 +559,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           <div style="text-align:center; padding:2rem; color:var(--text-muted); background:white; border-radius:12px;">
             <div style="font-size:1.8rem; margin-bottom:0.4rem;">🔔</div>
             <p style="font-size:0.85rem; font-weight:700; margin:0 0 0.2rem 0;">Aucune notification</p>
-            <p style="font-size:0.75rem; margin:0;">Vos alertes de points et vos reçus d'échanges apparaîtront ici !</p>
+            <p style="font-size:0.75rem; margin:0;">Vos reçus d'échanges validés en caisse et vos alertes de points apparaîtront ici !</p>
           </div>
         `;
       } else {
         notifsFeed.innerHTML = state.notifications.map(n => `
-          <div style="background: white; border: 1px solid var(--dash-border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem;">
+          <div style="background: white; border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
               <strong style="font-size: 0.88rem; color: var(--marron-dark);">${n.title}</strong>
               <span style="font-size: 0.7rem; color: var(--text-muted);">${n.time}</span>
@@ -578,7 +575,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Render History Feed
+    // Render History Feed in Client App
     const historyFeed = document.getElementById('client-history-feed');
     if (historyFeed) {
       if (state.clientSession.history.length === 0) {
@@ -643,7 +640,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     showRedemptionPassModal(reward, claimObj.id);
   };
 
-  // MERCHANT VALIDATES REWARD IN 1-CLICK & DEDUCTS CLIENT POINTS!
+  // MERCHANT VALIDATES REWARD IN 1-CLICK & SENDS INSTANT CLIENT PUSH NOTIFICATION!
   window.validateClaimByMerchantDirect = async function(clientPhone, rewardTitle, requiredPts) {
     if (!clientPhone || !requiredPts) return;
 
@@ -664,15 +661,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     state.stats.rewardsRedeemed += 1;
 
-    // Add Notification to Client Feed
+    // 1. ADD INSTANT NOTIFICATION TO CLIENT PUSH NOTIFICATIONS FEED!
+    const notifMsg = `🎉 Félicitations ! Votre cadeau "${rewardTitle}" (${requiredPts} pts) a été validé par ${state.restaurant.name}. Présentez votre écran en caisse.`;
     state.notifications.unshift({
       id: Date.now(),
-      title: `✅ Cadeau Validé par le Restaurateur !`,
-      text: `🎉 Félicitations ! Votre cadeau "${rewardTitle}" (${requiredPts} pts) a été validé par ${state.restaurant.name}.`,
+      title: `🎉 Cadeau Validé par le Restaurateur !`,
+      text: notifMsg,
       time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
     });
     localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
 
+    // 2. ADD TO CLIENT HISTORY FEED
     state.clientSession.history.unshift({
       id: Date.now(),
       title: `🎁 Échange Validé : ${rewardTitle}`,
@@ -682,9 +681,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
+    // 3. ADD TO MERCHANT OFFICIAL PROOFS OF REDEMPTIONS FEED
+    state.validatedProofs.unshift({
+      id: Date.now(),
+      rewardTitle: rewardTitle,
+      pts: requiredPts,
+      clientName: state.clientSession.name || 'Client Nexa',
+      clientPhone: clientPhone,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      date: new Date().toLocaleDateString('fr-FR')
+    });
+    localStorage.setItem(`nexa_validated_proofs_${slug}`, JSON.stringify(state.validatedProofs));
+
     await syncCloudData();
-    showToast('✅ Cadeau Validé en Caisse !', `-${requiredPts} points déduits. Notification transmise au client.`);
-    alert(`✅ Validation Réussie !\n\nLe cadeau "${rewardTitle}" (${requiredPts} pts) a été validé.\n\n-${requiredPts} points déduits du solde du client !`);
+    showToast('🎉 Cadeau Validé en Caisse !', `Notification transmise au client. Solde actualisé: -${requiredPts} pts.`);
+    alert(`✅ Validation Réussie !\n\nLe cadeau "${rewardTitle}" (${requiredPts} pts) a été validé en caisse par le restaurateur.\n\n-${requiredPts} points déduits du solde du client et notification envoyée !`);
   };
 
   window.showPassModalFirst = function() {
@@ -713,6 +724,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('redemption-pass-modal').classList.remove('active');
   });
 
+  const dashMenuItems = document.querySelectorAll('.dash-menu-item');
+  const dashDockTabs = document.querySelectorAll('.dash-dock-tab');
+  const dashSections = document.querySelectorAll('.dash-section');
+
+  function activateSection(sectionId) {
+    dashSections.forEach(s => s.classList.remove('active'));
+    dashMenuItems.forEach(m => m.classList.remove('active'));
+    dashDockTabs.forEach(t => t.classList.remove('active'));
+
+    const targetSection = document.getElementById(`dash-sec-${sectionId}`);
+    const matchDesktop = document.querySelector(`.dash-menu-item[data-section="${sectionId}"]`);
+    const matchDock = document.querySelector(`.dash-dock-tab[data-section="${sectionId}"]`);
+
+    if (targetSection) targetSection.classList.add('active');
+    if (matchDesktop) matchDesktop.classList.add('active');
+    if (matchDock) matchDock.classList.add('active');
+  }
+
+  dashMenuItems.forEach(item => item.addEventListener('click', () => activateSection(item.dataset.section)));
+  dashDockTabs.forEach(tab => tab.addEventListener('click', () => activateSection(tab.dataset.section)));
+
   function renderMerchantUI() {
     document.getElementById('dash-brand-name-el').textContent = state.restaurant.name.toUpperCase();
     document.getElementById('dash-brand-sub-el').textContent = state.restaurant.type;
@@ -730,7 +762,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // 🎁 RENDER ELIGIBLE REWARDS IN BOTH OVERVIEW TAB AND DEDICATED TAB!
+    // 🎁 RENDER ELIGIBLE REWARDS
     const eligibleOverviewFeed = document.getElementById('merchant-eligible-rewards-feed');
     const eligibleOverviewBadge = document.getElementById('eligible-claims-count-badge');
 
@@ -780,6 +812,37 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (eligibleOverviewFeed) eligibleOverviewFeed.innerHTML = cardsHtml;
     if (dedicatedClaimsFeed) dedicatedClaimsFeed.innerHTML = cardsHtml;
+
+    // 📜 RENDER MERCHANT OFFICIAL PROOFS OF REDEMPTIONS FEED (NOTIFS TAB)
+    const proofsFeed = document.getElementById('merchant-proofs-history-feed');
+    if (proofsFeed) {
+      if (state.validatedProofs.length === 0) {
+        proofsFeed.innerHTML = `
+          <div style="text-align:center; padding: 2rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">📜</div>
+            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucune preuve d'échange pour l'instant</p>
+            <p style="font-size: 0.75rem; margin: 0;">L'historique officiel des réductions et cadeaux validés en caisse s'affichera ici.</p>
+          </div>
+        `;
+      } else {
+        proofsFeed.innerHTML = state.validatedProofs.map(p => `
+          <div style="background: white; border: 1px solid var(--dash-border); border-radius: 10px; padding: 0.85rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <strong style="font-size: 0.88rem; color: var(--marron-dark);">${p.clientName} (${p.clientPhone})</strong>
+              <p style="font-size: 0.78rem; color: var(--primary-gold); font-weight: 700; margin: 0.1rem 0 0 0;">
+                🎁 ${p.rewardTitle} • <strong>-${p.pts} pts</strong>
+              </p>
+              <p style="font-size: 0.7rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Validé le ${p.date} à ${p.time}
+              </p>
+            </div>
+            <span style="font-size: 0.72rem; background: #10B981; color: white; padding: 3px 10px; border-radius: 12px; font-weight: 800;">
+              ✅ Validé en Caisse
+            </span>
+          </div>
+        `).join('');
+      }
+    }
 
     // Render CRM Table
     const crmTableBody = document.getElementById('crm-table-body');
