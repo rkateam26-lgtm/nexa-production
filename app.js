@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - AUTOMATIC QR SCAN POINT CREDIT ON PHYSICAL TABLE SCAN
+   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (2-HOUR ANTI-CHEAT COOLDOWN)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -39,7 +39,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
       name: localStorage.getItem('nexa_client_name') || '',
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
-      lastScanTime: parseInt(localStorage.getItem('nexa_last_scan_time') || '0', 10),
+      lastScanTime: parseInt(localStorage.getItem(`nexa_last_scan_${slug}_${localStorage.getItem('nexa_client_whatsapp')}`) || '0', 10),
       history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
@@ -77,7 +77,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards) {
           state.rewards = cloudRewards.map(r => ({
-            id: r.id,
+            id: String(r.id),
             title: r.title,
             pts: r.points_required,
             desc: r.description,
@@ -110,7 +110,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
         }
 
-        // Fetch Returning Client Profile Balance
+        // Fetch Returning Client Profile Balance & Last Scan Time
         if (state.clientSession.whatsapp) {
           const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
@@ -263,7 +263,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     2. REWARD CREATION & DELETION ENGINE
+     2. REWARD CREATION & OPERATIONAL DELETION ENGINE
      ========================================================================== */
   const modalAddReward = document.getElementById('modal-add-reward');
   const formAddReward = document.getElementById('form-add-reward');
@@ -291,7 +291,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       if (!title || !pts) return;
 
-      const newReward = { id: Date.now(), category, icon, title, pts, desc };
+      const newReward = { id: String(Date.now()), category, icon, title, pts, desc };
       state.rewards.push(newReward);
       localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
 
@@ -311,16 +311,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  window.deleteReward = async function(rewardId) {
-    const targetReward = state.rewards.find(r => r.id === rewardId);
-    const title = targetReward ? targetReward.title : '';
-
-    state.rewards = state.rewards.filter(r => r.id !== rewardId);
+  // 100% OPERATIONAL REWARD DELETION
+  window.deleteReward = async function(rewardId, rewardTitle) {
+    const targetIdStr = String(rewardId);
+    state.rewards = state.rewards.filter(r => String(r.id) !== targetIdStr && r.title !== rewardTitle);
     localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
 
     if (window.nexaBackend) {
       try {
-        await window.nexaBackend.deleteCloudReward(rewardId, title);
+        await window.nexaBackend.deleteCloudReward(rewardId, rewardTitle);
       } catch (err) {
         console.log('Cloud delete reward info:', err);
       }
@@ -328,11 +327,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderClientUI();
     renderMerchantUI();
-    showToast('🗑️ Récompense Supprimée', 'Le catalogue a été mis à jour.');
+    showToast('🗑️ Récompense Supprimée', 'La récompense a été effacée.');
   };
 
   /* ==========================================================================
-     3. CLIENT AUTHENTICATION & AUTOMATIC POINT CREDIT ON PHYSICAL QR SCAN
+     3. CLIENT AUTHENTICATION & REGISTRATION
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -356,7 +355,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       closeClientAuthModal();
       renderClientUI();
 
-      // AUTOMATICALLY CREDIT POINTS ONCE REGISTERED FROM TABLE SCAN!
       if (isDirectTableScan) {
         await triggerQRScanSuccess(`Table #${tableParam}`);
       }
@@ -364,7 +362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. AUTOMATIC SINGLE SCAN POINT CREDIT ENGINE (PHYSICAL QR CODE)
+     4. STRICT 2-HOUR COOLDOWN ANTI-CHEAT SCANNER ENGINE
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -379,9 +377,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const now = Date.now();
-    const twoHoursInMs = 2 * 60 * 60 * 1000;
-    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
-      return; // Anti-cheat cooldown
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+    const lastScan = state.clientSession.lastScanTime || 0;
+
+    // STRICT 2-HOUR ANTI-CHEAT COOLDOWN FOR SAME CUSTOMER!
+    if (now - lastScan < twoHoursMs) {
+      const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScan)) / 60000);
+      showToast('⏳ Anti-Triche NEXA', `Prochain scan disponible dans ${remainingMinutes} min.`);
+      alert(`⏳ Anti-Triche NEXA :\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nPour éviter les abus de points, le prochain scan sera disponible dans ${remainingMinutes} minutes.`);
+      return;
     }
 
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
@@ -390,9 +394,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     state.clientSession.lastScanTime = now;
 
     localStorage.setItem('nexa_client_points', state.clientSession.points);
-    localStorage.setItem('nexa_last_scan_time', now);
+    localStorage.setItem(`nexa_last_scan_${slug}_${state.clientSession.whatsapp}`, now);
 
-    // Record SINGLE scan event on Cloud PostgreSQL
+    // Record Single scan event on Cloud PostgreSQL
     if (window.nexaBackend) {
       try {
         const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
@@ -446,17 +450,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnFastScan = document.getElementById('btn-fast-scan');
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
 
-  // AUTOMATIC INITIAL POINT CREDIT IF CLIENT SCANNED PHYSICAL TABLE QR CODE!
+  // AUTOMATIC INITIAL POINT CREDIT IF SCANNED DIRECTLY FROM TABLE
   if (isDirectTableScan && state.clientSession.whatsapp) {
     const now = Date.now();
-    const twoHoursInMs = 2 * 60 * 60 * 1000;
-    if (now - state.clientSession.lastScanTime >= twoHoursInMs) {
+    const twoHoursMs = 2 * 60 * 60 * 1000;
+    const lastScan = state.clientSession.lastScanTime || 0;
+    if (now - lastScan >= twoHoursMs) {
       setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 1000);
     }
   }
 
   /* ==========================================================================
-     5. RENDERERS, NOTIFICATIONS FEED & POINT DEDUCTION
+     5. RENDERERS, INTERACTIVE REWARDS & NOTIFICATIONS
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -504,12 +509,12 @@ document.addEventListener('DOMContentLoaded', async () => {
           const canClaim = state.clientSession.points >= reward.pts;
           const titleEscaped = reward.title.replace(/'/g, "\\'");
           return `
-            <div class="reward-card-clean" onclick="handleRewardClick(${reward.id}, ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;">
+            <div class="reward-card-clean" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;">
               <div class="reward-info-clean">
                 <h3>${reward.icon} ${reward.title}</h3>
                 <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
               </div>
-              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}">
+              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="event.stopPropagation(); handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
                 ${canClaim ? 'Échanger' : `${reward.pts} pts`}
               </button>
             </div>
@@ -561,23 +566,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // INTERACTIVE REWARD CLICK
+  // INTERACTIVE REWARD CLICK (TRIGGERS MODAL POPUP & NOTIFICATIONS FEED ENTRY!)
   window.handleRewardClick = function(rewardId, requiredPts, title) {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
 
+      // Add Notification
       state.notifications.unshift({
         id: Date.now(),
         title: `🔒 Points Insuffisants pour "${title}"`,
-        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez votre table pour débloquer ce cadeau !`,
+        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez votre table lors de votre prochaine visite !`,
         time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
       localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
 
       renderClientUI();
-      showToast('🔒 Points Insuffisants !', `Il vous manque ${missingPts} points pour "${title}". Allez dans l'onglet Notifs !`);
-      alert(`🔒 Oups ! Il vous manque ${missingPts} points.\n\nVous avez actuellement ${currentPoints} pts, et cette récompense nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nUne notification a été ajoutée dans votre onglet Notifications !`);
+      showToast('🔒 Points Insuffisants !', `Il vous manque ${missingPts} pts pour "${title}". Voir l'onglet Notifs !`);
+      alert(`🔒 Oups ! Points Insuffisants :\n\nIl vous manque ${missingPts} points pour débloquer "${title}".\n\nVous avez actuellement ${currentPoints} pts, et cette offre nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nUne alerte a été ajoutée dans votre onglet Notifications !`);
     } else {
       claimReward(rewardId);
     }
@@ -585,7 +591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // REWARD CLAIM
   window.claimReward = async function(rewardId) {
-    const reward = state.rewards.find(r => r.id === rewardId);
+    const reward = state.rewards.find(r => String(r.id) === String(rewardId));
     if (!reward || state.clientSession.points < reward.pts) return;
 
     state.clientSession.points -= reward.pts;
@@ -746,16 +752,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (state.rewards.length === 0) {
         rewardsAdminBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2rem;">Aucune récompense configurée. Cliquez sur "Créer une Récompense" ci-dessus pour ajouter vos privilèges !</td></tr>`;
       } else {
-        rewardsAdminBody.innerHTML = state.rewards.map(r => `
-          <tr>
-            <td style="font-size: 1.3rem;">${r.icon}</td>
-            <td><span style="font-size: 0.75rem; background: var(--marron-light); color: var(--marron-dark); font-weight: 700; padding: 2px 8px; border-radius: 10px;">${r.category || 'Privilège'}</span></td>
-            <td style="font-weight: 700;">${r.title}</td>
-            <td style="color: var(--text-muted);">${r.desc}</td>
-            <td><strong style="color: var(--primary-gold);">${r.pts} pts</strong></td>
-            <td><button class="btn-secondary" style="color:var(--primary-gold);" onclick="deleteReward(${r.id})">Supprimer</button></td>
-          </tr>
-        `).join('');
+        rewardsAdminBody.innerHTML = state.rewards.map(r => {
+          const titleEscaped = r.title.replace(/'/g, "\\'");
+          return `
+            <tr>
+              <td style="font-size: 1.3rem;">${r.icon}</td>
+              <td><span style="font-size: 0.75rem; background: var(--marron-light); color: var(--marron-dark); font-weight: 700; padding: 2px 8px; border-radius: 10px;">${r.category || 'Privilège'}</span></td>
+              <td style="font-weight: 700;">${r.title}</td>
+              <td style="color: var(--text-muted);">${r.desc}</td>
+              <td><strong style="color: var(--primary-gold);">${r.pts} pts</strong></td>
+              <td><button class="btn-secondary" style="color:var(--primary-gold);" onclick="deleteReward('${r.id}', '${titleEscaped}')">Supprimer</button></td>
+            </tr>
+          `;
+        }).join('');
       }
     }
 
@@ -764,23 +773,26 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (state.rewards.length === 0) {
         rewardsMobileCardsFeed.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:2rem; background:white; border-radius:12px;">Aucune récompense configurée pour le moment.</div>`;
       } else {
-        rewardsMobileCardsFeed.innerHTML = state.rewards.map(r => `
-          <div class="crm-mobile-card">
-            <div class="crm-card-header">
-              <div style="display: flex; align-items: center; gap: 0.75rem;">
-                <span style="font-size: 1.5rem;">${r.icon}</span>
-                <div>
-                  <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${r.title}</h3>
-                  <p style="font-size: 0.75rem; color: var(--text-muted);">${r.desc}</p>
+        rewardsMobileCardsFeed.innerHTML = state.rewards.map(r => {
+          const titleEscaped = r.title.replace(/'/g, "\\'");
+          return `
+            <div class="crm-mobile-card">
+              <div class="crm-card-header">
+                <div style="display: flex; align-items: center; gap: 0.75rem;">
+                  <span style="font-size: 1.5rem;">${r.icon}</span>
+                  <div>
+                    <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark);">${r.title}</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-muted);">${r.desc}</p>
+                  </div>
                 </div>
+                <strong style="color: var(--primary-gold); font-size: 0.95rem;">${r.pts} pts</strong>
               </div>
-              <strong style="color: var(--primary-gold); font-size: 0.95rem;">${r.pts} pts</strong>
+              <button class="btn-secondary" style="width: 100%; color: var(--primary-gold); font-weight: 700; margin-top: 0.5rem;" onclick="deleteReward('${r.id}', '${titleEscaped}')">
+                Supprimer la Récompense
+              </button>
             </div>
-            <button class="btn-secondary" style="width: 100%; color: var(--primary-gold); font-weight: 700; margin-top: 0.5rem;" onclick="deleteReward(${r.id})">
-              Supprimer la Récompense
-            </button>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       }
     }
   }
