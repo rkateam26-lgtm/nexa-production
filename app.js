@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (CLEAN DATA ISOLATION)
+   NEXA PRODUCTION - STRICT MULTI-TENANT ENGINE (NO DOUBLE-SCAN & CLEAN SLATE)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_curr_${state.restaurant.id}`, cloudResto.currency);
         }
 
-        // Fetch Cloud Rewards for THIS restaurant only!
+        // Fetch Cloud Rewards for THIS restaurant only
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards) {
           state.rewards = cloudRewards.map(r => ({
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
         }
 
-        // Fetch Cloud Clients for THIS restaurant only!
+        // Fetch Cloud Clients for THIS restaurant only
         const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
         if (cloudClients) {
           state.clientsList = cloudClients.map(c => ({
@@ -311,7 +311,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   /* ==========================================================================
-     3. CLIENT AUTHENTICATION & CRM REGISTRATION
+     3. CLIENT AUTHENTICATION & IDENTITY REGISTRATION (NO DOUBLE-SCAN!)
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -332,37 +332,23 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      const existing = state.clientsList.find(c => c.phone === phone);
-      if (!existing) {
-        state.clientsList.unshift({
-          id: Date.now(),
-          name,
-          phone,
-          points: state.restaurant.pointsPerScan,
-          visits: 1,
-          lastVisit: 'À l\'instant (Table #' + tableParam + ')',
-          segment: 'Nouveau Client'
-        });
-        state.stats.totalClients = state.clientsList.length;
-        localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
-      }
-
+      // Register identity ONLY (Does NOT create a scan transaction here!)
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, phone, name, state.restaurant.pointsPerScan);
+          await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
         } catch (err) {
-          console.log('Client scan cloud info:', err);
+          console.log('Client identity reg info:', err);
         }
       }
 
       closeClientAuthModal();
-      await syncCloudData();
-      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} chez ${state.restaurant.name} !`);
+      renderClientUI();
+      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} ! Appuyez maintenant sur "Scanner ma Table".`);
     });
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT CUSTOM POINTS ENFORCEMENT)
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT SINGLE-SCAN POINTS CREDIT)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -426,35 +412,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
+    // ALWAYS USE THE EXACT CUSTOM SCAN POINTS DEFINED BY THIS RESTAURANT MANAGER!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
     state.clientSession.lastScanTime = now;
-    state.stats.qrScansMonth += 1;
-    state.stats.pointsGiven += scanEarned;
 
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem('nexa_last_scan_time', now);
 
-    const existing = state.clientsList.find(c => c.phone === state.clientSession.whatsapp);
-    if (existing) {
-      existing.points = state.clientSession.points;
-      existing.visits += 1;
-      existing.lastVisit = 'À l\'instant (Table #' + tableParam + ')';
-    } else if (state.clientSession.whatsapp) {
-      state.clientsList.unshift({
-        id: Date.now(),
-        name: state.clientSession.name || 'Client Table #' + tableParam,
-        phone: state.clientSession.whatsapp,
-        points: state.clientSession.points,
-        visits: 1,
-        lastVisit: 'À l\'instant (Table #' + tableParam + ')',
-        segment: 'Nouveau Client'
-      });
-    }
-    state.stats.totalClients = state.clientsList.length;
-    localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
-
+    // Record EXACTLY 1 SCAN in Cloud PostgreSQL Database!
     if (window.nexaBackend) {
       try {
         await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
