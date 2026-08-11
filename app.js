@@ -1,5 +1,5 @@
 /* ==========================================================================
-   NEXA PRODUCTION - STRICT MULTI-TENANT SAAS ENGINE (FULL NOTIFS & CRM ENGINE)
+   NEXA PRODUCTION - AUTOMATIC QR SCAN POINT CREDIT ON PHYSICAL TABLE SCAN
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const roleParam = urlParams.get('role') || urlParams.get('mode');
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
+  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto');
 
   let currentRestoName = 'Le Savane';
   if (urlRestoName) {
@@ -310,7 +311,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  // REWARD DELETION ENGINE (100% OPERATIONAL ON MEMORY & SUPABASE CLOUD!)
   window.deleteReward = async function(rewardId) {
     const targetReward = state.rewards.find(r => r.id === rewardId);
     const title = targetReward ? targetReward.title : '';
@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   };
 
   /* ==========================================================================
-     3. CLIENT AUTHENTICATION & IDENTITY REGISTRATION
+     3. CLIENT AUTHENTICATION & AUTOMATIC POINT CREDIT ON PHYSICAL QR SCAN
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -353,29 +353,18 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      // Check existing balance for returning customer
-      if (window.nexaBackend) {
-        try {
-          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, phone);
-          if (profile) {
-            state.clientSession.points = profile.points;
-            localStorage.setItem('nexa_client_points', profile.points);
-          } else {
-            await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
-          }
-        } catch (err) {
-          console.log('Client identity reg info:', err);
-        }
-      }
-
       closeClientAuthModal();
       renderClientUI();
-      showToast('🎉 Compte Client Actif !', `Bienvenue ${name} ! Appuyez maintenant sur "Scanner ma Table".`);
+
+      // AUTOMATICALLY CREDIT POINTS ONCE REGISTERED FROM TABLE SCAN!
+      if (isDirectTableScan) {
+        await triggerQRScanSuccess(`Table #${tableParam}`);
+      }
     });
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC
+     4. AUTOMATIC SINGLE SCAN POINT CREDIT ENGINE (PHYSICAL QR CODE)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -383,7 +372,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
   let html5QrCode = null;
 
-  async function startRealCameraScanner() {
+  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
     if (!state.clientSession.whatsapp) {
       openClientAuthModal();
       return;
@@ -392,51 +381,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const now = Date.now();
     const twoHoursInMs = 2 * 60 * 60 * 1000;
     if (now - state.clientSession.lastScanTime < twoHoursInMs) {
-      const remainingMinutes = Math.ceil((twoHoursInMs - (now - state.clientSession.lastScanTime)) / 60000);
-      alert(`⚠️ Anti-Triche NEXA :\nVous avez déjà scanné votre table pour ce repas !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
-      return;
-    }
-
-    scannerModal.classList.add('active');
-
-    if (window.Html5Qrcode && !html5QrCode) {
-      html5QrCode = new Html5Qrcode("html5-qr-reader");
-    }
-
-    if (html5QrCode) {
-      try {
-        await html5QrCode.start(
-          { facingMode: "environment" },
-          { fps: 10, qrbox: { width: 220, height: 220 } },
-          (decodedText) => {
-            stopCameraScanner();
-            triggerQRScanSuccess(decodedText);
-          },
-          (err) => {}
-        );
-      } catch (err) {
-        console.log('Camera fallback:', err);
-      }
-    }
-  }
-
-  function stopCameraScanner() {
-    if (html5QrCode && html5QrCode.isScanning) {
-      html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
-    }
-    scannerModal.classList.remove('active');
-  }
-
-  if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
-  if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
-
-  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
-    const now = Date.now();
-    const twoHoursInMs = 2 * 60 * 60 * 1000;
-    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
-      alert(`⚠️ Anti-Triche NEXA : Vous avez déjà scanné votre table pour ce repas !`);
-      stopCameraScanner();
-      return;
+      return; // Anti-cheat cooldown
     }
 
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
@@ -447,7 +392,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem('nexa_last_scan_time', now);
 
-    // Record Single scan event on Cloud PostgreSQL
+    // Record SINGLE scan event on Cloud PostgreSQL
     if (window.nexaBackend) {
       try {
         const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
@@ -480,9 +425,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}). Solde: ${state.clientSession.points} pts.`);
   }
 
+  async function startRealCameraScanner() {
+    if (!state.clientSession.whatsapp) {
+      openClientAuthModal();
+      return;
+    }
+    triggerQRScanSuccess(`Table #${tableParam}`);
+  }
+
+  function stopCameraScanner() {
+    if (html5QrCode && html5QrCode.isScanning) {
+      html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
+    }
+    scannerModal.classList.remove('active');
+  }
+
+  if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
+  if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
   const btnFastScan = document.getElementById('btn-fast-scan');
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+
+  // AUTOMATIC INITIAL POINT CREDIT IF CLIENT SCANNED PHYSICAL TABLE QR CODE!
+  if (isDirectTableScan && state.clientSession.whatsapp) {
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (now - state.clientSession.lastScanTime >= twoHoursInMs) {
+      setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 1000);
+    }
+  }
 
   /* ==========================================================================
      5. RENDERERS, NOTIFICATIONS FEED & POINT DEDUCTION
@@ -506,7 +477,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('user-scan-pts-badge').textContent = `+${state.restaurant.pointsPerScan} PTS`;
 
     const btnScanLabel = document.getElementById('btn-scan-label');
-    if (btnScanLabel) btnScanLabel.textContent = `📷 Scanner ma Table (+${state.restaurant.pointsPerScan} Pts)`;
+    if (btnScanLabel) btnScanLabel.textContent = `📷 Valider mes Points Table #${tableParam} (+${state.restaurant.pointsPerScan} Pts)`;
 
     if (state.clientSession.whatsapp) {
       if (clientLoginBanner) clientLoginBanner.style.display = 'none';
@@ -547,7 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Render Notifications Feed in Notifs Screen
+    // Render Notifications Feed
     const notifsFeed = document.getElementById('client-notifs-feed');
     if (notifsFeed) {
       if (state.notifications.length === 0) {
@@ -571,7 +542,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Render History Feed in History Screen
+    // Render History Feed
     const historyFeed = document.getElementById('client-history-feed');
     if (historyFeed) {
       if (state.clientSession.history.length === 0) {
@@ -590,17 +561,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // INTERACTIVE REWARD CLICK (EXPLAINS MISSING POINTS & ADDS TO NOTIFICATIONS FEED!)
+  // INTERACTIVE REWARD CLICK
   window.handleRewardClick = function(rewardId, requiredPts, title) {
     const currentPoints = state.clientSession.points;
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
 
-      // Add Notification to Client Notifs Feed!
       state.notifications.unshift({
         id: Date.now(),
         title: `🔒 Points Insuffisants pour "${title}"`,
-        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez à nouveau votre table pour débloquer ce cadeau !`,
+        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez votre table pour débloquer ce cadeau !`,
         time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
       });
       localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
@@ -613,17 +583,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
 
-  // REWARD CLAIM: DEDUCTS POINTS AND ADDS PROOF OF REDEMPTION TO NOTIFICATIONS & HISTORY!
+  // REWARD CLAIM
   window.claimReward = async function(rewardId) {
     const reward = state.rewards.find(r => r.id === rewardId);
     if (!reward || state.clientSession.points < reward.pts) return;
 
-    // Deduct points locally
     state.clientSession.points -= reward.pts;
     state.stats.rewardsRedeemed += 1;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
 
-    // Deduct points on Cloud Supabase!
     if (window.nexaBackend && state.clientSession.whatsapp) {
       try {
         await window.nexaBackend.deductPointsCloud(state.restaurant.name, state.clientSession.whatsapp, reward.pts);
@@ -632,7 +600,6 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     }
 
-    // Add Proof of Redemption Notification
     const notifMsg = `🎉 Pass Récompense Activé ! Vous avez échangé "${reward.title}" contre ${reward.pts} pts chez ${state.restaurant.name}. Présentez votre Pass QR en caisse.`;
     state.notifications.unshift({
       id: Date.now(),
@@ -642,7 +609,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
     localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
 
-    // Add Proof of Redemption History Entry
     state.clientSession.history.unshift({
       id: Date.now(),
       title: `🎁 Échange : ${reward.title}`,
@@ -712,7 +678,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stat-pts-given').textContent = state.stats.pointsGiven.toLocaleString();
     document.getElementById('stat-rewards-redeemed').textContent = state.stats.rewardsRedeemed.toLocaleString();
 
-    // HIDE "Créer ma Première Récompense" BANNER IF AT LEAST 1 REWARD IS PUBLISHED!
     const overviewCreateBanner = document.getElementById('overview-create-reward-banner');
     if (overviewCreateBanner) {
       if (state.rewards.length > 0) {
