@@ -19,7 +19,26 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   
   <!-- Canvas Confetti -->
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+
+  <!-- INSTANT ULTRA-FAST ROUTER FOR QR SCANS & SMARTPHONES -->
+  <script>
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      const isScan = params.has('table') || params.has('resto') || params.has('t') || params.has('r');
+      const role = params.get('role') || params.get('mode');
+      const isMobile = window.innerWidth <= 768;
+
+      if (role === 'client' || isScan || (isMobile && role !== 'merchant' && role !== 'demo')) {
+        window.addEventListener('DOMContentLoaded', function() {
+          const vp = document.getElementById('viewport-container');
+          if (vp) vp.className = 'main-viewport viewport-mobile';
+          const hdr = document.querySelector('.nexa-header');
+          if (hdr) hdr.style.display = 'none';
+        });
+      }
+    })();
+  </script>
 
   <!-- HTML5 Real Camera QR Code Scanner Engine -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>

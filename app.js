@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* ==========================================================================
      0. SMART ROUTER (ROLE & TABLE)
      ========================================================================== */
+  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto') || urlParams.has('t') || urlParams.has('r');
   const isMobileScreen = window.innerWidth <= 768;
   const viewportContainer = document.getElementById('viewport-container');
   const demoHeader = document.querySelector('.nexa-header');
@@ -149,16 +150,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tableBadge = document.getElementById('mobile-table-badge');
   if (tableBadge) tableBadge.textContent = `Table #${tableParam}`;
 
-  // FORCE CLIENT MOBILE VIEW IF SCANNING TABLE OR ROLE IS CLIENT
+  // FORCE CLIENT MOBILE VIEW IF SCANNING TABLE OR ROLE IS CLIENT OR ON SMARTPHONE
   if (roleParam === 'client' || isDirectTableScan || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
     if (demoHeader) demoHeader.style.display = 'none';
-    viewportContainer.className = 'main-viewport viewport-mobile';
+    if (viewportContainer) viewportContainer.className = 'main-viewport viewport-mobile';
   } else if (roleParam === 'merchant') {
     if (demoHeader) demoHeader.style.display = 'none';
-    viewportContainer.className = 'main-viewport viewport-desktop';
+    if (viewportContainer) viewportContainer.className = 'main-viewport viewport-desktop';
   } else {
     if (demoHeader) demoHeader.style.display = 'flex';
-    viewportContainer.className = 'main-viewport viewport-dual';
+    if (viewportContainer) viewportContainer.className = 'main-viewport viewport-dual';
   }
 
   // Update Links
