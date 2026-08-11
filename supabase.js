@@ -15,84 +15,103 @@ class NexaProductionBackend {
   }
 
   init() {
-    // Check if Supabase JS SDK is loaded
     if (window.supabase) {
       try {
         this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
         this.isLiveSupabase = true;
         console.log('⚡ NEXA Production: Connected Live to Supabase Cloud PostgreSQL Database');
       } catch (err) {
-        console.error('Supabase Initialization Error:', err);
+        console.error('Supabase Init Error:', err);
       }
-    } else {
-      console.log('📦 NEXA Production: Running on Local Persistence Engine');
     }
   }
 
-  // 1. Authenticate Merchant (Sign In or Sign Up)
-  async loginMerchant(email, password) {
+  // 1. Authenticate & Save Restaurant
+  async saveRestaurant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA') {
     if (this.isLiveSupabase && this.client) {
-      const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-      if (error) {
-        // Try sign up if user does not exist yet
-        const { data: signUpData, error: signUpErr } = await this.client.auth.signUp({ email, password });
-        if (signUpErr) throw signUpErr;
-        return signUpData;
-      }
-      return data;
-    } else {
-      return { user: { email, name: 'Le Savane (Gérant)' } };
-    }
-  }
-
-  // 2. Record Table Scan & Credit Points in Real-Time
-  async recordScan(restaurantId, tableNumber, whatsappPhone, clientName = 'Client Nexa') {
-    if (this.isLiveSupabase && this.client) {
-      // Upsert Client Points in PostgreSQL
-      const { data: client, error: clientErr } = await this.client
-        .from('clients')
-        .upsert({ 
-          restaurant_id: restaurantId, 
-          whatsapp_phone: whatsappPhone, 
-          full_name: clientName,
-          last_scan_at: new Date().toISOString()
-        }, { onConflict: 'restaurant_id,whatsapp_phone' })
+      const { data, error } = await this.client
+        .from('restaurants')
+        .upsert({
+          name: name,
+          city: type,
+          currency: currency,
+          whatsapp_contact: pointsPerScan.toString()
+        }, { onConflict: 'email' })
         .select()
         .single();
 
-      if (clientErr) console.error('Scan Client Error:', clientErr);
+      if (error) console.error('Save Restaurant Error:', error);
+      return data;
+    }
+    return null;
+  }
 
-      // Insert Scan Event in History
+  // 2. Fetch Rewards from Cloud Supabase
+  async fetchRewards(restaurantId = 'savane-prod-001') {
+    if (this.isLiveSupabase && this.client) {
+      const { data, error } = await this.client.from('rewards').select('*');
+      if (error) console.error('Fetch Rewards Error:', error);
+      return data || [];
+    }
+    return [];
+  }
+
+  // 3. Create Reward on Cloud Supabase
+  async createReward(title, pts, desc, icon, category) {
+    if (this.isLiveSupabase && this.client) {
+      const { data, error } = await this.client
+        .from('rewards')
+        .insert({
+          title: title,
+          points_required: pts,
+          description: desc,
+          icon: icon
+        })
+        .select()
+        .single();
+
+      if (error) console.error('Create Reward Error:', error);
+      return data;
+    }
+    return null;
+  }
+
+  // 4. Fetch Clients from Cloud Supabase
+  async fetchClients() {
+    if (this.isLiveSupabase && this.client) {
+      const { data, error } = await this.client.from('clients').select('*');
+      if (error) console.error('Fetch Clients Error:', error);
+      return data || [];
+    }
+    return [];
+  }
+
+  // 5. Record Client Scan & Points on Cloud Supabase
+  async recordScan(tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
+    if (this.isLiveSupabase && this.client) {
+      const { data: client, error: clientErr } = await this.client
+        .from('clients')
+        .upsert({ 
+          whatsapp_phone: whatsappPhone, 
+          full_name: clientName,
+          points_balance: pointsEarned,
+          last_scan_at: new Date().toISOString()
+        }, { onConflict: 'whatsapp_phone' })
+        .select()
+        .single();
+
+      if (clientErr) console.error('Scan Error:', clientErr);
+
       await this.client.from('scans').insert({
-        restaurant_id: restaurantId,
-        table_number: tableNumber,
-        client_id: client ? client.id : null,
-        points_earned: 10
+        table_number: parseInt(tableNumber, 10) || 4,
+        points_earned: pointsEarned
       });
 
       return client;
-    } else {
-      return { whatsapp_phone: whatsappPhone, points_earned: 10 };
     }
-  }
-
-  // 3. Fetch Real-time Dashboard Analytics from Cloud PostgreSQL
-  async getDashboardMetrics(restaurantId) {
-    if (this.isLiveSupabase && this.client) {
-      const { data: clients } = await this.client.from('clients').select('*').eq('restaurant_id', restaurantId);
-      const { data: scans } = await this.client.from('scans').select('*').eq('restaurant_id', restaurantId);
-      const { data: rewards } = await this.client.from('rewards').select('*').eq('restaurant_id', restaurantId);
-
-      return {
-        clients: clients || [],
-        scans: scans || [],
-        rewards: rewards || []
-      };
-    } else {
-      return null;
-    }
+    return null;
   }
 }
 
-// Global Singleton Engine
+// Global Singleton Instance
 window.nexaBackend = new NexaProductionBackend();

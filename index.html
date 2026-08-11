@@ -59,7 +59,7 @@
     <div class="demo-controls">
       <button class="btn-demo-action btn-pulse" id="btn-fast-scan">
         <i data-lucide="qr-code"></i>
-        <span>Simuler Scan (+10 pts)</span>
+        <span>Simuler Scan (+20 pts)</span>
       </button>
     </div>
   </header>
@@ -115,13 +115,13 @@
               <span class="points-label-clean">Votre Solde de Points</span>
               <div class="points-val-clean" id="user-points-val">0</div>
               <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom: 0.5rem;">
-                Objectif Première Récompense : <strong id="user-progress-lbl" style="color:var(--primary-gold);">0%</strong>
+                Points attribués par scan : <strong id="user-scan-pts-badge" style="color:var(--primary-gold);">+20 PTS</strong>
               </p>
 
               <!-- Main Action Camera Scan Button -->
               <button class="btn-scan-main" id="btn-trigger-scan">
                 <i data-lucide="camera"></i>
-                <span>📷 Scanner ma Table (Caméra)</span>
+                <span id="btn-scan-label">📷 Scanner ma Table (Caméra)</span>
               </button>
 
               <button style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-decoration: underline;" onclick="showPassModalFirst()">
@@ -254,7 +254,7 @@
           <div style="color: var(--text-light); font-size: 0.75rem; margin-bottom: 0.4rem;">
             Base de Données : <strong style="color:#10B981;">● Supabase Cloud Live</strong>
           </div>
-          <!-- DYNAMIC ACTION BUTTON (INSCRIRE VS CONNECTÉ) -->
+          <!-- DYNAMIC ACTION BUTTON (HIDES COMPLETELY WHEN LOGGED IN) -->
           <div id="sidebar-auth-button-box">
             <button class="btn-primary" onclick="openMerchantAuthModal()" style="width: 100%; justify-content: center; font-size: 0.75rem; padding: 0.4rem; background: var(--primary-gold); color: #2A1D15;">
               🔑 Inscrire mon Restaurant
@@ -500,7 +500,7 @@
 
     <div style="text-align: center; margin-bottom: 1rem;">
       <button class="btn-primary" id="btn-simulate-scan-ok" style="padding: 0.75rem 1.5rem; background: var(--gold-accent); color: #2A1D15; font-weight: 800;">
-        ⚡ Valider le Scan Table #4 (+10 Pts)
+        ⚡ Valider le Scan Table #4
       </button>
     </div>
   </div>
@@ -546,7 +546,7 @@
 
         <div class="form-group">
           <label>Points Requis pour Échanger</label>
-          <input type="number" id="reward-pts-input" placeholder="50" min="10" step="5" required>
+          <input type="number" id="reward-pts-input" placeholder="50" min="5" step="5" required>
         </div>
 
         <div class="form-group">
@@ -578,7 +578,7 @@
           <input type="text" id="auth-client-name" placeholder="ex: Moussa">
         </div>
         <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
-          ⚡ Valider & Recevoir mes +10 Points
+          ⚡ Valider & Recevoir mes Points
         </button>
       </form>
     </div>
@@ -594,21 +594,19 @@
       <form id="form-merchant-auth">
         <div class="form-group">
           <label>Nom de l'Établissement</label>
-          <input type="text" id="auth-resto-name" placeholder="ex: Le Savane" required>
+          <input type="text" id="auth-resto-name" placeholder="ex: Restaurant Malco" required>
         </div>
         <div class="form-group">
-          <label>Spécialité & Genre d'Établissement</label>
-          <select id="auth-resto-type">
-            <option value="Bistro & Grillades">★ 4.9 • Bistro & Grillades</option>
-            <option value="Maquis & Spécialités Locales">★ 4.8 • Maquis & Spécialités Locales</option>
-            <option value="Pizzeria & Fast Food">★ 4.7 • Pizzeria & Fast Food</option>
-            <option value="Salon de Thé & Pâtisserie">★ 4.9 • Salon de Thé & Pâtisserie</option>
-            <option value="Restaurant Gastronomique">★ 5.0 • Restaurant Gastronomique</option>
-          </select>
+          <label>Spécialité / Description Courte</label>
+          <input type="text" id="auth-resto-type-text" placeholder="ex: ★ 4.9 • Grillades au feu de bois & Spécialités Africaines" required>
+        </div>
+        <div class="form-group">
+          <label>Points attribués par Scan de Table</label>
+          <input type="number" id="auth-resto-scan-pts" value="20" min="5" max="500" step="5" required>
         </div>
         <div class="form-group">
           <label>Email du Gérant</label>
-          <input type="email" id="auth-resto-email" placeholder="gerant@lesavane.bf" required>
+          <input type="email" id="auth-resto-email" placeholder="gerant@malco.bf" required>
         </div>
         <div class="form-group">
           <label>Mot de passe</label>
@@ -622,7 +620,7 @@
           </select>
         </div>
         <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; margin-top: 1rem;">
-          🚀 Valider mon Inscription Restaurant
+          🚀 Enregistrer mon Restaurant sur le Cloud
         </button>
       </form>
     </div>
