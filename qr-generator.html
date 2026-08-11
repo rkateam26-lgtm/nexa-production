@@ -33,9 +33,27 @@
       border-bottom: 1px solid var(--dash-border);
       padding: 1.5rem 2rem;
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: 1.25rem;
       align-items: flex-end;
+    }
+
+    .preset-btn {
+      background: var(--bg-subtle);
+      border: 1px solid var(--dash-border);
+      color: var(--marron-dark);
+      padding: 0.35rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .preset-btn:hover, .preset-btn.active {
+      background: var(--primary-gold);
+      color: #2A1D15;
+      border-color: var(--primary-gold);
     }
 
     .form-group label {
@@ -60,7 +78,7 @@
       grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
       gap: 2rem;
       padding: 2rem;
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 0 auto;
     }
 
@@ -172,11 +190,11 @@
       <div style="width:34px; height:34px; background:linear-gradient(135deg, #FDE68A, #D97706); border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; color:#2A1D15;">N</div>
       <div>
         <h1 style="font-size: 1.15rem; font-weight: 800; margin: 0; color: white;">NEXA PLV — Générateur de Chevalets QR Code</h1>
-        <p style="font-size: 0.75rem; color: #D6C8BC; margin: 0;">Impression haute définition pour les tables de restaurant</p>
+        <p style="font-size: 0.75rem; color: #D6C8BC; margin: 0;" id="table-count-status">Génération dynamique des tables</p>
       </div>
     </div>
     <div class="no-print">
-      <button class="btn-primary" onclick="window.print()" style="background: var(--primary-gold); color: #2A1D15;">
+      <button class="btn-primary" onclick="window.print()" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
         <i data-lucide="printer"></i>
         <span>🖨️ Imprimer les Chevalets (PDF)</span>
       </button>
@@ -186,24 +204,31 @@
   <!-- Controls Panel -->
   <div class="controls-panel no-print">
     <div class="form-group">
-      <label>Nom du Restaurant</label>
-      <input type="text" id="input-resto-name" value="Le Savane">
+      <label>Nom de votre Restaurant</label>
+      <input type="text" id="input-resto-name" placeholder="Le Savane">
     </div>
 
     <div class="form-group">
       <label>Nombre de Tables à Imprimer</label>
-      <input type="number" id="input-table-count" value="10" min="1" max="50">
+      <input type="number" id="input-table-count" value="20" min="1" max="150" step="1">
+      <div style="display: flex; gap: 0.35rem; margin-top: 0.4rem;">
+        <button class="preset-btn" onclick="setTablePreset(10)">10</button>
+        <button class="preset-btn" onclick="setTablePreset(20)">20</button>
+        <button class="preset-btn" onclick="setTablePreset(30)">30</button>
+        <button class="preset-btn" onclick="setTablePreset(50)">50</button>
+        <button class="preset-btn" onclick="setTablePreset(100)">100</button>
+      </div>
     </div>
 
     <div class="form-group">
-      <label>Texte d'Accroche</label>
+      <label>Texte d'Accroche sur le Chevalet</label>
       <input type="text" id="input-tagline" value="Flashez pour cumuler vos points & débloquer vos cadeaux !">
     </div>
 
     <div class="form-group">
-      <button class="btn-primary" id="btn-generate" style="width: 100%; justify-content: center;">
+      <button class="btn-primary" id="btn-generate" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
         <i data-lucide="refresh-cw"></i>
-        <span>Actualiser les Visuels</span>
+        <span>Générer les Visuels</span>
       </button>
     </div>
   </div>
@@ -220,13 +245,25 @@
       const inputTagline = document.getElementById('input-tagline');
       const btnGenerate = document.getElementById('btn-generate');
       const tentsContainer = document.getElementById('tents-container');
+      const tableCountStatus = document.getElementById('table-count-status');
+
+      // Sync restaurant name from merchant session
+      const savedRestoName = localStorage.getItem('nexa_resto_name') || 'Le Savane';
+      inputRestoName.value = savedRestoName;
+
+      window.setTablePreset = function(count) {
+        inputTableCount.value = count;
+        generateTents();
+      };
 
       function generateTents() {
         const restoName = inputRestoName.value.trim() || 'Mon Restaurant';
-        const count = parseInt(inputTableCount.value, 10) || 10;
+        const count = parseInt(inputTableCount.value, 10) || 20;
         const tagline = inputTagline.value.trim() || 'Flashez pour cumuler vos points !';
 
-        // Use public production domain when deployed or dynamic origin
+        tableCountStatus.textContent = `${count} Chevalets QR Code générés pour "${restoName}"`;
+
+        // Use public production domain when deployed
         let baseHost = window.location.origin;
         if (baseHost.includes('localhost') || baseHost.includes('127.0.0.1') || baseHost.startsWith('file:')) {
           baseHost = 'https://rkateam26-lgtm-nexa-production.vercel.app';
@@ -234,7 +271,7 @@
 
         let htmlBuffer = '';
         for (let i = 1; i <= count; i++) {
-          const targetUrl = `${baseHost}/index.html?role=client&table=${i}`;
+          const targetUrl = `${baseHost}/index.html?role=client&resto=${encodeURIComponent(restoName)}&table=${i}`;
 
           // Generate QR Code SVG string
           const qr = qrcode(0, 'M');
@@ -271,7 +308,12 @@
         if (window.lucide) lucide.createIcons();
       }
 
+      // Live event listeners for instant update!
+      inputTableCount.addEventListener('input', generateTents);
+      inputTableCount.addEventListener('change', generateTents);
+      inputRestoName.addEventListener('input', generateTents);
       btnGenerate.addEventListener('click', generateTents);
+
       generateTents();
     });
   </script>

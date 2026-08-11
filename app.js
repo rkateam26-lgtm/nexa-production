@@ -1,19 +1,28 @@
 /* ==========================================================================
-   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE & REAL CAMERA INTEGRATED)
+   NEXA PRODUCTION - LIVE MARKET ENGINE (SUPABASE & ANTI-CHEAT INTEGRATED)
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
 
-  // Unregister Old Service Worker
+  // Unregister Old Service Worker to Clear Cache
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
-      for (let registration of registrations) {
-        registration.unregister();
-      }
+      for (let registration of registrations) registration.unregister();
     }).catch(err => console.log('SW unregister:', err));
   }
 
-  // Persistent Production State (Starts Empty for New Production Restaurants!)
+  // Parse URL Parameters
+  const urlParams = new URLSearchParams(window.location.search);
+  const roleParam = urlParams.get('role') || urlParams.get('mode');
+  const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
+  const urlRestoName = urlParams.get('resto') || urlParams.get('r');
+
+  // Sync Restaurant Name from URL if scanned from physical QR Code!
+  if (urlRestoName) {
+    localStorage.setItem('nexa_resto_name', decodeURIComponent(urlRestoName));
+  }
+
+  // Load Rewards & Clients State
   const savedRewards = localStorage.getItem('nexa_prod_rewards');
   const initialRewards = savedRewards ? JSON.parse(savedRewards) : [];
 
@@ -31,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
       name: localStorage.getItem('nexa_client_name') || '',
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
+      lastScanTime: parseInt(localStorage.getItem('nexa_last_scan_time') || '0', 10),
       history: []
     },
     rewards: initialRewards,
@@ -49,9 +59,6 @@ document.addEventListener('DOMContentLoaded', () => {
   /* ==========================================================================
      0. SMART ROUTER (ROLE & TABLE)
      ========================================================================== */
-  const urlParams = new URLSearchParams(window.location.search);
-  const roleParam = urlParams.get('role') || urlParams.get('mode');
-  const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const isMobileScreen = window.innerWidth <= 768;
   const viewportContainer = document.getElementById('viewport-container');
   const demoHeader = document.querySelector('.nexa-header');
@@ -72,16 +79,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Update Links
   const baseHost = window.location.origin + window.location.pathname;
-  document.getElementById('link-url-client').textContent = `${baseHost}?role=client&table=${tableParam}`;
+  document.getElementById('link-url-client').textContent = `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`;
   document.getElementById('link-url-merchant').textContent = `${baseHost}?role=merchant`;
 
   window.copyRoleLink = function(role) {
-    const targetUrl = role === 'client' ? `${baseHost}?role=client&table=${tableParam}` : `${baseHost}?role=${role}`;
+    const targetUrl = role === 'client' ? `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}` : `${baseHost}?role=${role}`;
     navigator.clipboard.writeText(targetUrl).then(() => showToast('📋 Lien Copié !', `URL [${role.toUpperCase()}] copiée.`));
   };
 
   /* ==========================================================================
-     1. REAL SMARTPHONE CAMERA QR CODE SCANNER (HTML5 CAMERA STREAM)
+     1. ANTI-CHEAT SCAN RULES & TRANSACTION (+10 PTS)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -95,9 +102,17 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Anti-cheat Cooldown check (2 hours between table scans)
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
+      const remainingMinutes = Math.ceil((twoHoursInMs - (now - state.clientSession.lastScanTime)) / 60000);
+      alert(`⚠️ Anti-Triche NEXA :\nVous avez déjà scanné une table aujourd'hui !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
+      return;
+    }
+
     scannerModal.classList.add('active');
 
-    // Initialize Html5Qrcode Camera Engine
     if (window.Html5Qrcode && !html5QrCode) {
       html5QrCode = new Html5Qrcode("html5-qr-reader");
     }
@@ -105,28 +120,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (html5QrCode) {
       try {
         await html5QrCode.start(
-          { facingMode: "environment" }, // Rear Smartphone Camera
+          { facingMode: "environment" },
           { fps: 10, qrbox: { width: 220, height: 220 } },
-          (decodedText, decodedResult) => {
-            // QR Code Successfully Scanned by Camera!
+          (decodedText) => {
             stopCameraScanner();
             triggerQRScanSuccess(decodedText);
           },
-          (errorMessage) => {
-            // Camera scanning...
-          }
+          (err) => {}
         );
       } catch (err) {
-        console.log('Camera access prompt or fallback:', err);
+        console.log('Camera access fallback:', err);
       }
     }
   }
 
   function stopCameraScanner() {
     if (html5QrCode && html5QrCode.isScanning) {
-      html5QrCode.stop().then(() => {
-        html5QrCode.clear();
-      }).catch(err => console.error(err));
+      html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
     }
     scannerModal.classList.remove('active');
   }
@@ -135,21 +145,31 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
 
   async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
+    // Anti-cheat Check
+    const now = Date.now();
+    const twoHoursInMs = 2 * 60 * 60 * 1000;
+    if (now - state.clientSession.lastScanTime < twoHoursInMs) {
+      alert(`⚠️ Anti-Triche NEXA : Vous avez déjà scanné votre table pour ce repas !`);
+      stopCameraScanner();
+      return;
+    }
+
     state.clientSession.points += 10;
+    state.clientSession.lastScanTime = now;
     state.stats.qrScansMonth += 1;
     state.stats.pointsGiven += 10;
-    
+
     localStorage.setItem('nexa_client_points', state.clientSession.points);
+    localStorage.setItem('nexa_last_scan_time', now);
     localStorage.setItem('nexa_stat_scans', state.stats.qrScansMonth);
     localStorage.setItem('nexa_stat_points', state.stats.pointsGiven);
 
-    // Record Transaction on Supabase Cloud PostgreSQL
+    // Save to Supabase PostgreSQL Cloud
     if (window.nexaBackend) {
       try {
         await window.nexaBackend.recordScan(state.restaurant.id, tableParam, state.clientSession.whatsapp, state.clientSession.name);
-        console.log('✅ Supabase: Camera Scan Transaction Saved!');
       } catch (err) {
-        console.log('Local scan points saved:', err);
+        console.log('Local scan saved:', err);
       }
     }
 
@@ -161,7 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderClientUI();
     renderMerchantUI();
-    showToast('✨ +10 Points Crédités !', `Scan de ${qrContent} validé par la caméra.`);
+    showToast('✨ +10 Points Crédités !', `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}).`);
   }
 
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
@@ -193,15 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (!title || !pts) return;
 
-      const newReward = {
-        id: Date.now(),
-        category,
-        icon,
-        title,
-        pts,
-        desc
-      };
-
+      const newReward = { id: Date.now(), category, icon, title, pts, desc };
       state.rewards.push(newReward);
       localStorage.setItem('nexa_prod_rewards', JSON.stringify(state.rewards));
 
@@ -210,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderClientUI();
       renderMerchantUI();
-      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est disponible pour vos clients.`);
+      showToast('🎁 Récompense Publiée !', `"${title}" (${pts} pts) est désormais visible pour tous vos clients.`);
     });
   }
 
@@ -314,7 +326,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div style="text-align: center; padding: 2rem 1rem; color: var(--text-muted); background: white; border-radius: 12px; border: 1px dashed var(--dash-border);">
             <div style="font-size: 2rem; margin-bottom: 0.5rem;">🎁</div>
             <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucune récompense configurée</p>
-            <p style="font-size: 0.75rem; margin: 0;">Le gérant du restaurant ajoutera bientôt ses boissons et privilèges offerts !</p>
+            <p style="font-size: 0.75rem; margin: 0;">${state.restaurant.name} ajoutera bientôt ses boissons et privilèges offerts !</p>
           </div>
         `;
       } else {
@@ -353,7 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (state.rewards.length > 0) {
       showRedemptionPassModal(state.rewards[0]);
     } else {
-      alert("Aucune récompense disponible pour le moment.");
+      alert(`Aucune récompense configurée par ${state.restaurant.name} pour le moment.`);
     }
   };
 
