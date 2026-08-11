@@ -165,6 +165,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   /* ==========================================================================
      1. MERCHANT AUTH & CLEAN LOGOUT LOGIC
      ========================================================================== */
+  window.toggleMerchantPasswordVisibility = function() {
+    const pwdInput = document.getElementById('auth-resto-pwd');
+    if (pwdInput) {
+      pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+    }
+  };
+
   const modalMerchantAuth = document.getElementById('modal-merchant-auth');
   const formMerchantAuth = document.getElementById('form-merchant-auth');
 

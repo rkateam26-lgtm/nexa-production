@@ -30,32 +30,34 @@ class NexaProductionBackend {
     return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
   }
 
-  // 1. Register or Login Merchant Profile
+  // 1. Register or Login Merchant Profile (Clean Separation of Scan Points & WhatsApp Contact!)
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
     if (this.isLiveSupabase && this.client) {
       try {
         const slug = this.getSlug(name);
+        const metaObj = JSON.stringify({ type: type, scanPts: pointsPerScan });
+
         const { data: resto } = await this.client
           .from('restaurants')
           .upsert({
             name: name,
             email: email,
-            whatsapp_contact: whatsappOfficial || pointsPerScan.toString(),
-            city: type,
+            whatsapp_contact: whatsappOfficial || '+226 70 00 00 00',
+            city: metaObj,
             currency: currency
           }, { onConflict: 'email' })
           .select()
           .single();
 
-        return resto || { id: slug, name, city: type, whatsapp_contact: whatsappOfficial || pointsPerScan.toString() };
+        return resto || { id: slug, name, city: metaObj, whatsapp_contact: whatsappOfficial };
       } catch (e) {
         console.log('Merchant save fallback:', e);
       }
     }
-    return { name, city: type, whatsapp_contact: whatsappOfficial || pointsPerScan.toString() };
+    return { name, city: type, whatsapp_contact: whatsappOfficial };
   }
 
-  // 2. Fetch Restaurant Profile Details
+  // 2. Fetch Restaurant Profile Details (Clean JSON Meta Parser)
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -67,10 +69,21 @@ class NexaProductionBackend {
           .single();
 
         if (data) {
+          let parsedType = data.city || '★ 4.9 • Bistro & Grillades';
+          let parsedScanPts = 20;
+
+          try {
+            if (data.city && data.city.startsWith('{')) {
+              const meta = JSON.parse(data.city);
+              parsedType = meta.type || parsedType;
+              parsedScanPts = parseInt(meta.scanPts || '20', 10);
+            }
+          } catch (e) {}
+
           return {
             name: data.name,
-            type: data.city || '★ 4.9 • Bistro & Grillades',
-            pointsPerScan: parseInt(data.whatsapp_contact || '20', 10),
+            type: parsedType,
+            pointsPerScan: parsedScanPts,
             whatsappContact: data.whatsapp_contact || '',
             currency: data.currency || 'FCFA'
           };
@@ -141,18 +154,28 @@ class NexaProductionBackend {
     }
   }
 
-  // 6. Fetch ALL Clients for THIS Restaurant
+  // 6. Fetch ALL Clients for THIS Restaurant (Bulletproof Multi-Tenant Query)
   async fetchClientsByResto(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
         const slug = this.getSlug(restoName);
-        const { data } = await this.client
+        const { data: slugClients } = await this.client
           .from('clients')
           .select('*')
           .ilike('whatsapp_phone', `%_${slug}`)
           .order('last_scan_at', { ascending: false });
 
-        return data || [];
+        if (slugClients && slugClients.length > 0) return slugClients;
+
+        // Fallback search
+        const { data: allClients } = await this.client
+          .from('clients')
+          .select('*')
+          .order('last_scan_at', { ascending: false });
+
+        if (allClients) {
+          return allClients.filter(c => c.whatsapp_phone && c.whatsapp_phone.includes(slug));
+        }
       } catch (err) {
         console.error('Fetch Clients Exception:', err);
       }
@@ -160,7 +183,7 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 7. Fetch Scans History STRICTLY for THIS Restaurant Name!
+  // 7. Fetch Scans History STRICTLY for THIS Restaurant
   async fetchScansHistory(restoName) {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -291,7 +314,7 @@ class NexaProductionBackend {
             });
         }
 
-        // Step C: Insert Scan record tagged to THIS restaurant
+        // Step C: Insert Scan record
         await this.client.from('scans').insert({
           table_number: slug.length,
           points_earned: pointsEarned
