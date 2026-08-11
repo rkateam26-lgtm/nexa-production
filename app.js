@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           state.clientsList = cloudClients.map(c => ({
             id: c.id,
             name: c.full_name ? c.full_name.split('_')[0] : 'Client Nexa',
-            phone: c.whatsapp_phone,
+            phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : '+226 ...',
             points: c.points_balance || state.restaurant.pointsPerScan,
             visits: c.visits_count || 1,
             lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',

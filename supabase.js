@@ -132,7 +132,7 @@ class NexaProductionBackend {
         const { data } = await this.client
           .from('clients')
           .select('*')
-          .ilike('full_name', `%_${slug}`)
+          .ilike('whatsapp_phone', `%_${slug}`) // Filter strictly by composite key!
           .order('last_scan_at', { ascending: false });
 
         return data || [];
@@ -160,18 +160,18 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 7. Register Client Identity ONLY (No Point Duplication!)
+  // 7. Register Client Identity ONLY (Composite key per restaurant)
   async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
     if (this.isLiveSupabase && this.client) {
       try {
         const slug = this.getSlug(restoName);
-        const fullNameTagged = `${clientName}_${slug}`;
+        const compositeKey = `${whatsappPhone}_${slug}`;
 
         const { data: client } = await this.client
           .from('clients')
           .upsert({ 
-            whatsapp_phone: whatsappPhone, 
-            full_name: fullNameTagged,
+            whatsapp_phone: compositeKey, 
+            full_name: clientName,
             points_balance: 0,
             visits_count: 0
           }, { onConflict: 'whatsapp_phone' })
@@ -186,17 +186,17 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 8. Record SINGLE Scan Event (Awards points EXACTLY once!)
+  // 8. Record SINGLE Scan Event (Awards points EXACTLY once per restaurant!)
   async recordScanCloud(restoName, tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
     if (this.isLiveSupabase && this.client) {
       try {
         const slug = this.getSlug(restoName);
-        const fullNameTagged = `${clientName}_${slug}`;
+        const compositeKey = `${whatsappPhone}_${slug}`;
 
         const { data: existingClient } = await this.client
           .from('clients')
           .select('*')
-          .eq('whatsapp_phone', whatsappPhone)
+          .eq('whatsapp_phone', compositeKey)
           .single();
 
         const currentVisits = existingClient ? (existingClient.visits_count || 0) + 1 : 1;
@@ -205,8 +205,8 @@ class NexaProductionBackend {
         const { data: client } = await this.client
           .from('clients')
           .upsert({ 
-            whatsapp_phone: whatsappPhone, 
-            full_name: fullNameTagged,
+            whatsapp_phone: compositeKey, 
+            full_name: clientName,
             points_balance: currentPoints,
             visits_count: currentVisits,
             last_scan_at: new Date().toISOString()
