@@ -61,6 +61,17 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
+    // ⛔ IF MERCHANT IS NOT LOGGED IN, KEEP MERCHANT DASHBOARD STRICTLY AT ZERO!
+    if (!state.isMerchantLoggedIn) {
+      state.rewards = [];
+      state.clientsList = [];
+      state.scansList = [];
+      state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
+      renderMerchantUI();
+      renderClientUI();
+      return;
+    }
+
     if (window.nexaBackend) {
       try {
         const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
@@ -89,7 +100,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Fetch Cloud Clients (CRM Table!)
         const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
-        if (cloudClients && cloudClients.length > 0) {
+        if (cloudClients) {
           state.clientsList = cloudClients.map(c => ({
             id: c.id,
             name: c.full_name || 'Client Nexa',
@@ -101,14 +112,16 @@ document.addEventListener('DOMContentLoaded', async () => {
           }));
           state.stats.totalClients = state.clientsList.length;
           localStorage.setItem(`nexa_clients_${state.restaurant.id}`, JSON.stringify(state.clientsList));
+        } else {
+          state.clientsList = [];
+          state.stats.totalClients = 0;
         }
 
-        // Fetch Scans
-        const cloudScans = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
-        if (cloudScans) {
-          state.scansList = cloudScans;
-          state.stats.qrScansMonth = cloudScans.length;
-          state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
+        // Fetch Scans History strictly for THIS restaurant
+        const scanStats = await window.nexaBackend.fetchScansHistory(state.restaurant.name);
+        if (scanStats) {
+          state.stats.qrScansMonth = scanStats.totalScans || 0;
+          state.stats.pointsGiven = scanStats.totalPts || 0;
         }
 
         // Fetch Returning Client Profile Balance

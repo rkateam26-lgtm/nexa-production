@@ -30,7 +30,7 @@ class NexaProductionBackend {
     return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
   }
 
-  // 1. Register or Login Merchant Profile (Clean Separation of Scan Points & WhatsApp Contact!)
+  // 1. Register or Login Merchant Profile
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
     if (this.isLiveSupabase && this.client) {
       try {
@@ -57,16 +57,16 @@ class NexaProductionBackend {
     return { name, city: type, whatsapp_contact: whatsappOfficial };
   }
 
-  // 2. Fetch Restaurant Profile Details (Clean JSON Meta Parser)
+  // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
-    if (this.isLiveSupabase && this.client) {
+    if (this.isLiveSupabase && this.client && name) {
       try {
         const { data } = await this.client
           .from('restaurants')
           .select('*')
           .ilike('name', `%${name}%`)
           .limit(1)
-          .single();
+          .maybeSingle();
 
         if (data) {
           let parsedType = data.city || '★ 4.9 • Bistro & Grillades';
@@ -95,9 +95,9 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 3. Fetch Cloud Rewards
+  // 3. Fetch Cloud Rewards STRICTLY for THIS Restaurant Slug!
   async fetchRewardsByResto(restoName) {
-    if (this.isLiveSupabase && this.client) {
+    if (this.isLiveSupabase && this.client && restoName) {
       try {
         const slug = this.getSlug(restoName);
         const { data } = await this.client
@@ -114,9 +114,9 @@ class NexaProductionBackend {
     return [];
   }
 
-  // 4. Create Cloud Reward
+  // 4. Create Cloud Reward Tagged with Restaurant Slug
   async createCloudReward(restoName, title, pts, desc, icon, category) {
-    if (this.isLiveSupabase && this.client) {
+    if (this.isLiveSupabase && this.client && restoName) {
       try {
         const slug = this.getSlug(restoName);
         const { data } = await this.client
@@ -124,7 +124,7 @@ class NexaProductionBackend {
           .insert({
             title: title,
             points_required: pts,
-            description: slug, // Tagged strictly with restaurant slug!
+            description: slug, // STRICT MULTI-TENANT RESTAURANT TAG!
             icon: icon
           })
           .select()
@@ -154,9 +154,9 @@ class NexaProductionBackend {
     }
   }
 
-  // 6. Fetch ALL Clients for THIS Restaurant (Bulletproof Multi-Tenant Query)
+  // 6. Fetch Clients STRICTLY for THIS Restaurant (No Global Fallback Leaks!)
   async fetchClientsByResto(restoName) {
-    if (this.isLiveSupabase && this.client) {
+    if (this.isLiveSupabase && this.client && restoName) {
       try {
         const slug = this.getSlug(restoName);
         const { data: slugClients } = await this.client
@@ -165,17 +165,7 @@ class NexaProductionBackend {
           .ilike('whatsapp_phone', `%_${slug}`)
           .order('last_scan_at', { ascending: false });
 
-        if (slugClients && slugClients.length > 0) return slugClients;
-
-        // Fallback search
-        const { data: allClients } = await this.client
-          .from('clients')
-          .select('*')
-          .order('last_scan_at', { ascending: false });
-
-        if (allClients) {
-          return allClients.filter(c => c.whatsapp_phone && c.whatsapp_phone.includes(slug));
-        }
+        return slugClients || []; // ABSOLUTE STRICT MULTI-TENANT ISOLATION: RETURN ONLY SLUG CLIENTS!
       } catch (err) {
         console.error('Fetch Clients Exception:', err);
       }
@@ -185,21 +175,25 @@ class NexaProductionBackend {
 
   // 7. Fetch Scans History STRICTLY for THIS Restaurant
   async fetchScansHistory(restoName) {
-    if (this.isLiveSupabase && this.client) {
+    if (this.isLiveSupabase && this.client && restoName) {
       try {
         const slug = this.getSlug(restoName);
-        const { data } = await this.client
-          .from('scans')
-          .select('*')
-          .eq('table_number', slug.length)
-          .order('scanned_at', { ascending: false });
+        // Query scans matching this restaurant's specific clients
+        const { data: clientRows } = await this.client
+          .from('clients')
+          .select('visits_count, points_balance')
+          .ilike('whatsapp_phone', `%_${slug}`);
 
-        return data || [];
+        if (clientRows && clientRows.length > 0) {
+          const totalScans = clientRows.reduce((sum, c) => sum + (c.visits_count || 1), 0);
+          const totalPts = clientRows.reduce((sum, c) => sum + (c.points_balance || 0), 0);
+          return { totalScans, totalPts };
+        }
       } catch (err) {
         console.error('Fetch Scans Exception:', err);
       }
     }
-    return [];
+    return { totalScans: 0, totalPts: 0 };
   }
 
   // 8. Register Client Identity ONLY
@@ -234,7 +228,7 @@ class NexaProductionBackend {
           .from('clients')
           .select('*')
           .eq('whatsapp_phone', compositeKey)
-          .single();
+          .maybeSingle();
 
         if (data) {
           return {
