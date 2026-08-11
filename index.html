@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>NEXA — Plateforme de Fidélisation QR Code (Le Savane)</title>
+  <title>NEXA Production — Plateforme de Fidélisation & CRM QR Code</title>
   
   <!-- PWA Manifest -->
   <link rel="manifest" href="manifest.json">
@@ -20,6 +20,9 @@
   
   <!-- Canvas Confetti -->
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- Supabase Official JS Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -30,7 +33,7 @@
     <div class="brand-logo">
       <div class="brand-badge">N</div>
       <span>NEXA</span>
-      <span class="brand-tag">PITCH DEMO</span>
+      <span class="brand-tag" style="background: rgba(16, 185, 129, 0.2); color: #10B981; border-color: rgba(16, 185, 129, 0.4);">LIVE PROD</span>
     </div>
 
     <!-- Mode Switcher Buttons -->
@@ -203,7 +206,7 @@
         <div>
           <div class="dash-brand">
             <div class="dash-brand-name" id="dash-brand-name-el">LE SAVANE</div>
-            <div class="dash-brand-sub">Dashboard Restaurateur Nexa</div>
+            <div class="dash-brand-sub">Dashboard Production Nexa</div>
           </div>
 
           <div class="dash-menu">
@@ -231,7 +234,7 @@
         </div>
 
         <div style="color: var(--text-light); font-size: 0.75rem;">
-          Gérant : <strong>Le Savane (Paris)</strong>
+          Connecté : <strong style="color:#10B981;">● Supabase Cloud BDD Live</strong>
         </div>
       </aside>
 
@@ -241,7 +244,7 @@
         <header class="dash-header">
           <div>
             <h2 style="font-family: var(--font-heading); font-size: 1.3rem; font-weight: 800;" id="dash-title">Vue d'ensemble</h2>
-            <p style="font-size: 0.8rem; color: var(--text-muted);">Suivi en temps réel de votre programme de fidélité</p>
+            <p style="font-size: 0.8rem; color: var(--text-muted);">Suivi en temps réel de votre programme de fidélité sur Supabase Cloud</p>
           </div>
           <button class="btn-primary" id="btn-open-add-reward">
             <i data-lucide="plus"></i>
@@ -273,7 +276,7 @@
             </div>
 
             <div class="data-table-container" style="padding: 1.25rem;">
-              <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 1rem;">Évolution des Scans QR</h3>
+              <h3 style="font-size: 1rem; font-weight: 800; margin-bottom: 1rem;">Évolution des Scans QR (Cloud PostgreSQL)</h3>
               <canvas id="scansChart" height="120"></canvas>
             </div>
           </div>
@@ -508,6 +511,9 @@
       <div style="font-size: 0.78rem; color: #D6C8BC;" id="toast-body">Un nouveau privilège est disponible !</div>
     </div>
   </div>
+
+  <!-- Supabase Live Script -->
+  <script src="supabase.js"></script>
 
   <!-- Main JavaScript File -->
   <script src="app.js"></script>

@@ -1,76 +1,12 @@
 /* ==========================================================================
-   NEXA PRODUCTION - SUPABASE & POSTGRESQL BACKEND ENGINE
+   NEXA PRODUCTION - LIVE SUPABASE & POSTGRESQL BACKEND ENGINE
    ========================================================================== */
 
-// Default Supabase Production Configuration (Replace with your live keys)
+// Live Supabase Production Credentials
 const SUPABASE_CONFIG = {
-  url: window.NEXA_SUPABASE_URL || 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co',
-  anonKey: window.NEXA_SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY'
+  url: 'https://yahznyueiihraxahhujb.supabase.co',
+  anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhaHpueXVlaWlocmF4YWhodWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MDQ4MzIsImV4cCI6MjEwMTk4MDgzMn0.OslLjXNWSEwNTlYtoUD4eXgc19I9Py5FF2vn3T8NIpw'
 };
-
-/* ==========================================================================
-   POSTGRESQL DATABASE SCHEMA CREATION SCRIPT (SQL FOR SUPABASE EDITOR)
-   ========================================================================== 
-
--- 1. Table Restaurants (Comptes Gérants)
-CREATE TABLE IF NOT EXISTS public.restaurants (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT UNIQUE NOT NULL,
-  whatsapp_contact TEXT,
-  city TEXT DEFAULT 'Ouagadougou',
-  currency TEXT DEFAULT 'FCFA',
-  plan TEXT DEFAULT 'pro',
-  logo_url TEXT,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 2. Table Tables QR Codes
-CREATE TABLE IF NOT EXISTS public.tables_qr (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id UUID REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  table_number INT NOT NULL,
-  token_secret TEXT UNIQUE NOT NULL,
-  total_scans INT DEFAULT 0,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 3. Table Clients Fidélité
-CREATE TABLE IF NOT EXISTS public.clients (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id UUID REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  whatsapp_phone TEXT NOT NULL,
-  full_name TEXT,
-  points_balance INT DEFAULT 0,
-  visits_count INT DEFAULT 0,
-  tier TEXT DEFAULT 'Silver',
-  last_scan_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  UNIQUE(restaurant_id, whatsapp_phone)
-);
-
--- 4. Table Historique des Scans
-CREATE TABLE IF NOT EXISTS public.scans (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id UUID REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  table_number INT NOT NULL,
-  client_id UUID REFERENCES public.clients(id) ON DELETE CASCADE,
-  points_earned INT DEFAULT 10,
-  scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- 5. Table Catalogue des Récompenses
-CREATE TABLE IF NOT EXISTS public.rewards (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  restaurant_id UUID REFERENCES public.restaurants(id) ON DELETE CASCADE,
-  title TEXT NOT NULL,
-  description TEXT,
-  points_required INT NOT NULL,
-  icon TEXT DEFAULT '🎁',
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-========================================================================== */
 
 class NexaProductionBackend {
   constructor() {
@@ -80,69 +16,83 @@ class NexaProductionBackend {
 
   init() {
     // Check if Supabase JS SDK is loaded
-    if (window.supabase && SUPABASE_CONFIG.url !== 'https://YOUR_SUPABASE_PROJECT_ID.supabase.co') {
-      this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
-      this.isLiveSupabase = true;
-      console.log('⚡ NEXA Production: Connected to Supabase Cloud Database');
+    if (window.supabase) {
+      try {
+        this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+        this.isLiveSupabase = true;
+        console.log('⚡ NEXA Production: Connected Live to Supabase Cloud PostgreSQL Database');
+      } catch (err) {
+        console.error('Supabase Initialization Error:', err);
+      }
     } else {
-      console.log('📦 NEXA Production: Running on High-Performance Local Storage Engine (Ready for Supabase keys)');
+      console.log('📦 NEXA Production: Running on Local Persistence Engine');
     }
   }
 
-  // 1. Authenticate Merchant
+  // 1. Authenticate Merchant (Sign In or Sign Up)
   async loginMerchant(email, password) {
-    if (this.isLiveSupabase) {
+    if (this.isLiveSupabase && this.client) {
       const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        // Try sign up if user does not exist yet
+        const { data: signUpData, error: signUpErr } = await this.client.auth.signUp({ email, password });
+        if (signUpErr) throw signUpErr;
+        return signUpData;
+      }
       return data;
     } else {
-      // Local fallback
       return { user: { email, name: 'Le Savane (Gérant)' } };
     }
   }
 
-  // 2. Record Table Scan & Credit Points
-  async recordScan(restaurantId, tableNumber, whatsappPhone) {
-    if (this.isLiveSupabase) {
-      // Real Supabase Transaction
+  // 2. Record Table Scan & Credit Points in Real-Time
+  async recordScan(restaurantId, tableNumber, whatsappPhone, clientName = 'Client Nexa') {
+    if (this.isLiveSupabase && this.client) {
+      // Upsert Client Points in PostgreSQL
       const { data: client, error: clientErr } = await this.client
         .from('clients')
         .upsert({ 
           restaurant_id: restaurantId, 
           whatsapp_phone: whatsappPhone, 
-          points_balance: 10, 
-          visits_count: 1 
+          full_name: clientName,
+          last_scan_at: new Date().toISOString()
         }, { onConflict: 'restaurant_id,whatsapp_phone' })
         .select()
         .single();
 
-      if (clientErr) console.error('Scan Error:', clientErr);
+      if (clientErr) console.error('Scan Client Error:', clientErr);
 
+      // Insert Scan Event in History
       await this.client.from('scans').insert({
         restaurant_id: restaurantId,
         table_number: tableNumber,
-        client_id: client.id,
+        client_id: client ? client.id : null,
         points_earned: 10
       });
 
       return client;
     } else {
-      // Local persistent DB Engine
       return { whatsapp_phone: whatsappPhone, points_earned: 10 };
     }
   }
 
-  // 3. Fetch Real-time Dashboard Analytics
+  // 3. Fetch Real-time Dashboard Analytics from Cloud PostgreSQL
   async getDashboardMetrics(restaurantId) {
-    if (this.isLiveSupabase) {
+    if (this.isLiveSupabase && this.client) {
       const { data: clients } = await this.client.from('clients').select('*').eq('restaurant_id', restaurantId);
       const { data: scans } = await this.client.from('scans').select('*').eq('restaurant_id', restaurantId);
-      return { clients: clients || [], scans: scans || [] };
+      const { data: rewards } = await this.client.from('rewards').select('*').eq('restaurant_id', restaurantId);
+
+      return {
+        clients: clients || [],
+        scans: scans || [],
+        rewards: rewards || []
+      };
     } else {
       return null;
     }
   }
 }
 
-// Export Singleton Instance
+// Global Singleton Engine
 window.nexaBackend = new NexaProductionBackend();
