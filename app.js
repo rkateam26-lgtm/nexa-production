@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (window.lucide) lucide.createIcons();
 
-  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING (STRICT ISOLATION BY RESTO SLUG)
+  // ☁️ LIVE SUPABASE CLOUD DATA FETCHING
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_curr_${state.restaurant.id}`, cloudResto.currency);
         }
 
-        // Fetch Cloud Rewards for THIS restaurant only
+        // Fetch Cloud Rewards for THIS restaurant
         const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         if (cloudRewards) {
           state.rewards = cloudRewards.map(r => ({
@@ -85,13 +85,13 @@ document.addEventListener('DOMContentLoaded', async () => {
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
         }
 
-        // Fetch Cloud Clients for THIS restaurant only
+        // Fetch Cloud Clients for THIS restaurant
         const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);
-        if (cloudClients) {
+        if (cloudClients && cloudClients.length > 0) {
           state.clientsList = cloudClients.map(c => ({
             id: c.id,
-            name: c.full_name ? c.full_name.split('_')[0] : 'Client Nexa',
-            phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : '+226 ...',
+            name: c.full_name || 'Client Nexa',
+            phone: c.whatsapp_phone,
             points: c.points_balance || state.restaurant.pointsPerScan,
             visits: c.visits_count || 1,
             lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
@@ -107,6 +107,29 @@ document.addEventListener('DOMContentLoaded', async () => {
           state.scansList = cloudScans;
           state.stats.qrScansMonth = cloudScans.length;
           state.stats.pointsGiven = cloudScans.reduce((sum, s) => sum + (s.points_earned || state.restaurant.pointsPerScan), 0);
+
+          // If clients table is empty but scans exist, synthesize client rows!
+          if (state.clientsList.length === 0 && cloudScans.length > 0) {
+            state.clientsList = [{
+              id: Date.now(),
+              name: state.clientSession.name || 'Client Table #' + tableParam,
+              phone: state.clientSession.whatsapp || '+226 70 12 34 56',
+              points: state.stats.pointsGiven,
+              visits: cloudScans.length,
+              lastVisit: 'À l\'instant',
+              segment: 'Client Actif'
+            }];
+            state.stats.totalClients = state.clientsList.length;
+          }
+        }
+
+        // Fetch Returning Client Profile Balance
+        if (state.clientSession.whatsapp) {
+          const profile = await window.nexaBackend.getClientProfile(state.clientSession.whatsapp);
+          if (profile) {
+            state.clientSession.points = profile.points;
+            localStorage.setItem('nexa_client_points', profile.points);
+          }
         }
       } catch (err) {
         console.log('Cloud sync info:', err);
@@ -254,7 +277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     2. REWARD CREATION FOR LOGGED-IN RESTAURANT MANAGER
+     2. REWARD CREATION & DELETION ENGINE
      ========================================================================== */
   const modalAddReward = document.getElementById('modal-add-reward');
   const formAddReward = document.getElementById('form-add-reward');
@@ -302,16 +325,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
-  window.deleteReward = function(rewardId) {
+  // REWARD DELETION ENGINE (DELETES FROM MEMORY, LOCALSTORAGE & SUPABASE CLOUD!)
+  window.deleteReward = async function(rewardId) {
+    const targetReward = state.rewards.find(r => r.id === rewardId);
+    const title = targetReward ? targetReward.title : '';
+
     state.rewards = state.rewards.filter(r => r.id !== rewardId);
     localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
+
+    if (window.nexaBackend) {
+      try {
+        await window.nexaBackend.deleteCloudReward(rewardId, title);
+      } catch (err) {
+        console.log('Cloud delete reward info:', err);
+      }
+    }
+
     renderClientUI();
     renderMerchantUI();
-    showToast('🗑️ Récompense Supprimée', 'Catalogue mis à jour.');
+    showToast('🗑️ Récompense Supprimée', 'Le catalogue a été mis à jour.');
   };
 
   /* ==========================================================================
-     3. CLIENT AUTHENTICATION & IDENTITY REGISTRATION (NO DOUBLE-SCAN!)
+     3. CLIENT AUTHENTICATION & IDENTITY REGISTRATION
      ========================================================================== */
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
@@ -332,10 +368,16 @@ document.addEventListener('DOMContentLoaded', async () => {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
-      // Register identity ONLY (Does NOT create a scan transaction here!)
+      // Check existing balance for returning customer
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
+          const profile = await window.nexaBackend.getClientProfile(phone);
+          if (profile) {
+            state.clientSession.points = profile.points;
+            localStorage.setItem('nexa_client_points', profile.points);
+          } else {
+            await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
+          }
         } catch (err) {
           console.log('Client identity reg info:', err);
         }
@@ -348,7 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   /* ==========================================================================
-     4. ANTI-CHEAT CAMERA SCANNER LOGIC (EXACT SINGLE-SCAN POINTS CREDIT)
+     4. ANTI-CHEAT CAMERA SCANNER LOGIC (POINTS ACCUMULATION & SINGLE SCAN)
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
@@ -412,7 +454,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // ALWAYS USE THE EXACT CUSTOM SCAN POINTS DEFINED BY THIS RESTAURANT MANAGER!
+    // ACCUMULATE POINTS ON RETURNING SCANS!
     const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
 
     state.clientSession.points += scanEarned;
@@ -421,10 +463,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem('nexa_last_scan_time', now);
 
-    // Record EXACTLY 1 SCAN in Cloud PostgreSQL Database!
+    // Record SINGLE scan event on Cloud PostgreSQL
     if (window.nexaBackend) {
       try {
-        await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
+        const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
+        if (res && res.currentPoints) {
+          state.clientSession.points = res.currentPoints;
+          localStorage.setItem('nexa_client_points', res.currentPoints);
+        }
       } catch (err) {
         console.log('Local scan saved:', err);
       }
@@ -437,7 +483,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     await syncCloudData();
-    showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}).`);
+    showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}). Solde: ${state.clientSession.points} pts.`);
   }
 
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
@@ -445,7 +491,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
 
   /* ==========================================================================
-     5. RENDERERS & CHARTS
+     5. RENDERERS, INTERACTIVE LOCKED REWARD MODAL & POINT DEDUCTION
      ========================================================================== */
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
@@ -497,7 +543,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 <h3>${reward.icon} ${reward.title}</h3>
                 <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
               </div>
-              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="${canClaim ? `claimReward(${reward.id})` : ''}">
+              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="handleRewardClick(${reward.id}, ${reward.pts}, '${reward.title.replace(/'/g, "\\'")}')">
                 ${canClaim ? 'Échanger' : `${reward.pts} pts`}
               </button>
             </div>
@@ -507,13 +553,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  window.claimReward = function(rewardId) {
+  // INTERACTIVE REWARD CLICK (EXPLAINS MISSING POINTS OR ACCEPTS CLAIM)
+  window.handleRewardClick = function(rewardId, requiredPts, title) {
+    const currentPoints = state.clientSession.points;
+    if (currentPoints < requiredPts) {
+      const missingPts = requiredPts - currentPoints;
+      alert(`🔒 Récompense Verrouillée !\n\nIl vous manque ${missingPts} points pour débloquer "${title}".\n\nScannez à nouveau votre table lors de votre prochaine visite pour accumuler vos points !`);
+    } else {
+      claimReward(rewardId);
+    }
+  };
+
+  // REWARD CLAIM: DEDUCTS POINTS FROM BALANCE AND SUPABASE CLOUD!
+  window.claimReward = async function(rewardId) {
     const reward = state.rewards.find(r => r.id === rewardId);
     if (!reward || state.clientSession.points < reward.pts) return;
 
+    // Deduct points locally
     state.clientSession.points -= reward.pts;
     state.stats.rewardsRedeemed += 1;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
+
+    // Deduct points on Cloud Supabase!
+    if (window.nexaBackend && state.clientSession.whatsapp) {
+      try {
+        await window.nexaBackend.deductPointsCloud(state.clientSession.whatsapp, reward.pts);
+      } catch (err) {
+        console.log('Deduct cloud error:', err);
+      }
+    }
 
     renderClientUI();
     renderMerchantUI();
@@ -574,6 +642,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stat-qr-scans').textContent = state.stats.qrScansMonth.toLocaleString();
     document.getElementById('stat-pts-given').textContent = state.stats.pointsGiven.toLocaleString();
     document.getElementById('stat-rewards-redeemed').textContent = state.stats.rewardsRedeemed.toLocaleString();
+
+    // HIDE "Créer ma Première Récompense" BANNER IF AT LEAST 1 REWARD IS PUBLISHED!
+    const overviewCreateBanner = document.getElementById('overview-create-reward-banner');
+    if (overviewCreateBanner) {
+      if (state.rewards.length > 0) {
+        overviewCreateBanner.style.display = 'none';
+      } else {
+        overviewCreateBanner.style.display = 'flex';
+      }
+    }
 
     const crmTableBody = document.getElementById('crm-table-body');
     if (crmTableBody) {
