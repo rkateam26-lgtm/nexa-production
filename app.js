@@ -90,7 +90,8 @@ document.addEventListener('DOMContentLoaded', async () => {
           const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
           if (cloudResto) {
             state.restaurant.type = cloudResto.type;
-            state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+            const localPts = localStorage.getItem(`nexa_pts_${slug}`);
+            state.restaurant.pointsPerScan = localPts ? parseInt(localPts, 10) : (cloudResto.pointsPerScan || 20);
             state.restaurant.currency = cloudResto.currency;
           }
 
@@ -448,7 +449,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // REACHED ONLY IF > 2 HOURS!
-    const scanEarned = parseInt(state.restaurant.pointsPerScan, 10) || 20;
+    const configuredPts = parseInt(localStorage.getItem(`nexa_pts_${slug}`) || state.restaurant.pointsPerScan || '20', 10);
+    const scanEarned = (configuredPts && !isNaN(configuredPts)) ? configuredPts : 20;
 
     state.clientSession.points += scanEarned;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
