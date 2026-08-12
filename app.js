@@ -167,8 +167,85 @@ function initNexaApp() {
   };
 
   /* ==========================================================================
-     1. MERCHANT AUTH & CLEAN LOGOUT LOGIC
+     1. MERCHANT AUTH & SUBSCRIPTION PAYMENT MODULE (ORANGE, MOOV, WAVE)
      ========================================================================== */
+  let selectedPlanForPay = { title: 'NEXA Pro', amount: 25000, provider: 'OM' };
+
+  window.openPaymentModal = function(planTitle, planAmount) {
+    if (!state.isMerchantLoggedIn) {
+      openMerchantAuthModal();
+      return;
+    }
+
+    selectedPlanForPay.title = planTitle;
+    selectedPlanForPay.amount = planAmount;
+
+    document.getElementById('pay-modal-plan-title').textContent = planTitle;
+    document.getElementById('pay-modal-plan-amount').textContent = `${planAmount.toLocaleString()} FCFA`;
+    
+    if (state.restaurant.whatsappContact) {
+      document.getElementById('pay-phone-input').value = state.restaurant.whatsappContact;
+    }
+
+    updatePayUssdInstructions();
+    const modal = document.getElementById('modal-payment-mobile');
+    if (modal) modal.classList.add('active');
+  };
+
+  window.closePaymentModal = function() {
+    const modal = document.getElementById('modal-payment-mobile');
+    if (modal) modal.classList.remove('active');
+  };
+
+  window.selectPayProvider = function(providerCode) {
+    selectedPlanForPay.provider = providerCode;
+    document.querySelectorAll('.pay-provider-box').forEach(box => box.classList.remove('active'));
+
+    const activeBox = document.querySelector(`.pay-provider-box[onclick*="${providerCode}"]`);
+    if (activeBox) activeBox.classList.add('active');
+
+    updatePayUssdInstructions();
+  };
+
+  function updatePayUssdInstructions() {
+    const ussdEl = document.getElementById('pay-ussd-code');
+    const amt = selectedPlanForPay.amount;
+
+    if (selectedPlanForPay.provider === 'OM') {
+      if (ussdEl) ussdEl.textContent = `*144*4*6*${amt}# (Orange Money Burkina/Côte d'Ivoire)`;
+    } else if (selectedPlanForPay.provider === 'MOOV') {
+      if (ussdEl) ussdEl.textContent = `*155*4*1*${amt}# (Moov Money / Flooz)`;
+    } else if (selectedPlanForPay.provider === 'WAVE') {
+      if (ussdEl) ussdEl.textContent = `Scannez le QR Code Wave ou validez la notification push Wave`;
+    }
+  }
+
+  const formPayMobile = document.getElementById('form-pay-mobile-money');
+  if (formPayMobile) {
+    formPayMobile.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const phone = document.getElementById('pay-phone-input').value.trim();
+      if (!phone) return;
+
+      closePaymentModal();
+      
+      const planName = selectedPlanForPay.title;
+      const amtStr = selectedPlanForPay.amount.toLocaleString();
+
+      document.getElementById('sub-active-plan-title').textContent = planName;
+      document.getElementById('sub-active-badge').textContent = `🟢 ABONNEMENT ACTIF (${planName.toUpperCase()})`;
+
+      localStorage.setItem(`nexa_sub_${slug}`, planName);
+
+      if (window.confetti) {
+        confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 }, colors: ['#10B981', '#F59E0B', '#D97706'] });
+      }
+
+      showToast('🎉 Paiement Mobile Money Réussi !', `Abonnement ${planName} (${amtStr} FCFA) activé pour 30 jours.`);
+      alert(`🎉 Paiement Réussi !\n\nVotre abonnement ${planName} (${amtStr} FCFA/mois) a été activé avec succès via Mobile Money !\n\nProchain renouvellement le 12 Septembre 2026.`);
+    });
+  }
+
   window.toggleMerchantPasswordVisibility = function() {
     const pwdInput = document.getElementById('auth-resto-pwd');
     if (pwdInput) {

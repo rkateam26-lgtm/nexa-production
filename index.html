@@ -270,6 +270,10 @@
               <i data-lucide="send"></i>
               <span>Notifications Push</span>
             </button>
+            <button class="dash-menu-item" data-section="subscription">
+              <i data-lucide="credit-card"></i>
+              <span>Abonnement & Facturation</span>
+            </button>
           </div>
         </div>
 
@@ -528,6 +532,118 @@
             </div>
           </div>
 
+          <!-- Section 7: Abonnement & Facturation (MOBILE MONEY PAYMENT MODULE) -->
+          <div class="dash-section" id="dash-sec-subscription">
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+              
+              <!-- ACTIVE PLAN STATUS CARD -->
+              <div style="background: linear-gradient(135deg, rgba(42,29,21,0.95), rgba(74,53,40,0.92)); border: 2px solid var(--primary-gold); border-radius: 16px; padding: 1.5rem; color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; box-shadow: var(--shadow-md);">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.4rem;">
+                    <span style="background: #10B981; color: white; font-size: 0.75rem; font-weight: 800; padding: 3px 10px; border-radius: 14px;" id="sub-active-badge">🟢 ABONNEMENT ACTIF</span>
+                    <strong style="color: var(--primary-gold); font-size: 1.1rem;" id="sub-active-plan-title">NEXA Pro</strong>
+                  </div>
+                  <p style="font-size: 0.85rem; color: #D6C8BC; margin: 0 0 0.4rem 0;">
+                    Accès illimité aux chevalets de table, CRM client WhatsApp, Notifs Push et Validation 1-Clic.
+                  </p>
+                  <div style="font-size: 0.78rem; color: #D6C8BC;">
+                    Prochain renouvellement automatique : <strong style="color: #10B981;" id="sub-next-date">12 Septembre 2026</strong>
+                  </div>
+                </div>
+
+                <button class="btn-primary" onclick="openPaymentModal('NEXA Pro', 25000)" style="background: var(--primary-gold); color: #2A1D15; font-weight: 800; padding: 0.75rem 1.25rem;">
+                  <i data-lucide="refresh-cw"></i>
+                  <span>Renouveler via Mobile Money</span>
+                </button>
+              </div>
+
+              <!-- PRICING TIERS GRID -->
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.4rem 0;">Formules d'Abonnement NEXA</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1.25rem 0;">Choisissez la formule adaptée à la taille de votre restaurant et payez simplement par Mobile Money.</p>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+                  
+                  <!-- TIER 1: BASIC -->
+                  <div style="background: white; border: 1px solid var(--dash-border); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                    <div>
+                      <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">NEXA Basic</h4>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem 0;">Idéal pour démarrer sur 5 à 10 tables.</p>
+                      
+                      <div style="font-size: 1.8rem; font-weight: 800; color: var(--marron-dark); margin-bottom: 1.25rem;">
+                        15 000 <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">FCFA / mois</span>
+                      </div>
+
+                      <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.82rem; color: var(--text-main); display: flex; flex-direction: column; gap: 0.6rem;">
+                        <li>✓ Jusqu'à 10 tables équipées</li>
+                        <li>✓ 500 scans max par mois</li>
+                        <li>✓ Catalogue de récompenses de base</li>
+                        <li>✓ Support standard par email</li>
+                      </ul>
+                    </div>
+
+                    <button class="btn-secondary" onclick="openPaymentModal('NEXA Basic', 15000)" style="width: 100%; justify-content: center; font-weight: 700;">
+                      Choisir NEXA Basic (15 000 FCFA)
+                    </button>
+                  </div>
+
+                  <!-- TIER 2: PRO (POPULAR) -->
+                  <div style="background: white; border: 2.5px solid var(--primary-gold); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative; box-shadow: var(--shadow-md);">
+                    <div style="position: absolute; top: -12px; right: 20px; background: var(--primary-gold); color: #2A1D15; font-size: 0.7rem; font-weight: 800; padding: 3px 12px; border-radius: 12px; text-transform: uppercase;">
+                      ★ POPULAIRE & RECOMMANDÉ
+                    </div>
+
+                    <div>
+                      <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">NEXA Pro</h4>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem 0;">Pour les restaurants en forte croissance.</p>
+                      
+                      <div style="font-size: 1.8rem; font-weight: 800; color: var(--primary-gold); margin-bottom: 1.25rem;">
+                        25 000 <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">FCFA / mois</span>
+                      </div>
+
+                      <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.82rem; color: var(--text-main); display: flex; flex-direction: column; gap: 0.6rem;">
+                        <li>✓ <strong>Tables & Scans illimités</strong></li>
+                        <li>✓ <strong>CRM Client & Relance WhatsApp 1-Clic</strong></li>
+                        <li>✓ <strong>Notifications Push Promotionnelles</strong></li>
+                        <li>✓ <strong>10 Chevalets de table offerts</strong></li>
+                        <li>✓ Support prioritaire 7j/7</li>
+                      </ul>
+                    </div>
+
+                    <button class="btn-primary" onclick="openPaymentModal('NEXA Pro', 25000)" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #2A1D15; font-weight: 800;">
+                      ⚡ Choisir NEXA Pro (25 000 FCFA)
+                    </button>
+                  </div>
+
+                  <!-- TIER 3: MULTI-GROUP -->
+                  <div style="background: white; border: 1px solid var(--dash-border); border-radius: 16px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+                    <div>
+                      <h4 style="font-size: 1.05rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">NEXA Multi-Group</h4>
+                      <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0 0 1rem 0;">Pour les chaînes et groupes de restaurants.</p>
+                      
+                      <div style="font-size: 1.8rem; font-weight: 800; color: var(--marron-dark); margin-bottom: 1.25rem;">
+                        50 000 <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 400;">FCFA / mois</span>
+                      </div>
+
+                      <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem 0; font-size: 0.82rem; color: var(--text-main); display: flex; flex-direction: column; gap: 0.6rem;">
+                        <li>✓ Multi-établissements & multi-caisses</li>
+                        <li>✓ Intégration API caisse POS</li>
+                        <li>✓ Rapports d'analyse avancés</li>
+                        <li>✓ Gestionnaire de compte dédié</li>
+                      </ul>
+                    </div>
+
+                    <button class="btn-secondary" onclick="openPaymentModal('NEXA Multi-Group', 50000)" style="width: 100%; justify-content: center; font-weight: 700;">
+                      Choisir Multi-Group (50 000 FCFA)
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
         </div>
 
         <nav class="dash-mobile-dock">
@@ -723,6 +839,72 @@
 
       <div id="pass-qr-box" style="margin-bottom: 1rem;"></div>
       <p style="font-size: 0.75rem; color: var(--text-muted);">Valable 15 minutes • Usage unique</p>
+    </div>
+  </div>
+
+  <!-- MODAL PAIEMENT MOBILE MONEY & INSCRIPTION ABONNEMENT -->
+  <div class="nexa-modal-backdrop" id="modal-payment-mobile">
+    <div class="nexa-modal-card" style="max-width: 520px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0;">💳 Paiement Sécurisé Mobile Money</h3>
+        <button onclick="closePaymentModal()" style="font-size: 1.2rem; background: none; border: none; cursor: pointer;">✕</button>
+      </div>
+
+      <div style="background: var(--marron-light); border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 1rem; margin-bottom: 1.25rem; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Formule Sélectionnée</span>
+          <h4 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0.1rem 0 0 0;" id="pay-modal-plan-title">NEXA Pro</h4>
+        </div>
+        <div style="text-align: right;">
+          <span style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Montant Mensuel</span>
+          <div style="font-size: 1.3rem; font-weight: 800; color: var(--primary-gold);" id="pay-modal-plan-amount">25 000 FCFA</div>
+        </div>
+      </div>
+
+      <form id="form-pay-mobile-money">
+        <label style="display: block; font-size: 0.82rem; font-weight: 800; color: var(--marron-dark); margin-bottom: 0.5rem;">
+          1. Choisissez votre moyen de paiement Mobile Money
+        </label>
+        
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.6rem; margin-bottom: 1.25rem;">
+          
+          <label style="background: white; border: 2px solid var(--dash-border); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.2s ease;" class="pay-provider-box active" onclick="selectPayProvider('OM')">
+            <input type="radio" name="pay_provider" value="OM" checked style="display: none;">
+            <div style="font-size: 1.4rem; margin-bottom: 0.2rem;">🟧</div>
+            <strong style="font-size: 0.78rem; color: #EA580C; display: block;">Orange Money</strong>
+          </label>
+
+          <label style="background: white; border: 2px solid var(--dash-border); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.2s ease;" class="pay-provider-box" onclick="selectPayProvider('MOOV')">
+            <input type="radio" name="pay_provider" value="MOOV" style="display: none;">
+            <div style="font-size: 1.4rem; margin-bottom: 0.2rem;">🟦</div>
+            <strong style="font-size: 0.78rem; color: #2563EB; display: block;">Moov Money</strong>
+          </label>
+
+          <label style="background: white; border: 2px solid var(--dash-border); border-radius: 10px; padding: 0.75rem 0.5rem; text-align: center; cursor: pointer; transition: all 0.2s ease;" class="pay-provider-box" onclick="selectPayProvider('WAVE')">
+            <input type="radio" name="pay_provider" value="WAVE" style="display: none;">
+            <div style="font-size: 1.4rem; margin-bottom: 0.2rem;">🌊</div>
+            <strong style="font-size: 0.78rem; color: #06B6D4; display: block;">Wave Direct</strong>
+          </label>
+
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--marron-dark); margin-bottom: 0.35rem;">
+            2. Votre Numéro Mobile Money pour la demande de paiement
+          </label>
+          <input type="tel" id="pay-phone-input" placeholder="+226 70 00 00 00" style="width: 100%; padding: 0.75rem; border-radius: 10px; border: 1px solid var(--dash-border); font-size: 0.95rem; font-weight: 700;" required>
+        </div>
+
+        <!-- USSD PAYMENT INSTRUCTIONS BOX -->
+        <div id="pay-ussd-instructions" style="background: var(--bg-whitey); border: 1px dashed var(--primary-gold); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem; font-size: 0.78rem; color: var(--text-main);">
+          <strong>📲 Instructions de Paiement USSD :</strong><br/>
+          Une alerte Push Mobile Money sera envoyée sur votre téléphone. Vous pouvez aussi valider directement en composant : <strong style="color: var(--primary-gold);" id="pay-ussd-code">*144*4*6*25000#</strong> sur votre téléphone.
+        </div>
+
+        <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 0.85rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800; font-size: 0.95rem;">
+          ⚡ Payer par Mobile Money & Activer
+        </button>
+      </form>
     </div>
   </div>
 
