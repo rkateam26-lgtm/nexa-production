@@ -92,8 +92,12 @@ function initNexaApp() {
           const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
           if (cloudResto) {
             state.restaurant.type = cloudResto.type;
-            const localPts = localStorage.getItem(`nexa_pts_${slug}`);
-            state.restaurant.pointsPerScan = localPts ? parseInt(localPts, 10) : (cloudResto.pointsPerScan || 20);
+            const localPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
+            if (localPts) {
+              state.restaurant.pointsPerScan = parseInt(localPts, 10);
+            } else if (cloudResto.pointsPerScan) {
+              state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+            }
             state.restaurant.currency = cloudResto.currency;
           }
 
@@ -222,24 +226,22 @@ function initNexaApp() {
 
     if (selectedPlanForPay.provider === 'OM') {
       if (ussdBox) ussdBox.innerHTML = `
-        <strong>🟧 Transfert Orange Money vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Marchand Destination : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
-        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*144*4*6*54513981*${selectedPlanForPay.amount}#</strong><br/>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">L'argent arrive directement sur votre compte gérant NEXA (+226 54 51 39 81) sans frais.</span>
+        <strong>🟧 Procédure de Paiement Orange Money (${amt} FCFA) :</strong><br/>
+        1. Composez <strong style="color: #EA580C; font-size: 0.95rem;">*144*4*6*${selectedPlanForPay.amount}#</strong> sur votre téléphone.<br/>
+        2. Vous recevrez un code OTP à 6 chiffres par SMS.<br/>
+        3. Entrez ce code OTP ci-dessous pour valider le règlement.
       `;
     } else if (selectedPlanForPay.provider === 'MOOV') {
       if (ussdBox) ussdBox.innerHTML = `
-        <strong>🟦 Transfert Moov Money / Flooz vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Destination Moov : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
-        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*155*4*1*54513981*${selectedPlanForPay.amount}#</strong><br/>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">Validation automatique dès réception du transfert.</span>
+        <strong>🟦 Procédure de Paiement Moov Money / Flooz (${amt} FCFA) :</strong><br/>
+        1. Composez le code USSD <strong style="color: #2563EB; font-size: 0.95rem;">*155*4*1*${selectedPlanForPay.amount}#</strong>.<br/>
+        2. Validez le paiement avec votre code secret Mobile Money.
       `;
     } else if (selectedPlanForPay.provider === 'WAVE') {
       if (ussdBox) ussdBox.innerHTML = `
-        <strong>🌊 Transfert Wave Direct vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Destination Wave : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
-        • Scan QR Code Wave Marchand ou lien direct vers le +226 54 51 39 81.<br/>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">Zéro frais de transfert pour le restaurateur.</span>
+        <strong>🌊 Procédure de Paiement Wave (${amt} FCFA) :</strong><br/>
+        1. Scannez le QR Code de paiement Wave ou validez la notification push Wave.<br/>
+        2. L'abonnement s'activera immédiatement dès confirmation du règlement.
       `;
     }
   }
@@ -375,6 +377,7 @@ function initNexaApp() {
       localStorage.setItem('nexa_resto_name', name);
       localStorage.setItem(`nexa_type_${newSlug}`, type);
       localStorage.setItem(`nexa_pts_${newSlug}`, scanPts);
+      localStorage.setItem('nexa_pts_active', scanPts);
       localStorage.setItem(`nexa_curr_${newSlug}`, currency);
       localStorage.setItem(`nexa_whatsapp_${newSlug}`, whatsappResto);
       localStorage.setItem('nexa_merchant_logged', 'true');
@@ -550,8 +553,8 @@ function initNexaApp() {
     }
 
     // REACHED ONLY IF > 2 HOURS!
-    const configuredPts = parseInt(localStorage.getItem(`nexa_pts_${slug}`) || state.restaurant.pointsPerScan || '20', 10);
-    const scanEarned = (configuredPts && !isNaN(configuredPts)) ? configuredPts : 20;
+    const localConfiguredPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
+    const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 10);
 
     state.clientSession.points += scanEarned;
     localStorage.setItem('nexa_client_points', state.clientSession.points);

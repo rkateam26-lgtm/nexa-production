@@ -1,8 +1,11 @@
 {
   "version": 2,
   "cleanUrls": true,
-  "routes": [
-    { "src": "/(.*)", "dest": "/$1" }
+  "rewrites": [
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/admin.html", "destination": "/admin.html" },
+    { "source": "/pitch", "destination": "/pitch.html" },
+    { "source": "/qr", "destination": "/qr-generator.html" }
   ],
   "headers": [
     {
