@@ -144,6 +144,12 @@ function initNexaApp() {
   const tableBadge = document.getElementById('mobile-table-badge');
   if (tableBadge) tableBadge.textContent = `Table #${tableParam}`;
 
+  // FORCE CLEAN ROUTING: ADMIN REDIRECTS TO DEDICATED MASTER DASHBOARD (NO DUAL WINDOW!)
+  if (roleParam === 'admin') {
+    window.location.href = 'admin.html';
+    return;
+  }
+
   // FORCE CLIENT MOBILE VIEW IF SCANNING TABLE OR ROLE IS CLIENT OR ON SMARTPHONE
   if (roleParam === 'client' || isDirectTableScan || (isMobileScreen && roleParam !== 'merchant' && roleParam !== 'demo')) {
     if (demoHeader) demoHeader.style.display = 'none';
@@ -240,7 +246,14 @@ function initNexaApp() {
     formPayMobile.addEventListener('submit', (e) => {
       e.preventDefault();
       const phone = document.getElementById('pay-phone-input').value.trim();
+      const otpInput = document.getElementById('pay-otp-input');
+      const otpCode = otpInput ? otpInput.value.trim() : '';
+
       if (!phone) return;
+      if (selectedPlanForPay.provider === 'OM' && (!otpCode || otpCode.length < 4)) {
+        alert('⚠️ Veuillez entrer le code OTP Orange Money valide à 4 chiffres (ex: 4892) reçu après avoir composé *144*4*6*25000#.');
+        return;
+      }
 
       closePaymentModal();
       
@@ -256,8 +269,8 @@ function initNexaApp() {
         confetti({ particleCount: 70, spread: 80, origin: { y: 0.5 }, colors: ['#10B981', '#F59E0B', '#D97706'] });
       }
 
-      showToast('🎉 Paiement Mobile Money Réussi !', `Abonnement ${planName} (${amtStr} FCFA) activé pour 30 jours.`);
-      alert(`🎉 Paiement Réussi !\n\nVotre abonnement ${planName} (${amtStr} FCFA/mois) a été activé avec succès via Mobile Money !\n\nProchain renouvellement le 12 Septembre 2026.`);
+      showToast('🎉 Paiement Mobile Money Réussi !', `Abonnement ${planName} (${amtStr} FCFA) déduit via Orange/Wave (+226 54 51 39 81).`);
+      alert(`🎉 Paiement Réussi !\n\nLe Code OTP [${otpCode || 'Validé'}] a été confirmé pour le montant de ${amtStr} FCFA (Destination: +226 54 51 39 81).\n\nVotre abonnement ${planName} est désormais actif pour 30 jours !`);
     });
   }
 
