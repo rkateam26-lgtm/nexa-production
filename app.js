@@ -214,22 +214,22 @@ function initNexaApp() {
     if (selectedPlanForPay.provider === 'OM') {
       if (ussdBox) ussdBox.innerHTML = `
         <strong>🟧 Transfert Orange Money vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Marchand Destination : <strong style="color: var(--primary-gold); font-size: 0.9rem;">+226 70 00 00 00</strong><br/>
-        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*144*4*6*70000000*${selectedPlanForPay.amount}#</strong><br/>
-        <span style="font-size: 0.72rem; color: var(--text-muted);">L'argent arrive directement sur votre compte gérant NEXA sans frais.</span>
+        • Numéro Marchand Destination : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
+        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*144*4*6*54513981*${selectedPlanForPay.amount}#</strong><br/>
+        <span style="font-size: 0.72rem; color: var(--text-muted);">L'argent arrive directement sur votre compte gérant NEXA (+226 54 51 39 81) sans frais.</span>
       `;
     } else if (selectedPlanForPay.provider === 'MOOV') {
       if (ussdBox) ussdBox.innerHTML = `
         <strong>🟦 Transfert Moov Money / Flooz vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Destination Moov : <strong style="color: var(--primary-gold); font-size: 0.9rem;">+226 60 00 00 00</strong><br/>
-        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*155*4*1*60000000*${selectedPlanForPay.amount}#</strong><br/>
+        • Numéro Destination Moov : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
+        • Code USSD Direct : <strong style="color: var(--primary-gold); font-size: 0.9rem;">*155*4*1*54513981*${selectedPlanForPay.amount}#</strong><br/>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Validation automatique dès réception du transfert.</span>
       `;
     } else if (selectedPlanForPay.provider === 'WAVE') {
       if (ussdBox) ussdBox.innerHTML = `
         <strong>🌊 Transfert Wave Direct vers Compte Officiel NEXA :</strong><br/>
-        • Numéro Destination Wave : <strong style="color: var(--primary-gold); font-size: 0.9rem;">+226 70 00 00 00</strong><br/>
-        • Scan QR Code Wave Marchand ou lien direct dans l'application Wave.<br/>
+        • Numéro Destination Wave : <strong style="color: var(--primary-gold); font-size: 0.95rem;">+226 54 51 39 81</strong><br/>
+        • Scan QR Code Wave Marchand ou lien direct vers le +226 54 51 39 81.<br/>
         <span style="font-size: 0.72rem; color: var(--text-muted);">Zéro frais de transfert pour le restaurateur.</span>
       `;
     }
