@@ -189,6 +189,9 @@ function initNexaApp() {
     document.getElementById('pay-modal-plan-title').textContent = planTitle;
     document.getElementById('pay-modal-plan-amount').textContent = `${planAmount.toLocaleString()} FCFA`;
     
+    const btnLabel = document.getElementById('pay-submit-btn-label');
+    if (btnLabel) btnLabel.textContent = `⚡ Valider le Code OTP & Payer ${planAmount.toLocaleString()} FCFA`;
+
     if (state.restaurant.whatsappContact) {
       document.getElementById('pay-phone-input').value = state.restaurant.whatsappContact;
     }

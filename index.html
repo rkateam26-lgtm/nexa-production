@@ -897,21 +897,21 @@
 
         <!-- USSD PAYMENT INSTRUCTIONS BOX WITH OTP GENERATION -->
         <div id="pay-ussd-instructions" style="background: var(--bg-whitey); border: 1px dashed var(--primary-gold); border-radius: 10px; padding: 0.85rem; margin-bottom: 1.25rem; font-size: 0.78rem; color: var(--text-main);">
-          <strong>📲 Étape 1 : Obtenir votre Code OTP Orange Money</strong><br/>
-          Composez <strong style="color: #EA580C; font-size: 0.95rem;">*144*4*6*25000#</strong> sur votre téléphone pour générer le code OTP temporaire Orange Money.<br/>
-          <span style="font-size: 0.72rem; color: var(--text-muted);">Vous recevrez un code OTP à 4 chiffres par SMS pour autoriser le transfert vers le +226 54 51 39 81.</span>
+          <strong>📲 Étape 1 : Obtenir votre Code OTP Orange Money (6 chiffres)</strong><br/>
+          Composez <strong style="color: #EA580C; font-size: 0.95rem;" id="pay-ussd-code-display">*144*4*6*54513981*25000#</strong> sur votre téléphone.<br/>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">Vous recevrez un code OTP à 6 chiffres par SMS pour autoriser le transfert vers le +226 54 51 39 81.</span>
         </div>
 
         <!-- OTP CODE INPUT BOX -->
         <div class="form-group" style="margin-bottom: 1.25rem;" id="pay-otp-group">
           <label style="display: block; font-size: 0.82rem; font-weight: 800; color: #EA580C; margin-bottom: 0.35rem;">
-            🔑 Étape 2 : Entrez le Code OTP Orange Money reçu par SMS
+            🔑 Étape 2 : Entrez le Code OTP à 6 chiffres reçu par SMS (ex: 489215)
           </label>
-          <input type="text" id="pay-otp-input" placeholder="ex: 4892" maxlength="6" style="width: 100%; padding: 0.75rem; border-radius: 10px; border: 2px solid #EA580C; font-size: 1.1rem; font-weight: 900; letter-spacing: 2px; text-align: center; background: #FFF7ED;" required>
+          <input type="text" id="pay-otp-input" placeholder="ex: 489215" maxlength="6" style="width: 100%; padding: 0.75rem; border-radius: 10px; border: 2px solid #EA580C; font-size: 1.1rem; font-weight: 900; letter-spacing: 2px; text-align: center; background: #FFF7ED;" required>
         </div>
 
         <button type="submit" class="btn-primary" style="width: 100%; justify-content: center; padding: 0.85rem; background: var(--primary-gold); color: #2A1D15; font-weight: 800; font-size: 0.95rem;">
-          ⚡ Valider le Code OTP & Payer 25 000 FCFA
+          <span id="pay-submit-btn-label">⚡ Valider le Code OTP & Payer 25 000 FCFA</span>
         </button>
       </form>
     </div>
