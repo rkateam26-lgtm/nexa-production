@@ -7,10 +7,10 @@
 
 :root {
   /* Palette White Gold & Marron Gold */
-  --primary-gold: #D97706;          /* Or Ambré */
-  --gold-accent: #F59E0B;           /* Or Lumineux */
-  --gold-light: rgba(245, 158, 11, 0.12);
-  --gold-border: rgba(217, 119, 6, 0.2);
+  --primary-gold: #E53935;          /* Rouge Plat Nexa */
+  --gold-accent: #E63946;           /* Corail Lumineux */
+  --gold-light: rgba(229, 57, 53, 0.12);
+  --gold-border: rgba(229, 57, 53, 0.25);
 
   --marron-dark: #2A1D15;           /* Marron Châtaigne Sombre */
   --marron-medium: #4A3528;         /* Marron Chaud */
