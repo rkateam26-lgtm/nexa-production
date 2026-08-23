@@ -747,14 +747,23 @@ function initNexaApp() {
     // CAS A vs CAS B: CONTROL VISIBILITY OF NO-RESTO SCREEN VS LOYALTY HOME SCREEN
     const noRestoScreen = document.getElementById('screen-no-resto');
     const homeScreen = document.getElementById('screen-home');
+    const isClientAuthenticated = Boolean(state.clientSession.whatsapp);
+    const shouldShowHome = Boolean(hasRestaurantContext || isClientAuthenticated);
+
     if (noRestoScreen && homeScreen) {
-      if (!hasRestaurantContext && (roleParam === 'client' || !roleParam)) {
+      if (!shouldShowHome && (roleParam === 'client' || !roleParam)) {
         noRestoScreen.style.display = 'block';
         homeScreen.style.display = 'none';
       } else {
         noRestoScreen.style.display = 'none';
         homeScreen.style.display = 'block';
       }
+    }
+
+    // Default restaurant name when client is logged in without explicit URL param
+    if (isClientAuthenticated && state.restaurant.name === 'Aucun Restaurant') {
+      state.restaurant.name = localStorage.getItem('nexa_resto_name') || 'Chitir Chicken';
+      state.restaurant.id = state.restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
     }
 
     const restoEl = document.getElementById('mobile-resto-name');

@@ -133,16 +133,22 @@
           <!-- CAS B: NO RESTAURANT SCANNED SCREEN (Visible when opening without QR code) -->
           <div id="screen-no-resto" style="display: none; padding: 2rem 1.25rem; text-align: center; background: white; border-radius: 16px; margin: 1rem; border: 1.5px dashed var(--dash-border);">
             <div style="font-size: 3rem; margin-bottom: 0.75rem;">📷</div>
-            <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--marron-dark); margin-bottom: 0.4rem;">Scannez un QR Code de Table</h2>
+            <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--marron-dark); margin-bottom: 0.4rem;">Bienvenue sur NEXA</h2>
             <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; margin-bottom: 1.5rem;">
-              Veuillez scanner le QR Code présent sur votre table dans un restaurant partenaire pour commencer à cumuler vos points de fidélité !
+              Scannez le QR Code de votre table en restaurant ou connectez-vous avec votre numéro WhatsApp pour accéder à votre espace fidélité !
             </p>
-            <button class="btn-primary" onclick="startRealCameraScanner()" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #FFFFFF; font-weight: 800; font-size: 0.9rem; padding: 0.85rem; margin-bottom: 0.75rem;">
-              <i data-lucide="camera"></i>
-              <span>📷 Scanner un QR Code de Table</span>
+            
+            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #FFFFFF; font-weight: 800; font-size: 0.9rem; padding: 0.85rem; margin-bottom: 0.75rem;">
+              <i data-lucide="user-check"></i>
+              <span>📲 Connexion / Inscription Client (WhatsApp)</span>
             </button>
+
+            <button class="btn-secondary" onclick="startRealCameraScanner()" style="width: 100%; justify-content: center; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.75rem;">
+              📷 Scanner un QR Code de Table (Caméra)
+            </button>
+
             <button class="btn-secondary" onclick="loadDemoRestaurant('Chitir Chicken')" style="width: 100%; justify-content: center; font-size: 0.8rem; font-weight: 700; border-color: var(--primary-gold); color: var(--primary-gold);">
-              🧪 Tester le Restaurant de Démo (Chitir Chicken)
+              🧪 Démo Restaurant (Chitir Chicken)
             </button>
           </div>
 
