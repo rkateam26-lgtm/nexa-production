@@ -81,6 +81,104 @@ class NexaProductionBackend {
     return { name, city: type, whatsapp_contact: whatsappOfficial };
   }
 
+  // 1b. ÉTAPE R3: Register New B2B Restaurant Account with Supabase Auth & Restaurant Record
+  async registerNewRestaurantB2B(payload) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const {
+      ownerFirstName,
+      ownerLastName,
+      ownerPhone,
+      ownerEmail,
+      ownerPassword,
+      ownerCountry,
+      restoName,
+      restoPhone,
+      restoAddress,
+      restoCity,
+      restoCountry,
+      restoCategory
+    } = payload;
+
+    // A. Create Supabase Auth User for Manager
+    let authUserId = null;
+    try {
+      const { data: authData, error: authError } = await client.auth.signUp({
+        email: ownerEmail,
+        password: ownerPassword,
+        options: {
+          data: {
+            first_name: ownerFirstName,
+            last_name: ownerLastName,
+            phone: ownerPhone,
+            country: ownerCountry,
+            role: 'merchant_owner'
+          }
+        }
+      });
+
+      if (authError) {
+        if (authError.message.includes('already registered') || authError.status === 400 || authError.status === 422) {
+          throw new Error('Cet e-mail est déjà utilisé pour un compte Nexa. Veuillez utiliser un autre e-mail ou vous connecter.');
+        }
+        throw new Error(`[Supabase Auth] ${authError.message}`);
+      }
+
+      if (authData && authData.user) {
+        authUserId = authData.user.id;
+      }
+    } catch (authErr) {
+      console.error('[DIAGNOSTIC B2B AUTH ERROR]', authErr);
+      throw authErr;
+    }
+
+    // B. Create / Upsert Restaurant Record in `restaurants` Table
+    const slug = this.getSlug(restoName);
+    const metaObj = JSON.stringify({
+      type: restoCategory || 'Bistro & Grillades',
+      scanPts: 20,
+      address: restoAddress,
+      city: restoCity,
+      country: restoCountry,
+      owner_name: `${ownerFirstName} ${ownerLastName}`,
+      owner_phone: ownerPhone,
+      owner_country: ownerCountry,
+      owner_id: authUserId
+    });
+
+    try {
+      const { data: restoData, error: restoError } = await client
+        .from('restaurants')
+        .upsert({
+          name: restoName,
+          email: ownerEmail,
+          whatsapp_contact: restoPhone || ownerPhone,
+          city: metaObj,
+          currency: 'FCFA'
+        }, { onConflict: 'email' })
+        .select()
+        .single();
+
+      if (restoError) {
+        console.error('[DIAGNOSTIC B2B RESTO ERROR]', restoError);
+        throw new Error(`[Supabase DB] ${restoError.message}`);
+      }
+
+      return {
+        authUserId,
+        restoId: restoData ? restoData.id : slug,
+        restoName,
+        email: ownerEmail
+      };
+    } catch (dbErr) {
+      console.error('[DIAGNOSTIC B2B DB ERROR]', dbErr);
+      throw dbErr;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {

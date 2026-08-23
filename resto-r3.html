@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Nexa — Create Account (Step R3)</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Supabase Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Nexa Supabase Backend Engine -->
+  <script src="supabase.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background: #FAF9F6;
+      color: #1E293B;
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 1rem;
+      margin: 0;
+    }
+
+    .resto-form-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-lg);
+      padding: 2.25rem 1.5rem;
+      width: 100%;
+      max-width: 480px;
+      box-shadow: 0 10px 25px -4px rgba(30, 41, 59, 0.08);
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .resto-b2b-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .resto-b2b-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #1E293B;
+      margin-bottom: 0.75rem;
+    }
+
+    .resto-b2b-logo .brand-badge {
+      background: #E53935;
+      color: #FFFFFF;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(229, 57, 53, 0.3);
+    }
+
+    .form-section-title {
+      font-family: var(--font-heading);
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #E53935;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin: 1.5rem 0 0.85rem 0;
+      padding-bottom: 0.35rem;
+      border-bottom: 1.5px solid #F1F5F9;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .form-group-r3 {
+      margin-bottom: 1rem;
+      text-align: left;
+    }
+
+    .form-group-r3 label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 0.35rem;
+    }
+
+    .form-group-r3 label span.required {
+      color: #E53935;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-control-r3 {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: #1E293B;
+      background: #FFFFFF;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .form-control-r3:focus {
+      outline: none;
+      border-color: #E53935;
+      box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
+    }
+
+    .field-error-msg {
+      font-size: 0.75rem;
+      color: #DC2626;
+      font-weight: 600;
+      margin-top: 0.3rem;
+      display: none;
+    }
+
+    .pwd-toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #64748B;
+      font-size: 1rem;
+      padding: 0.2rem;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin: 1.5rem 0 1.25rem 0;
+      text-align: left;
+    }
+
+    .checkbox-group input[type="checkbox"] {
+      margin-top: 0.2rem;
+      width: 16px;
+      height: 16px;
+      accent-color: #E53935;
+      cursor: pointer;
+    }
+
+    .checkbox-group label {
+      font-size: 0.82rem;
+      color: #475569;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+
+    .btn-create-account {
+      background: #E53935;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.95rem 1.5rem;
+      border-radius: var(--radius-full);
+      width: 100%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      box-shadow: 0 4px 16px rgba(229, 57, 53, 0.3);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-create-account:hover {
+      background: #C62828;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4);
+    }
+
+    .btn-create-account:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert-banner-error {
+      background: #FEE2E2;
+      border: 1px solid #FCA5A5;
+      color: #991B1B;
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: none;
+      text-align: left;
+    }
+
+    /* R3 SUCCESS TEMPORARY PAGE */
+    .r3-success-card {
+      display: none;
+      text-align: center;
+    }
+
+    .r3-success-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1rem auto;
+    }
+
+    .btn-back-link {
+      margin-top: 1.5rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: #64748B;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .btn-back-link:hover {
+      color: #E53935;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       ÉCRAN R3 : CREATION DE COMPTE PROFESSIONNEL RESTAURANT (B2B)
+       ========================================================================== -->
+  <div class="resto-form-card">
+    
+    <!-- REGISTRATION FORM VIEW -->
+    <div id="view-r3-form">
+      <div class="resto-b2b-header">
+        <div class="resto-b2b-logo">
+          <div class="brand-badge">N</div>
+          <span>Nexa<span style="color: #E53935;">.</span></span>
+        </div>
+        <h1 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-bottom: 0.3rem;">Create your Nexa Account</h1>
+        <p style="font-size: 0.85rem; color: #64748B; margin: 0;">Set up your professional restaurant account in 2 minutes</p>
+      </div>
+
+      <!-- MAIN ERROR BANNER -->
+      <div class="alert-banner-error" id="form-error-banner"></div>
+
+      <form id="form-r3-register" novalidate>
+
+        <!-- SECTION 1: MANAGER / RESPONSIBLE DETAILS -->
+        <div class="form-section-title">
+          <i data-lucide="user-check" style="width: 16px; height: 16px;"></i>
+          <span>1. Manager Information</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group-r3">
+            <label>First Name <span class="required">*</span></label>
+            <input type="text" id="r3-owner-first-name" class="form-control-r3" placeholder="e.g. Jean" required>
+            <div class="field-error-msg" id="err-first-name">First name is required</div>
+          </div>
+          <div class="form-group-r3">
+            <label>Last Name <span class="required">*</span></label>
+            <input type="text" id="r3-owner-last-name" class="form-control-r3" placeholder="e.g. Kouassi" required>
+            <div class="field-error-msg" id="err-last-name">Last name is required</div>
+          </div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Manager Phone Number <span class="required">*</span></label>
+          <input type="tel" id="r3-owner-phone" class="form-control-r3" placeholder="+226 70 12 34 56" required>
+          <div class="field-error-msg" id="err-owner-phone">Valid phone number required</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Manager Email Address <span class="required">*</span></label>
+          <input type="email" id="r3-owner-email" class="form-control-r3" placeholder="owner@restaurant.com" required>
+          <div class="field-error-msg" id="err-owner-email">Valid email address required</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Password <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <input type="password" id="r3-owner-pwd" class="form-control-r3" placeholder="Min. 8 characters" minlength="8" required>
+            <button type="button" class="pwd-toggle-btn" onclick="togglePasswordVisibility('r3-owner-pwd')">👁️</button>
+          </div>
+          <div class="field-error-msg" id="err-owner-pwd">Password must be at least 8 characters</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Confirm Password <span class="required">*</span></label>
+          <div class="input-wrapper">
+            <input type="password" id="r3-owner-pwd-confirm" class="form-control-r3" placeholder="Re-enter password" required>
+            <button type="button" class="pwd-toggle-btn" onclick="togglePasswordVisibility('r3-owner-pwd-confirm')">👁️</button>
+          </div>
+          <div class="field-error-msg" id="err-pwd-confirm">Passwords do not match</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Country <span class="required">*</span></label>
+          <select id="r3-owner-country" class="form-control-r3" required>
+            <option value="Burkina Faso" selected>Burkina Faso</option>
+            <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+            <option value="Sénégal">Sénégal</option>
+            <option value="Mali">Mali</option>
+            <option value="Togo">Togo</option>
+            <option value="Bénin">Bénin</option>
+            <option value="France">France</option>
+            <option value="Other">Other Country</option>
+          </select>
+          <div class="field-error-msg" id="err-owner-country">Select a country</div>
+        </div>
+
+        <!-- SECTION 2: RESTAURANT ESTABLISHMENT DETAILS -->
+        <div class="form-section-title">
+          <i data-lucide="store" style="width: 16px; height: 16px;"></i>
+          <span>2. Restaurant Information</span>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Restaurant Name <span class="required">*</span></label>
+          <input type="text" id="r3-resto-name" class="form-control-r3" placeholder="e.g. Chez Malco Bistro" required>
+          <div class="field-error-msg" id="err-resto-name">Restaurant name is required</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Restaurant Phone Number <span class="required">*</span></label>
+          <input type="tel" id="r3-resto-phone" class="form-control-r3" placeholder="+226 25 30 00 00" required>
+          <div class="field-error-msg" id="err-resto-phone">Valid restaurant phone required</div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Street Address <span class="required">*</span></label>
+          <input type="text" id="r3-resto-address" class="form-control-r3" placeholder="e.g. Avenue Kwame N'Krumah" required>
+          <div class="field-error-msg" id="err-resto-address">Address is required</div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          <div class="form-group-r3">
+            <label>City <span class="required">*</span></label>
+            <input type="text" id="r3-resto-city" class="form-control-r3" placeholder="e.g. Ouagadougou" required>
+            <div class="field-error-msg" id="err-resto-city">City is required</div>
+          </div>
+          <div class="form-group-r3">
+            <label>Country <span class="required">*</span></label>
+            <select id="r3-resto-country" class="form-control-r3" required>
+              <option value="Burkina Faso" selected>Burkina Faso</option>
+              <option value="Côte d'Ivoire">Côte d'Ivoire</option>
+              <option value="Sénégal">Sénégal</option>
+              <option value="France">France</option>
+              <option value="Other">Other</option>
+            </select>
+            <div class="field-error-msg" id="err-resto-country">Country required</div>
+          </div>
+        </div>
+
+        <div class="form-group-r3">
+          <label>Restaurant Category / Type <span class="required">*</span></label>
+          <select id="r3-resto-category" class="form-control-r3" required>
+            <option value="Bistro & Grillades">★ Bistro & Grillades</option>
+            <option value="Fast Food / Burger">🍔 Fast Food & Burger</option>
+            <option value="Pizzeria & Italien">🍕 Pizzeria & Italien</option>
+            <option value="Café & Lounge">☕ Café & Lounge</option>
+            <option value="Gastronomique / Africain">🍲 Gastronomique & Spécialités</option>
+          </select>
+          <div class="field-error-msg" id="err-resto-category">Select a category</div>
+        </div>
+
+        <!-- TERMS & CONDITIONS CHECKBOX -->
+        <div class="checkbox-group">
+          <input type="checkbox" id="r3-terms-agree" required>
+          <label for="r3-terms-agree">
+            I accept the <strong>Nexa Terms of Service</strong> and Privacy Policy. <span class="required">*</span>
+          </label>
+        </div>
+        <div class="field-error-msg" id="err-terms" style="margin-top: -0.8rem; margin-bottom: 1rem;">You must accept the terms of service</div>
+
+        <!-- SUBMIT BUTTON -->
+        <button type="submit" class="btn-create-account" id="btn-submit-r3">
+          <span>Create account</span>
+          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        </button>
+
+      </form>
+
+      <a href="resto-r2.html" class="btn-back-link">
+        <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+        <span>Back to Option Choice</span>
+      </a>
+    </div>
+
+    <!-- SUCCESS TEMPORARY CONFIRMATION VIEW -->
+    <div class="r3-success-card" id="view-r3-success">
+      <div class="r3-success-icon">✓</div>
+      <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-bottom: 0.5rem;">Account Created Successfully!</h2>
+      <p style="font-size: 0.9rem; color: #475569; line-height: 1.5; margin-bottom: 1.5rem;">
+        Your restaurant <strong id="success-resto-name" style="color: #E53935;">Chez Malco</strong> has been registered on Nexa and connected to Supabase Auth.
+      </p>
+      
+      <div style="background: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: left; font-size: 0.82rem; margin-bottom: 1.5rem;">
+        <div style="margin-bottom: 0.4rem;">Manager Email: <strong id="success-owner-email">owner@restaurant.com</strong></div>
+        <div>Supabase Status: <strong style="color: #10B981;">● Connected & Auth Verified</strong></div>
+      </div>
+
+      <a href="resto-r2.html" class="btn-create-account" style="text-decoration: none;">
+        <span>Return to Nexa Portal</span>
+      </a>
+    </div>
+
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Toggle Password Visibility
+    function togglePasswordVisibility(inputId) {
+      const el = document.getElementById(inputId);
+      if (el) {
+        el.type = el.type === 'password' ? 'text' : 'password';
+      }
+    }
+
+    // Helper: Reset Field Error Messages
+    function clearR3Errors() {
+      document.querySelectorAll('.field-error-msg').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('.form-control-r3').forEach(el => el.style.borderColor = '#CBD5E1');
+      const banner = document.getElementById('form-error-banner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function showFieldError(fieldId, errorMsgId) {
+      const field = document.getElementById(fieldId);
+      const msg = document.getElementById(errorMsgId);
+      if (field) field.style.borderColor = '#DC2626';
+      if (msg) msg.style.display = 'block';
+    }
+
+    // FORM SUBMISSION & VALIDATIONS
+    const formR3 = document.getElementById('form-r3-register');
+    if (formR3) {
+      formR3.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        clearR3Errors();
+
+        const firstName = document.getElementById('r3-owner-first-name').value.trim();
+        const lastName = document.getElementById('r3-owner-last-name').value.trim();
+        const ownerPhone = document.getElementById('r3-owner-phone').value.trim();
+        const ownerEmail = document.getElementById('r3-owner-email').value.trim();
+        const pwd = document.getElementById('r3-owner-pwd').value.trim();
+        const pwdConfirm = document.getElementById('r3-owner-pwd-confirm').value.trim();
+        const ownerCountry = document.getElementById('r3-owner-country').value;
+
+        const restoName = document.getElementById('r3-resto-name').value.trim();
+        const restoPhone = document.getElementById('r3-resto-phone').value.trim();
+        const restoAddress = document.getElementById('r3-resto-address').value.trim();
+        const restoCity = document.getElementById('r3-resto-city').value.trim();
+        const restoCountry = document.getElementById('r3-resto-country').value;
+        const restoCategory = document.getElementById('r3-resto-category').value;
+        const termsAgree = document.getElementById('r3-terms-agree').checked;
+
+        let hasError = false;
+
+        // Validation Checks
+        if (!firstName) { showFieldError('r3-owner-first-name', 'err-first-name'); hasError = true; }
+        if (!lastName) { showFieldError('r3-owner-last-name', 'err-last-name'); hasError = true; }
+        
+        const phoneRegex = /^[0-9+\s-]{8,}$/;
+        if (!ownerPhone || !phoneRegex.test(ownerPhone)) { showFieldError('r3-owner-phone', 'err-owner-phone'); hasError = true; }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!ownerEmail || !emailRegex.test(ownerEmail)) { showFieldError('r3-owner-email', 'err-owner-email'); hasError = true; }
+
+        if (!pwd || pwd.length < 8) { showFieldError('r3-owner-pwd', 'err-owner-pwd'); hasError = true; }
+        if (pwd !== pwdConfirm) { showFieldError('r3-owner-pwd-confirm', 'err-pwd-confirm'); hasError = true; }
+
+        if (!restoName) { showFieldError('r3-resto-name', 'err-resto-name'); hasError = true; }
+        if (!restoPhone || !phoneRegex.test(restoPhone)) { showFieldError('r3-resto-phone', 'err-resto-phone'); hasError = true; }
+        if (!restoAddress) { showFieldError('r3-resto-address', 'err-resto-address'); hasError = true; }
+        if (!restoCity) { showFieldError('r3-resto-city', 'err-resto-city'); hasError = true; }
+
+        if (!termsAgree) {
+          document.getElementById('err-terms').style.display = 'block';
+          hasError = true;
+        }
+
+        if (hasError) {
+          const banner = document.getElementById('form-error-banner');
+          if (banner) {
+            banner.textContent = 'Please correct the highlighted fields before submitting.';
+            banner.style.display = 'block';
+          }
+          return;
+        }
+
+        // START LOADING STATE
+        const btnSubmit = document.getElementById('btn-submit-r3');
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.innerHTML = '<span>Creating Account in Supabase…</span>';
+        }
+
+        try {
+          const backend = window.nexaBackend || new NexaProductionBackend();
+          const result = await backend.registerNewRestaurantB2B({
+            ownerFirstName: firstName,
+            ownerLastName: lastName,
+            ownerPhone,
+            ownerEmail,
+            ownerPassword: pwd,
+            ownerCountry,
+            restoName,
+            restoPhone,
+            restoAddress,
+            restoCity,
+            restoCountry,
+            restoCategory
+          });
+
+          // SUCCESS RESPONSE: DISPLAY TEMPORARY SUCCESS CONFIRMATION VIEW
+          document.getElementById('success-resto-name').textContent = restoName;
+          document.getElementById('success-owner-email').textContent = ownerEmail;
+
+          document.getElementById('view-r3-form').style.display = 'none';
+          document.getElementById('view-r3-success').style.display = 'block';
+
+        } catch (err) {
+          console.error('[DIAGNOSTIC R3 FORM ERROR]', err);
+          const banner = document.getElementById('form-error-banner');
+          if (banner) {
+            banner.textContent = err.message || 'Failed to create restaurant account. Please try again.';
+            banner.style.display = 'block';
+          }
+        } finally {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>Create account</span><i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>';
+            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>
