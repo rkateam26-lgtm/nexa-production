@@ -4,6 +4,8 @@
   "rewrites": [
     { "source": "/admin", "destination": "/admin.html" },
     { "source": "/admin.html", "destination": "/admin.html" },
+    { "source": "/resto-welcome", "destination": "/resto-welcome.html" },
+    { "source": "/r1", "destination": "/resto-welcome.html" },
     { "source": "/pitch", "destination": "/pitch.html" },
     { "source": "/qr", "destination": "/qr-generator.html" }
   ],
