@@ -186,41 +186,82 @@
               <div style="width: 64px; height: 64px; background: var(--marron-dark); color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800;" id="client-avatar-letters">
                 NC
               </div>
-              <h2 style="color: var(--marron-dark); font-size: 1.1rem; font-weight: 800;" id="profile-display-name">Nouveau Client</h2>
-              <p style="color: var(--text-muted); font-size: 0.8rem;" id="profile-display-phone">Non enregistré</p>
+          <!-- SCREEN 4: CLIENT PROFILE (ÉTAPE 11 FINALISÉE) -->
+          <div class="client-screen" id="screen-profile">
+            <div style="padding: 1.25rem 1rem; text-align: center;">
+              <div style="width: 72px; height: 72px; background: var(--primary-gold); color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2);" id="client-avatar-letters">
+                NC
+              </div>
+              <h2 style="color: var(--marron-dark); font-size: 1.2rem; font-weight: 800; margin-bottom: 0.1rem;" id="profile-display-name">Client Nexa</h2>
+              <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 1rem;" id="profile-display-phone">Non enregistré</p>
 
-              <div style="margin-top: 1.5rem; background: #FFFFFF; border: 1px solid var(--dash-border); border-radius: 12px; padding: 1rem; text-align: left;">
-                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Statut</span>
-                  <strong style="color: var(--primary-gold); font-size: 0.85rem;" id="profile-display-tier">Membre Débutant</strong>
+              <!-- Real Supabase Profile Details Card -->
+              <div style="background: #FFFFFF; border: 1px solid var(--dash-border); border-radius: 14px; padding: 1rem; text-align: left; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Solde Actuel de Points</span>
+                  <strong style="color: var(--primary-gold); font-size: 0.95rem; font-weight: 800;" id="profile-display-points">0 points ⭐</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0;">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Visites à l'établissement</span>
-                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-visits">1 visite</strong>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Restaurant Associé</span>
+                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-resto">Le Savane</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
+                  <span style="color: var(--text-muted); font-size: 0.85rem;">Statut Fidélité</span>
+                  <strong style="color: var(--primary-gold); font-size: 0.85rem;" id="profile-display-tier">Membre Silver</strong>
                 </div>
               </div>
 
-              <button class="btn-secondary" onclick="openClientAuthModal()" style="margin-top: 1rem; width: 100%;">
-                ⚙️ Modifier mon Numéro WhatsApp
-              </button>
+              <!-- Quick Client Navigation Shortcuts -->
+              <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
+                <button class="btn-secondary" onclick="switchMobileTab('history')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
+                  <span>📜 Consulter mon Historique</span>
+                  <span>➔</span>
+                </button>
+                <button class="btn-secondary" onclick="switchMobileTab('home')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
+                  <span>🎁 Catalogue des Récompenses</span>
+                  <span>➔</span>
+                </button>
+                <button class="btn-secondary" onclick="switchMobileTab('notifs')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
+                  <span>🔔 Offres & Notifications</span>
+                  <span>➔</span>
+                </button>
+                <button class="btn-secondary" onclick="openClientSupportWhatsApp()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700; border-color: #25D366; color: #16A34A;">
+                  <span>💬 Aide & Support WhatsApp</span>
+                  <span>💬</span>
+                </button>
+                <button class="btn-secondary" id="btn-pwa-install" onclick="installNexaPWA()" style="width: 100%; justify-content: center; padding: 0.75rem 1rem; font-weight: 700; border-color: var(--primary-gold); color: var(--primary-gold);">
+                  <span>📲 Ajouter NEXA à l'Écran d'Accueil</span>
+                </button>
+              </div>
+
+              <!-- Account Actions: Edit Phone & Logout -->
+              <div style="display: flex; gap: 0.6rem;">
+                <button class="btn-secondary" onclick="openClientAuthModal()" style="flex: 1; font-size: 0.8rem;">
+                  ⚙️ Mon Compte
+                </button>
+                <button class="btn-secondary" onclick="logoutClient()" style="flex: 1; font-size: 0.8rem; background: #FEE2E2; color: #DC2626; border-color: #FCA5A5;">
+                  🔴 Se Déconnecter
+                </button>
+              </div>
+
             </div>
           </div>
 
         </div>
 
-        <!-- Mobile Bottom Navigation (Client App) -->
+        <!-- Mobile Bottom Navigation (Client App - 4 Tabs Exact) -->
         <nav class="mobile-nav">
           <button class="nav-tab active" data-tab="home">
-            <i data-lucide="gift"></i>
-            <span>Fidélité</span>
+            <i data-lucide="home"></i>
+            <span>Accueil</span>
           </button>
           <button class="nav-tab" data-tab="history">
-            <i data-lucide="clock"></i>
-            <span>Historique</span>
+            <i data-lucide="gift"></i>
+            <span>Récompenses</span>
           </button>
           <button class="nav-tab" data-tab="notifs">
             <i data-lucide="bell"></i>
-            <span>Notifs</span>
+            <span>Notifications</span>
           </button>
           <button class="nav-tab" data-tab="profile">
             <i data-lucide="user"></i>

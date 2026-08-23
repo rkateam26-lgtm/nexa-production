@@ -622,38 +622,111 @@ function initNexaApp() {
   /* ==========================================================================
      5. MOBILE NAVIGATION & MERCHANT 1-CLICK VALIDATION ENGINE
      ========================================================================== */
-  // RE-BIND MOBILE TAB SWITCHING GLOBALLY SCRIPT
+  // RE-BIND MOBILE TAB SWITCHING GLOBALLY SCRIPT & HELPERS
   const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
   const clientScreens = document.querySelectorAll('.client-screen');
+
+  window.switchMobileTab = function(targetTab) {
+    clientScreens.forEach(s => s.classList.remove('active'));
+    navTabs.forEach(t => t.classList.remove('active'));
+
+    const targetScreen = document.getElementById(`screen-${targetTab}`);
+    const matchTab = document.querySelector(`.mobile-nav .nav-tab[data-tab="${targetTab}"]`);
+
+    if (targetScreen) targetScreen.classList.add('active');
+    if (matchTab) matchTab.classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   navTabs.forEach(tab => {
     tab.addEventListener('click', (e) => {
       e.preventDefault();
       const targetTab = tab.getAttribute('data-tab');
-      clientScreens.forEach(s => s.classList.remove('active'));
-      navTabs.forEach(t => t.classList.remove('active'));
-
-      const targetScreen = document.getElementById(`screen-${targetTab}`);
-      if (targetScreen) targetScreen.classList.add('active');
-      tab.classList.add('active');
+      switchMobileTab(targetTab);
     });
   });
 
+  // STEP 11: CLIENT LOGOUT HANDLER
+  window.logoutClient = function() {
+    state.clientSession = {
+      whatsapp: '',
+      name: '',
+      points: 0,
+      history: []
+    };
+    localStorage.removeItem('nexa_client_whatsapp');
+    localStorage.removeItem('nexa_client_name');
+    localStorage.removeItem('nexa_client_points');
+    localStorage.removeItem('nexa_client_history');
+
+    renderClientUI();
+    showToast('🚪 Déconnexion Effectuée', 'Vous êtes déconnecté de votre profil client.');
+  };
+
+  // STEP 11: CLIENT WHATSAPP SUPPORT LAUNCHER
+  window.openClientSupportWhatsApp = function() {
+    const clientName = encodeURIComponent(state.clientSession.name || 'Client');
+    const restoName = encodeURIComponent(state.restaurant.name);
+    const msg = encodeURIComponent(`Bonjour Support NEXA, je suis ${clientName} chez ${restoName}. J'ai une question.`);
+    window.open(`https://wa.me/22654513981?text=${msg}`, '_blank');
+  };
+
+  // STEP 11: PWA ADD TO HOME SCREEN PROMPT
+  let deferredInstallPrompt = null;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+  });
+
+  window.installNexaPWA = function() {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === 'accepted') {
+          showToast('📲 NEXA Installée !', 'Application ajoutée à votre écran d\'accueil.');
+        }
+        deferredInstallPrompt = null;
+      });
+    } else {
+      alert("📲 Ajouter NEXA à l'écran d'accueil :\n\n• Sur iPhone (Safari) : Appuyez sur Partager ➔ 'Sur l'écran d'accueil'\n• Sur Android (Chrome) : Appuyez sur le menu (⋮) ➔ 'Ajouter à l'écran d'accueil'");
+    }
+  };
+
   function renderClientUI() {
-    document.getElementById('mobile-resto-name').textContent = state.restaurant.name;
-    document.getElementById('mobile-resto-type').textContent = state.restaurant.type;
-    document.getElementById('user-points-val').textContent = state.clientSession.points;
-    document.getElementById('user-scan-pts-badge').textContent = `+${state.restaurant.pointsPerScan} PTS`;
+    const restoEl = document.getElementById('mobile-resto-name');
+    if (restoEl) restoEl.textContent = state.restaurant.name;
+
+    const restoTypeEl = document.getElementById('mobile-resto-type');
+    if (restoTypeEl) restoTypeEl.textContent = state.restaurant.type;
+
+    const userPtsEl = document.getElementById('user-points-val');
+    if (userPtsEl) userPtsEl.textContent = state.clientSession.points;
+
+    const userScanBadge = document.getElementById('user-scan-pts-badge');
+    if (userScanBadge) userScanBadge.textContent = `+${state.restaurant.pointsPerScan} PTS`;
 
     const btnScanLabel = document.getElementById('btn-scan-label');
     if (btnScanLabel) btnScanLabel.textContent = `📷 Valider mes Points Table #${tableParam} (+${state.restaurant.pointsPerScan} Pts)`;
 
-    if (state.clientSession.whatsapp) {
-      document.getElementById('profile-display-name').textContent = state.clientSession.name || 'Membre Client';
-      document.getElementById('profile-display-phone').textContent = state.clientSession.whatsapp;
-      document.getElementById('profile-display-tier').textContent = state.clientSession.points >= 200 ? 'Membre VIP' : 'Membre Silver';
-      document.getElementById('client-avatar-letters').textContent = (state.clientSession.name || 'MC').substring(0, 2).toUpperCase();
-    }
+    // STEP 11: Update Profile Details Card from Real Supabase & Session Data
+    const profNameEl = document.getElementById('profile-display-name');
+    if (profNameEl) profNameEl.textContent = state.clientSession.name || 'Membre Client';
+
+    const profPhoneEl = document.getElementById('profile-display-phone');
+    if (profPhoneEl) profPhoneEl.textContent = state.clientSession.whatsapp || 'Non enregistré';
+
+    const profPtsEl = document.getElementById('profile-display-points');
+    if (profPtsEl) profPtsEl.textContent = `${state.clientSession.points} points ⭐`;
+
+    const profRestoEl = document.getElementById('profile-display-resto');
+    if (profRestoEl) profRestoEl.textContent = state.restaurant.name;
+
+    const profTierEl = document.getElementById('profile-display-tier');
+    if (profTierEl) profTierEl.textContent = state.clientSession.points >= 200 ? 'Membre VIP' : 'Membre Silver';
+
+    const avatarLetEl = document.getElementById('client-avatar-letters');
+    if (avatarLetEl) avatarLetEl.textContent = (state.clientSession.name || 'MC').substring(0, 2).toUpperCase();
 
     const rewardsContainer = document.getElementById('client-rewards-list');
     if (rewardsContainer) {
