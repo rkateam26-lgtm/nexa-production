@@ -485,8 +485,26 @@ function initNexaApp() {
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
 
+      // Fetch client profile directly from Supabase Cloud PostgreSQL!
+      if (window.nexaBackend) {
+        try {
+          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, phone);
+          if (profile) {
+            state.clientSession.points = profile.points || 0;
+            state.clientSession.name = profile.name || name;
+            localStorage.setItem('nexa_client_points', state.clientSession.points);
+            localStorage.setItem('nexa_client_name', state.clientSession.name);
+          } else {
+            await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
+          }
+        } catch (err) {
+          console.log('Client login sync error:', err);
+        }
+      }
+
       closeClientAuthModal();
       renderClientUI();
+      showToast('✅ Connecté !', `Bienvenue ${state.clientSession.name} ! Solde : ${state.clientSession.points} pts.`);
 
       if (isDirectTableScan) {
         await triggerQRScanSuccess(`Table #${tableParam}`);
@@ -708,6 +726,12 @@ function initNexaApp() {
 
     const btnScanLabel = document.getElementById('btn-scan-label');
     if (btnScanLabel) btnScanLabel.textContent = `📷 Valider mes Points Table #${tableParam} (+${state.restaurant.pointsPerScan} Pts)`;
+
+    // Toggle Login Banner visibility based on client authentication state
+    const loginBanner = document.getElementById('client-login-banner');
+    if (loginBanner) {
+      loginBanner.style.display = state.clientSession.whatsapp ? 'none' : 'block';
+    }
 
     // STEP 11: Update Profile Details Card from Real Supabase & Session Data
     const profNameEl = document.getElementById('profile-display-name');
