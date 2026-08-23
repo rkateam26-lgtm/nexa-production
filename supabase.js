@@ -196,23 +196,33 @@ class NexaProductionBackend {
     return { totalScans: 0, totalPts: 0 };
   }
 
-  // 8. Register Client Identity ONLY
+  // 8. Register Client Identity (UPSERT WITH ONCONFLICT TO PREVENT DUPLICATE KEY STUCK STATE)
   async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
     if (this.isLiveSupabase && this.client) {
       try {
-        const slug = this.getSlug(restoName);
+        const slug = this.getSlug(restoName || 'demo');
         const compositeKey = `${whatsappPhone}_${slug}`;
 
-        await this.client
+        const { data, error } = await this.client
           .from('clients')
-          .insert({ 
+          .upsert({ 
             whatsapp_phone: compositeKey, 
             full_name: clientName,
             points_balance: 0,
             visits_count: 0
-          });
+          }, { onConflict: 'whatsapp_phone' })
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Supabase Client Upsert Error:', error);
+          throw new Error(error.message || 'Erreur lors de l\'enregistrement dans la base de données Supabase.');
+        }
+
+        return data;
       } catch (e) {
-        console.log('Client identity reg error:', e);
+        console.error('Client identity reg error:', e);
+        throw e;
       }
     }
     return null;

@@ -9,19 +9,27 @@ function initNexaApp() {
     navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister())).catch(e => {});
   }
 
-  // Parse URL Parameters for Multi-Tenant Isolation
+  // Parse URL Parameters for Multi-Tenant Isolation (CAS A vs CAS B)
   const urlParams = new URLSearchParams(window.location.search);
   const roleParam = urlParams.get('role') || urlParams.get('mode');
   const tableParam = urlParams.get('table') || urlParams.get('t') || '4';
   const urlRestoName = urlParams.get('resto') || urlParams.get('r');
-  const isDirectTableScan = urlParams.has('table') || urlParams.has('resto') || urlParams.has('t') || urlParams.has('r');
+  const hasQrParam = urlParams.has('resto') || urlParams.has('r') || urlParams.has('table') || urlParams.has('t');
+  const isDirectTableScan = hasQrParam;
 
-  let currentRestoName = 'Le Savane';
+  // CAS A vs CAS B logic
+  let currentRestoName = '';
   if (urlRestoName) {
     currentRestoName = decodeURIComponent(urlRestoName);
     localStorage.setItem('nexa_resto_name', currentRestoName);
-  } else if (localStorage.getItem('nexa_resto_name')) {
+  } else if (hasQrParam && localStorage.getItem('nexa_resto_name')) {
     currentRestoName = localStorage.getItem('nexa_resto_name');
+  }
+
+  // CAS B: When NO restaurant QR parameter is present, do NOT auto-select Chitir Chicken or any default restaurant!
+  const hasRestaurantContext = Boolean(currentRestoName);
+  if (!currentRestoName) {
+    currentRestoName = 'Aucun Restaurant';
   }
 
   const slug = currentRestoName.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
@@ -473,41 +481,70 @@ function initNexaApp() {
   window.openClientAuthModal = () => modalClientAuth && modalClientAuth.classList.add('active');
   window.closeClientAuthModal = () => modalClientAuth && modalClientAuth.classList.remove('active');
 
+  // DEMO RESTAURANT SWITCHER FOR TESTING
+  window.loadDemoRestaurant = function(demoName = 'Chitir Chicken') {
+    const encoded = encodeURIComponent(demoName);
+    window.location.href = window.location.pathname + `?role=client&resto=${encoded}&table=4`;
+  };
+
   if (formClientAuth) {
     formClientAuth.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const phone = document.getElementById('auth-client-phone').value.trim();
-      const name = document.getElementById('auth-client-name').value.trim() || 'Client Nexa';
-      if (!phone) return;
+      const phoneInput = document.getElementById('auth-client-phone');
+      const nameInput = document.getElementById('auth-client-name');
+      const submitBtn = formClientAuth.querySelector('button[type="submit"]');
 
-      state.clientSession.whatsapp = phone;
-      state.clientSession.name = name;
-      localStorage.setItem('nexa_client_whatsapp', phone);
-      localStorage.setItem('nexa_client_name', name);
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+      const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Client Nexa';
 
-      // Fetch client profile directly from Supabase Cloud PostgreSQL!
-      if (window.nexaBackend) {
-        try {
-          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, phone);
+      if (!phone) {
+        showToast('⚠️ Numéro Obligatoire', 'Veuillez saisir votre numéro WhatsApp.');
+        return;
+      }
+
+      // START LOADING STATE (DISABLES BUTTON & UPDATES TEXT)
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span>⏳ Enregistrement dans Supabase…</span>';
+      }
+
+      try {
+        state.clientSession.whatsapp = phone;
+        state.clientSession.name = name;
+        localStorage.setItem('nexa_client_whatsapp', phone);
+        localStorage.setItem('nexa_client_name', name);
+
+        // Fetch / Upsert client profile directly in Supabase Cloud PostgreSQL!
+        if (window.nexaBackend) {
+          const targetResto = hasRestaurantContext ? state.restaurant.name : 'Chitir Chicken';
+          const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
           if (profile) {
             state.clientSession.points = profile.points || 0;
             state.clientSession.name = profile.name || name;
             localStorage.setItem('nexa_client_points', state.clientSession.points);
             localStorage.setItem('nexa_client_name', state.clientSession.name);
           } else {
-            await window.nexaBackend.registerClientIdentity(state.restaurant.name, phone, name);
+            await window.nexaBackend.registerClientIdentity(targetResto, phone, name);
           }
-        } catch (err) {
-          console.log('Client login sync error:', err);
         }
-      }
 
-      closeClientAuthModal();
-      renderClientUI();
-      showToast('✅ Connecté !', `Bienvenue ${state.clientSession.name} ! Solde : ${state.clientSession.points} pts.`);
+        closeClientAuthModal();
+        renderClientUI();
+        showToast('✅ Profil Enregistré !', `Bienvenue ${state.clientSession.name} ! Solde : ${state.clientSession.points} pts.`);
 
-      if (isDirectTableScan) {
-        await triggerQRScanSuccess(`Table #${tableParam}`);
+        if (isDirectTableScan) {
+          await triggerQRScanSuccess(`Table #${tableParam}`);
+        }
+      } catch (err) {
+        // ERROR HANDLING — NEVER LEAVE STUCK ON "Enregistrement dans Supabase..."
+        console.error('Erreur Supabase lors de la création du profil client:', err);
+        showToast('❌ Erreur d\'Enregistrement', err.message || 'Échec de l\'enregistrement Supabase. Réessayez.');
+      } finally {
+        // ALWAYS RESET BUTTON LOADING STATE IN FINALLY BLOCK
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<span>⚡ Valider & Recevoir mes Points</span>';
+        }
       }
     });
   }
@@ -712,6 +749,19 @@ function initNexaApp() {
   };
 
   function renderClientUI() {
+    // CAS A vs CAS B: CONTROL VISIBILITY OF NO-RESTO SCREEN VS LOYALTY HOME SCREEN
+    const noRestoScreen = document.getElementById('screen-no-resto');
+    const homeScreen = document.getElementById('screen-home');
+    if (noRestoScreen && homeScreen) {
+      if (!hasRestaurantContext && (roleParam === 'client' || !roleParam)) {
+        noRestoScreen.style.display = 'block';
+        homeScreen.style.display = 'none';
+      } else {
+        noRestoScreen.style.display = 'none';
+        homeScreen.style.display = 'block';
+      }
+    }
+
     const restoEl = document.getElementById('mobile-resto-name');
     if (restoEl) restoEl.textContent = state.restaurant.name;
 
