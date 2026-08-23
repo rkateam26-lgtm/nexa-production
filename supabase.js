@@ -7,6 +7,25 @@ const SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhaHpueXVlaWlocmF4YWhodWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MDQ4MzIsImV4cCI6MjEwMTk4MDgzMn0.OslLjXNWSEwNTlYtoUD4eXgc19I9Py5FF2vn3T8NIpw'
 };
 
+// EXPLICIT PROMISE TIMEOUT WRAPPER (PREVENTS INFINITE LOADING / HANGING REQUESTS)
+function withTimeout(promise, ms = 8000, label = 'Operation') {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[TIMEOUT] ${label} a dépassé le délai maximal de ${ms / 1000}s.`));
+    }, ms);
+
+    promise
+      .then(res => {
+        clearTimeout(timer);
+        resolve(res);
+      })
+      .catch(err => {
+        clearTimeout(timer);
+        reject(err);
+      });
+  });
+}
+
 class NexaProductionBackend {
   constructor() {
     this.isLiveSupabase = false;
@@ -14,15 +33,20 @@ class NexaProductionBackend {
   }
 
   init() {
-    if (window.supabase) {
+    return this.getClient();
+  }
+
+  getClient() {
+    if (!this.client && window.supabase) {
       try {
         this.client = window.supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
         this.isLiveSupabase = true;
         console.log('⚡ NEXA SaaS Backend Engine: Connected to Supabase Cloud');
       } catch (err) {
-        console.error('Supabase Init Error:', err);
+        console.error('[DIAGNOSTIC ERROR] Supabase Init Error:', err);
       }
     }
+    return this.client;
   }
 
   getSlug(name) {
@@ -196,63 +220,108 @@ class NexaProductionBackend {
     return { totalScans: 0, totalPts: 0 };
   }
 
-  // 8. Register Client Identity (UPSERT WITH ONCONFLICT TO PREVENT DUPLICATE KEY STUCK STATE)
+  // 8. Register Client Identity (WITH DIAGNOSTICS & TIMEOUT & UPSERT)
   async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
-    if (this.isLiveSupabase && this.client) {
-      try {
-        const slug = this.getSlug(restoName || 'demo');
-        const compositeKey = `${whatsappPhone}_${slug}`;
-
-        const { data, error } = await this.client
-          .from('clients')
-          .upsert({ 
-            whatsapp_phone: compositeKey, 
-            full_name: clientName,
-            points_balance: 0,
-            visits_count: 0
-          }, { onConflict: 'whatsapp_phone' })
-          .select()
-          .single();
-
-        if (error) {
-          console.error('Supabase Client Upsert Error:', error);
-          throw new Error(error.message || 'Erreur lors de l\'enregistrement dans la base de données Supabase.');
-        }
-
-        return data;
-      } catch (e) {
-        console.error('Client identity reg error:', e);
-        throw e;
-      }
+    console.log(`[DIAGNOSTIC] registerClientIdentity start. Resto: "${restoName}", Phone: "${whatsappPhone}", Name: "${clientName}"`);
+    
+    const client = this.getClient();
+    if (!client) {
+      console.error('[DIAGNOSTIC ERROR] Supabase client is NOT available!');
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
     }
-    return null;
+
+    const slug = this.getSlug(restoName || 'demo');
+    const compositeKey = `${whatsappPhone}_${slug}`;
+    const payload = { 
+      whatsapp_phone: compositeKey, 
+      full_name: clientName,
+      points_balance: 0,
+      visits_count: 0
+    };
+
+    console.log('[DIAGNOSTIC] Payload préparé pour table "clients":', JSON.stringify(payload));
+    console.log(`[DIAGNOSTIC] Envoi requête Supabase upsert vers table "clients" pour compositeKey "${compositeKey}"...`);
+
+    try {
+      const queryPromise = client
+        .from('clients')
+        .upsert(payload, { onConflict: 'whatsapp_phone' })
+        .select();
+
+      const response = await withTimeout(queryPromise, 8000, 'Enregistrement Supabase Client');
+
+      console.log('[DIAGNOSTIC] Réponse Supabase reçue:', {
+        data: response.data,
+        error: response.error,
+        status: response.status,
+        statusText: response.statusText
+      });
+
+      if (response.error) {
+        console.error('[DIAGNOSTIC ERROR] Supabase error detail:', response.error);
+        throw new Error(`[Supabase ${response.error.code || response.status}] ${response.error.message || response.error.details}`);
+      }
+
+      console.log('[DIAGNOSTIC] Profil client inséré avec succès dans Supabase Cloud !');
+      return response.data;
+    } catch (e) {
+      console.error('[DIAGNOSTIC ERROR] Exception lors de registerClientIdentity:', e);
+      throw e;
+    }
   }
 
-  // 9. Fetch Returning Client Profile
+  // 9. Fetch Returning Client Profile (WITH DIAGNOSTICS & TIMEOUT)
   async getClientProfile(restoName, whatsappPhone) {
-    if (this.isLiveSupabase && this.client && whatsappPhone) {
-      try {
-        const slug = this.getSlug(restoName);
-        const compositeKey = `${whatsappPhone}_${slug}`;
-        const { data } = await this.client
-          .from('clients')
-          .select('*')
-          .eq('whatsapp_phone', compositeKey)
-          .maybeSingle();
+    console.log(`[DIAGNOSTIC] getClientProfile start. Resto: "${restoName}", Phone: "${whatsappPhone}"`);
 
-        if (data) {
-          return {
-            points: data.points_balance || 0,
-            visits: data.visits_count || 0,
-            name: data.full_name || 'Client Nexa',
-            lastScanAt: data.last_scan_at ? new Date(data.last_scan_at).getTime() : 0
-          };
-        }
-      } catch (e) {
-        console.log('Get client profile info:', e);
-      }
+    const client = this.getClient();
+    if (!client || !whatsappPhone) {
+      console.warn('[DIAGNOSTIC WARN] getClientProfile abandonné (client ou whatsapp non disponible).');
+      return null;
     }
-    return null;
+
+    const slug = this.getSlug(restoName || 'demo');
+    const compositeKey = `${whatsappPhone}_${slug}`;
+
+    console.log(`[DIAGNOSTIC] Recherche client compositeKey: "${compositeKey}" dans table "clients"...`);
+
+    try {
+      const queryPromise = client
+        .from('clients')
+        .select('*')
+        .eq('whatsapp_phone', compositeKey)
+        .maybeSingle();
+
+      const response = await withTimeout(queryPromise, 8000, 'Lecture profil Supabase Client');
+
+      console.log('[DIAGNOSTIC] Réponse getClientProfile reçue:', {
+        data: response.data,
+        error: response.error,
+        status: response.status,
+        statusText: response.statusText
+      });
+
+      if (response.error) {
+        console.error('[DIAGNOSTIC ERROR] getClientProfile error detail:', response.error);
+        throw new Error(`[Supabase ${response.error.code || response.status}] ${response.error.message}`);
+      }
+
+      if (response.data) {
+        console.log('[DIAGNOSTIC] Profil trouvé dans Supabase Cloud:', response.data);
+        return {
+          points: response.data.points_balance || 0,
+          visits: response.data.visits_count || 0,
+          name: response.data.full_name || 'Client Nexa',
+          lastScanAt: response.data.last_scan_at ? new Date(response.data.last_scan_at).getTime() : 0
+        };
+      }
+
+      console.log('[DIAGNOSTIC] Aucun profil existant pour cette clé composite.');
+      return null;
+    } catch (e) {
+      console.error('[DIAGNOSTIC ERROR] Exception lors de getClientProfile:', e);
+      throw e;
+    }
   }
 
   // 10. Check Client Cooldown directly on Cloud PostgreSQL!
