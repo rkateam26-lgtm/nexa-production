@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Nexa — Sign In (Step R4)</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Supabase Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Nexa Supabase Backend Engine -->
+  <script src="supabase.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background: #FAF9F6;
+      color: #1E293B;
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem 1rem;
+      margin: 0;
+    }
+
+    .resto-login-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-lg);
+      padding: 2.25rem 1.75rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 10px 25px -4px rgba(30, 41, 59, 0.08);
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .resto-b2b-header {
+      text-align: center;
+      margin-bottom: 1.75rem;
+    }
+
+    .resto-b2b-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #1E293B;
+      margin-bottom: 0.75rem;
+    }
+
+    .resto-b2b-logo .brand-badge {
+      background: #E53935;
+      color: #FFFFFF;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(229, 57, 53, 0.3);
+    }
+
+    .form-group-r4 {
+      margin-bottom: 1.15rem;
+      text-align: left;
+    }
+
+    .form-group-r4 label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #1E293B;
+      margin-bottom: 0.35rem;
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .form-control-r4 {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border: 1.5px solid #CBD5E1;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      color: #1E293B;
+      background: #FFFFFF;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    }
+
+    .form-control-r4:focus {
+      outline: none;
+      border-color: #E53935;
+      box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.12);
+    }
+
+    .pwd-toggle-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #64748B;
+      font-size: 1rem;
+      padding: 0.2rem;
+    }
+
+    .forgot-pwd-link {
+      font-size: 0.8rem;
+      color: #E53935;
+      text-decoration: none;
+      font-weight: 600;
+      float: right;
+      margin-bottom: 0.5rem;
+    }
+
+    .forgot-pwd-link:hover {
+      text-decoration: underline;
+    }
+
+    .btn-sign-in {
+      background: #E53935;
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 0.95rem 1.5rem;
+      border-radius: var(--radius-full);
+      width: 100%;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      box-shadow: 0 4px 16px rgba(229, 57, 53, 0.3);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      margin-top: 1rem;
+    }
+
+    .btn-sign-in:hover {
+      background: #C62828;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(229, 57, 53, 0.4);
+    }
+
+    .btn-sign-in:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .alert-banner {
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 0.75rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1.15rem;
+      display: none;
+      text-align: left;
+    }
+
+    .alert-banner.error {
+      background: #FEE2E2;
+      border: 1px solid #FCA5A5;
+      color: #991B1B;
+    }
+
+    .alert-banner.success {
+      background: #D1FAE5;
+      border: 1px solid #6EE7B7;
+      color: #065F46;
+    }
+
+    .r4-footer-nav {
+      margin-top: 1.75rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid #F1F5F9;
+      font-size: 0.85rem;
+      color: #64748B;
+      text-align: center;
+    }
+
+    .r4-footer-nav a {
+      color: #E53935;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .r4-footer-nav a:hover {
+      text-decoration: underline;
+    }
+
+    /* R4 LOGGED IN CONFIRMATION VIEW */
+    .r4-connected-card {
+      display: none;
+      text-align: center;
+    }
+
+    .r4-connected-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      margin: 0 auto 1rem auto;
+    }
+
+    .btn-logout-r4 {
+      background: #F1F5F9;
+      color: #475569;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 0.7rem 1.25rem;
+      border-radius: var(--radius-full);
+      border: 1px solid #CBD5E1;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-top: 1rem;
+      width: 100%;
+    }
+
+    .btn-logout-r4:hover {
+      background: #E2E8F0;
+      color: #1E293B;
+    }
+
+    /* FORGOT PASSWORD MODAL */
+    .modal-forgot-pwd {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+
+    .modal-forgot-pwd.active {
+      display: flex;
+    }
+
+    .forgot-pwd-card {
+      background: #FFFFFF;
+      border-radius: 16px;
+      padding: 2rem 1.5rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       ÉCRAN R4 : CONNEXION RESTAURATEUR (SIGN IN)
+       ========================================================================== -->
+  <div class="resto-login-card">
+    
+    <!-- LOGIN FORM VIEW -->
+    <div id="view-r4-form">
+      <div class="resto-b2b-header">
+        <div class="resto-b2b-logo">
+          <div class="brand-badge">N</div>
+          <span>Nexa<span style="color: #E53935;">.</span></span>
+        </div>
+        <h1 style="font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; color: #1E293B; margin-bottom: 0.3rem;">Sign in</h1>
+        <p style="font-size: 0.85rem; color: #64748B; margin: 0;">Access your Nexa restaurant portal</p>
+      </div>
+
+      <!-- ERROR / SUCCESS ALERT BANNER -->
+      <div class="alert-banner error" id="r4-alert-error"></div>
+      <div class="alert-banner success" id="r4-alert-success"></div>
+
+      <form id="form-r4-login" novalidate>
+
+        <div class="form-group-r4">
+          <label for="r4-email">Email address</label>
+          <input type="email" id="r4-email" class="form-control-r4" placeholder="owner@restaurant.com" required>
+        </div>
+
+        <div class="form-group-r4">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <label for="r4-pwd">Password</label>
+            <a href="#" class="forgot-pwd-link" onclick="openForgotPwdModal(event)">Forgot password?</a>
+          </div>
+          <div class="input-wrapper">
+            <input type="password" id="r4-pwd" class="form-control-r4" placeholder="Enter your password" required>
+            <button type="button" class="pwd-toggle-btn" onclick="togglePasswordVisibility('r4-pwd')">👁️</button>
+          </div>
+        </div>
+
+        <!-- SUBMIT BUTTON -->
+        <button type="submit" class="btn-sign-in" id="btn-submit-r4">
+          <span>Sign in</span>
+          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        </button>
+
+      </form>
+
+      <div class="r4-footer-nav">
+        Don't have an account? <a href="resto-r3.html">Create an account</a>
+      </div>
+
+      <div style="text-align: center; margin-top: 1.25rem;">
+        <a href="resto-r2.html" style="font-size: 0.8rem; color: #64748B; text-decoration: none;">← Back to Option Choice</a>
+      </div>
+    </div>
+
+    <!-- CONNECTED TEMPORARY CONFIRMATION VIEW -->
+    <div class="r4-connected-card" id="view-r4-connected">
+      <div class="r4-connected-icon">✓</div>
+      <h2 style="font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: #1E293B; margin-bottom: 0.5rem;">Connected Successfully!</h2>
+      <p style="font-size: 0.88rem; color: #475569; line-height: 1.5; margin-bottom: 1.5rem;">
+        Welcome back, <strong id="connected-resto-name" style="color: #E53935;">Restaurant</strong>! Your manager session is authenticated and associated.
+      </p>
+
+      <div style="background: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem; text-align: left; font-size: 0.82rem; margin-bottom: 1.5rem;">
+        <div style="margin-bottom: 0.4rem;">Manager Email: <strong id="connected-owner-email">owner@restaurant.com</strong></div>
+        <div style="margin-bottom: 0.4rem;">Establishment: <strong id="connected-resto-title">Chez Malco</strong></div>
+        <div>Supabase Session: <strong style="color: #10B981;">● Active & Verified (Auth)</strong></div>
+      </div>
+
+      <button class="btn-logout-r4" onclick="handleR4Logout()">
+        🔴 Sign Out (Déconnexion)
+      </button>
+    </div>
+
+  </div>
+
+  <!-- FORGOT PASSWORD MODAL -->
+  <div class="modal-forgot-pwd" id="modal-forgot-pwd">
+    <div class="forgot-pwd-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-family: var(--font-heading); font-size: 1.1rem; font-weight: 800; color: #1E293B; margin: 0;">Reset Password</h3>
+        <button onclick="closeForgotPwdModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748B;">✕</button>
+      </div>
+
+      <p style="font-size: 0.82rem; color: #64748B; text-align: left; margin-bottom: 1.25rem;">
+        Enter your account email address and we will send you a link to reset your password.
+      </p>
+
+      <div class="alert-banner error" id="forgot-alert-error" style="display:none;"></div>
+      <div class="alert-banner success" id="forgot-alert-success" style="display:none;"></div>
+
+      <form id="form-forgot-pwd">
+        <div class="form-group-r4">
+          <label>Account Email Address</label>
+          <input type="email" id="forgot-email" class="form-control-r4" placeholder="owner@restaurant.com" required>
+        </div>
+
+        <button type="submit" class="btn-sign-in" id="btn-submit-forgot" style="margin-top: 0.5rem;">
+          <span>Send Reset Link</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // Password Visibility Toggle
+    function togglePasswordVisibility(inputId) {
+      const el = document.getElementById(inputId);
+      if (el) {
+        el.type = el.type === 'password' ? 'text' : 'password';
+      }
+    }
+
+    // Modal Handlers
+    function openForgotPwdModal(e) {
+      if (e) e.preventDefault();
+      document.getElementById('modal-forgot-pwd').classList.add('active');
+    }
+
+    function closeForgotPwdModal() {
+      document.getElementById('modal-forgot-pwd').classList.remove('active');
+    }
+
+    // Check Active Session on Page Load
+    window.addEventListener('DOMContentLoaded', () => {
+      const storedSession = localStorage.getItem('nexa_merchant_b2b_session');
+      if (storedSession) {
+        try {
+          const sess = JSON.parse(storedSession);
+          if (sess && sess.email && sess.restoName) {
+            renderConnectedState(sess.email, sess.restoName);
+          }
+        } catch (e) {}
+      }
+    });
+
+    function renderConnectedState(email, restoName) {
+      document.getElementById('connected-owner-email').textContent = email;
+      document.getElementById('connected-resto-name').textContent = restoName;
+      document.getElementById('connected-resto-title').textContent = restoName;
+
+      document.getElementById('view-r4-form').style.display = 'none';
+      document.getElementById('view-r4-connected').style.display = 'block';
+    }
+
+    function handleR4Logout() {
+      localStorage.removeItem('nexa_merchant_b2b_session');
+      document.getElementById('view-r4-connected').style.display = 'none';
+      document.getElementById('view-r4-form').style.display = 'block';
+      
+      const alertSuccess = document.getElementById('r4-alert-success');
+      if (alertSuccess) {
+        alertSuccess.textContent = 'Déconnexion effectuée avec succès.';
+        alertSuccess.style.display = 'block';
+      }
+    }
+
+    // SIGN IN FORM SUBMISSION
+    const formR4 = document.getElementById('form-r4-login');
+    if (formR4) {
+      formR4.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const alertError = document.getElementById('r4-alert-error');
+        const alertSuccess = document.getElementById('r4-alert-success');
+        const btnSubmit = document.getElementById('btn-submit-r4');
+
+        if (alertError) alertError.style.display = 'none';
+        if (alertSuccess) alertSuccess.style.display = 'none';
+
+        const email = document.getElementById('r4-email').value.trim();
+        const password = document.getElementById('r4-pwd').value.trim();
+
+        if (!email || !password) {
+          if (alertError) {
+            alertError.textContent = 'Veuillez saisir votre e-mail et votre mot de passe.';
+            alertError.style.display = 'block';
+          }
+          return;
+        }
+
+        // START LOADING STATE
+        if (btnSubmit) {
+          btnSubmit.disabled = true;
+          btnSubmit.innerHTML = '<span>Signing in to Supabase…</span>';
+        }
+
+        try {
+          const backend = window.nexaBackend || new NexaProductionBackend();
+          const authResult = await backend.loginRestaurantB2B(email, password);
+
+          const restoName = authResult.restaurant ? authResult.restaurant.name : 'Restaurant Nexa';
+          const userEmail = authResult.user ? authResult.user.email : email;
+
+          // Save B2B Merchant Session
+          localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify({
+            email: userEmail,
+            restoName: restoName,
+            authUserId: authResult.user ? authResult.user.id : null,
+            loginTime: Date.now()
+          }));
+
+          // Render Connected State
+          renderConnectedState(userEmail, restoName);
+
+        } catch (err) {
+          console.error('[DIAGNOSTIC R4 SIGN IN ERROR]', err);
+          if (alertError) {
+            alertError.textContent = err.message || 'Échec de la connexion. Vérifiez vos identifiants.';
+            alertError.style.display = 'block';
+          }
+        } finally {
+          if (btnSubmit) {
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = '<span>Sign in</span><i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>';
+            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+          }
+        }
+      });
+    }
+
+    // FORGOT PASSWORD FORM SUBMISSION
+    const formForgot = document.getElementById('form-forgot-pwd');
+    if (formForgot) {
+      formForgot.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const forgotErr = document.getElementById('forgot-alert-error');
+        const forgotSucc = document.getElementById('forgot-alert-success');
+        const btnForgot = document.getElementById('btn-submit-forgot');
+
+        if (forgotErr) forgotErr.style.display = 'none';
+        if (forgotSucc) forgotSucc.style.display = 'none';
+
+        const email = document.getElementById('forgot-email').value.trim();
+        if (!email) return;
+
+        if (btnForgot) {
+          btnForgot.disabled = true;
+          btnForgot.innerHTML = '<span>Sending Request…</span>';
+        }
+
+        try {
+          const backend = window.nexaBackend || new NexaProductionBackend();
+          await backend.resetPasswordB2B(email);
+
+          if (forgotSucc) {
+            forgotSucc.textContent = `Un e-mail de réinitialisation a été envoyé à ${email} (si le compte existe).`;
+            forgotSucc.style.display = 'block';
+          }
+        } catch (err) {
+          console.error('[DIAGNOSTIC FORGOT PWD ERROR]', err);
+          if (forgotErr) {
+            forgotErr.textContent = err.message || 'Impossible d\'envoyer l\'e-mail de réinitialisation.';
+            forgotErr.style.display = 'block';
+          }
+        } finally {
+          if (btnForgot) {
+            btnForgot.disabled = false;
+            btnForgot.innerHTML = '<span>Send Reset Link</span>';
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

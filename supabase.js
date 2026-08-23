@@ -179,6 +179,106 @@ class NexaProductionBackend {
     }
   }
 
+  // 1c. ÉTAPE R4: Login B2B Restaurant Account via Supabase Auth & Retrieve Associated Restaurant
+  async loginRestaurantB2B(email, password) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    // A. Sign in with Supabase Auth
+    let authUser = null;
+    try {
+      const { data: authData, error: authError } = await client.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
+
+      if (authError) {
+        if (authError.message.includes('Invalid login credentials') || authError.status === 400) {
+          throw new Error('Adresse e-mail ou mot de passe incorrect. Veuillez vérifier vos identifiants.');
+        }
+        if (authError.message.includes('Email not confirmed')) {
+          throw new Error('Votre compte requiert une confirmation par e-mail avant de pouvoir vous connecter.');
+        }
+        throw new Error(`[Supabase Auth] ${authError.message}`);
+      }
+
+      if (!authData || !authData.user) {
+        throw new Error('Session utilisateur introuvable après authentification.');
+      }
+
+      authUser = authData.user;
+    } catch (authErr) {
+      console.error('[DIAGNOSTIC B2B LOGIN ERROR]', authErr);
+      throw authErr;
+    }
+
+    // B. Fetch Associated Restaurant from `restaurants` Table
+    try {
+      const { data: resto, error: restoError } = await client
+        .from('restaurants')
+        .select('*')
+        .eq('email', authUser.email)
+        .maybeSingle();
+
+      if (restoError) {
+        console.error('[DIAGNOSTIC B2B RESTO FETCH ERROR]', restoError);
+        throw new Error(`[Supabase DB] ${restoError.message}`);
+      }
+
+      if (!resto) {
+        // Fallback: search by owner_id in metadata or table
+        const { data: restoList } = await client
+          .from('restaurants')
+          .select('*');
+        
+        const matchedResto = restoList ? restoList.find(r => r.city && r.city.includes(authUser.id)) : null;
+
+        if (!matchedResto) {
+          throw new Error('Aucun établissement restaurant n\'est associé à ce compte responsable.');
+        }
+
+        return {
+          user: authUser,
+          restaurant: matchedResto
+        };
+      }
+
+      return {
+        user: authUser,
+        restaurant: resto
+      };
+    } catch (dbErr) {
+      console.error('[DIAGNOSTIC B2B DB FETCH EXCEPTION]', dbErr);
+      throw dbErr;
+    }
+  }
+
+  // 1d. ÉTAPE R4: Reset Password Request via Supabase Auth
+  async resetPasswordB2B(email) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    try {
+      const redirectUrl = window.location.origin + '/resto-r4.html';
+      const { error } = await client.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl
+      });
+
+      if (error) {
+        throw new Error(`[Supabase Auth] ${error.message}`);
+      }
+
+      return true;
+    } catch (err) {
+      console.error('[DIAGNOSTIC B2B RESET PWD ERROR]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
