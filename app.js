@@ -494,73 +494,52 @@ function initNexaApp() {
 
       const phoneInput = document.getElementById('auth-client-phone');
       const nameInput = document.getElementById('auth-client-name');
-      const submitBtn = formClientAuth.querySelector('button[type="submit"]');
 
       const phone = phoneInput ? phoneInput.value.trim() : '';
       const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Client Nexa';
 
       if (!phone) {
-        console.warn('[DIAGNOSTIC FRONTEND WARN] Numéro téléphone vide.');
         showToast('⚠️ Numéro Obligatoire', 'Veuillez saisir votre numéro WhatsApp.');
         return;
       }
 
-      console.log(`[DIAGNOSTIC FRONTEND] Données -> Phone: "${phone}", Name: "${name}"`);
+      console.log(`[DIAGNOSTIC FRONTEND] Connexion client -> Phone: "${phone}", Name: "${name}"`);
 
-      // START LOADING STATE (DISABLES BUTTON & UPDATES TEXT)
-      if (submitBtn) {
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<span>⏳ Enregistrement dans Supabase…</span>';
-      }
+      // 1. SAVE SESSION LOCALLY & CLOSE MODAL INSTANTLY (PREVENTS ANY STUCK MODAL LOOP)
+      state.clientSession.whatsapp = phone;
+      state.clientSession.name = name;
+      localStorage.setItem('nexa_client_whatsapp', phone);
+      localStorage.setItem('nexa_client_name', name);
 
-      try {
-        state.clientSession.whatsapp = phone;
-        state.clientSession.name = name;
-        localStorage.setItem('nexa_client_whatsapp', phone);
-        localStorage.setItem('nexa_client_name', name);
+      closeClientAuthModal();
+      renderClientUI();
+      showToast('✅ Connecté !', `Bienvenue ${name} !`);
 
-        // Fetch / Upsert client profile directly in Supabase Cloud PostgreSQL!
-        if (window.nexaBackend) {
+      // 2. ASYNCHRONOUS BACKGROUND SUPABASE SYNC (NON-BLOCKING)
+      if (window.nexaBackend) {
+        try {
           const targetResto = hasRestaurantContext ? state.restaurant.name : 'Chitir Chicken';
-          console.log(`[DIAGNOSTIC FRONTEND] Target restaurant: "${targetResto}"`);
-          console.log('[DIAGNOSTIC FRONTEND] Interrogation nexaBackend.getClientProfile...');
-
+          console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
+          
           const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
           if (profile) {
-            console.log('[DIAGNOSTIC FRONTEND] Profil client existant récupéré:', profile);
+            console.log('[DIAGNOSTIC FRONTEND] Profil Supabase existant trouvé:', profile);
             state.clientSession.points = profile.points || 0;
             state.clientSession.name = profile.name || name;
             localStorage.setItem('nexa_client_points', state.clientSession.points);
             localStorage.setItem('nexa_client_name', state.clientSession.name);
+            renderClientUI();
           } else {
-            console.log('[DIAGNOSTIC FRONTEND] Aucun profil trouvé. Insertion via registerClientIdentity...');
+            console.log('[DIAGNOSTIC FRONTEND] Création nouveau profil dans Supabase...');
             await window.nexaBackend.registerClientIdentity(targetResto, phone, name);
           }
-        } else {
-          console.error('[DIAGNOSTIC FRONTEND ERROR] window.nexaBackend est indéfini !');
-          throw new Error('Moteur Backend Nexa indisponible.');
+        } catch (err) {
+          console.warn('[DIAGNOSTIC FRONTEND WARN] Échec de synchronisation arrière-plan Supabase:', err);
         }
+      }
 
-        console.log('[DIAGNOSTIC FRONTEND] Opération Supabase terminée avec succès.');
-        closeClientAuthModal();
-        renderClientUI();
-        showToast('✅ Profil Enregistré !', `Bienvenue ${state.clientSession.name} ! Solde : ${state.clientSession.points} pts.`);
-
-        if (isDirectTableScan) {
-          await triggerQRScanSuccess(`Table #${tableParam}`);
-        }
-      } catch (err) {
-        // ERROR HANDLING — NEVER LEAVE STUCK ON "Enregistrement dans Supabase..."
-        console.error('[DIAGNOSTIC FRONTEND ERROR] Erreur lors de la création du profil client:', err);
-        showToast('❌ Erreur Supabase', err.message || 'Échec de l\'enregistrement Supabase. Réessayez.');
-        alert(`❌ Erreur Supabase :\n\n${err.message || 'Impossible d\'enregistrer le profil.'}`);
-      } finally {
-        // ALWAYS RESET BUTTON LOADING STATE IN FINALLY BLOCK
-        console.log('[DIAGNOSTIC FRONTEND] Restauration de l\'état du bouton.');
-        if (submitBtn) {
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>⚡ Valider & Recevoir mes Points</span>';
-        }
+      if (isDirectTableScan) {
+        await triggerQRScanSuccess(`Table #${tableParam}`);
       }
     });
   }
