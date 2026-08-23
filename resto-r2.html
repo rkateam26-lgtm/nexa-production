@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Nexa — Welcome (Step R2)</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body {
+      background: #FAF9F6;
+      color: #1E293B;
+      font-family: var(--font-body);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1.5rem;
+      margin: 0;
+    }
+
+    .resto-b2b-card {
+      background: #FFFFFF;
+      border: 1px solid #E2E8F0;
+      border-radius: var(--radius-lg);
+      padding: 2.5rem 1.75rem;
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      box-shadow: 0 10px 25px -4px rgba(30, 41, 59, 0.08);
+      animation: fadeIn 0.3s ease-out forwards;
+    }
+
+    .resto-b2b-logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      font-family: var(--font-heading);
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #1E293B;
+      margin-bottom: 1rem;
+    }
+
+    .resto-b2b-logo .brand-badge {
+      background: #E53935;
+      color: #FFFFFF;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 900;
+      box-shadow: 0 4px 14px rgba(229, 57, 53, 0.3);
+    }
+
+    .resto-r2-title {
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #1E293B;
+      margin-bottom: 0.4rem;
+    }
+
+    .resto-r2-subtitle {
+      font-size: 0.88rem;
+      color: #64748B;
+      margin-bottom: 2rem;
+    }
+
+    .journey-options-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      text-align: left;
+    }
+
+    .journey-card {
+      background: #FFFFFF;
+      border: 1.5px solid #E2E8F0;
+      border-radius: 14px;
+      padding: 1.25rem 1.15rem;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.85rem;
+      text-decoration: none;
+    }
+
+    .journey-card:hover {
+      border-color: #E53935;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 18px rgba(229, 57, 53, 0.12);
+    }
+
+    .journey-card.primary {
+      background: linear-gradient(135deg, rgba(229, 57, 53, 0.04), rgba(255, 255, 255, 1));
+      border-color: rgba(229, 57, 53, 0.4);
+    }
+
+    .journey-card-content {
+      flex: 1;
+    }
+
+    .journey-card-title {
+      font-family: var(--font-heading);
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: #1E293B;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .journey-card.primary .journey-card-title {
+      color: #E53935;
+    }
+
+    .journey-card-subtext {
+      font-size: 0.82rem;
+      color: #64748B;
+      margin: 0;
+      line-height: 1.4;
+    }
+
+    .journey-card-arrow {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #F8F9FA;
+      color: #64748B;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+
+    .journey-card:hover .journey-card-arrow {
+      background: #E53935;
+      color: #FFFFFF;
+    }
+
+    .btn-back-link {
+      margin-top: 1.75rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+      color: #64748B;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .btn-back-link:hover {
+      color: #E53935;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       ÉCRAN R2 : CHOIX DU PARCOURS RESTAURATEUR (B2B SAAS)
+       ========================================================================== -->
+  <div class="resto-b2b-card">
+    
+    <!-- BRAND LOGO NEXA -->
+    <div class="resto-b2b-logo">
+      <div class="brand-badge">N</div>
+      <span>Nexa<span style="color: #E53935;">.</span></span>
+    </div>
+
+    <!-- TITRE R2 -->
+    <h1 class="resto-r2-title">Welcome to Nexa</h1>
+    <p class="resto-r2-subtitle">Select an option to continue to your restaurant portal</p>
+
+    <!-- LES 2 CARTES DE PARCOURS DISTINCTES (R3 & R4) -->
+    <div class="journey-options-container">
+      
+      <!-- OPTION 1: CREATE AN ACCOUNT (PRÉPARATION R3) -->
+      <div class="journey-card primary" onclick="goToStepR3()">
+        <div class="journey-card-content">
+          <div class="journey-card-title">
+            <i data-lucide="store" style="width: 18px; height: 18px; color: #E53935;"></i>
+            <span>CREATE AN ACCOUNT</span>
+          </div>
+          <p class="journey-card-subtext">New to Nexa? Set up your restaurant account.</p>
+        </div>
+        <div class="journey-card-arrow">
+          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+
+      <!-- OPTION 2: SIGN IN (PRÉPARATION R4) -->
+      <div class="journey-card" onclick="goToStepR4()">
+        <div class="journey-card-content">
+          <div class="journey-card-title">
+            <i data-lucide="log-in" style="width: 18px; height: 18px; color: #1E293B;"></i>
+            <span>SIGN IN</span>
+          </div>
+          <p class="journey-card-subtext">Already have a Nexa account? Sign in to continue.</p>
+        </div>
+        <div class="journey-card-arrow">
+          <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RETOUR VERS R1 -->
+    <a href="resto-welcome.html" class="btn-back-link">
+      <i data-lucide="arrow-left" style="width: 14px; height: 14px;"></i>
+      <span>Back to Welcome</span>
+    </a>
+
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    // NAVIGATION PREPARATION FOR STEP R3 (CREATE AN ACCOUNT)
+    function goToStepR3() {
+      alert("➡️ Step R3 coming next: Create An Account (Set up your restaurant account)");
+    }
+
+    // NAVIGATION PREPARATION FOR STEP R4 (SIGN IN)
+    function goToStepR4() {
+      alert("➡️ Step R4 coming next: Sign In (Access your restaurant account)");
+    }
+  </script>
+
+</body>
+</html>

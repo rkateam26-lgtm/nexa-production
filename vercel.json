@@ -6,6 +6,8 @@
     { "source": "/admin.html", "destination": "/admin.html" },
     { "source": "/resto-welcome", "destination": "/resto-welcome.html" },
     { "source": "/r1", "destination": "/resto-welcome.html" },
+    { "source": "/resto-r2", "destination": "/resto-r2.html" },
+    { "source": "/r2", "destination": "/resto-r2.html" },
     { "source": "/pitch", "destination": "/pitch.html" },
     { "source": "/qr", "destination": "/qr-generator.html" }
   ],
