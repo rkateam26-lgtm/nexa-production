@@ -487,8 +487,8 @@
             loginTime: Date.now()
           }));
 
-          // Render Connected State
-          renderConnectedState(userEmail, restoName);
+          // REDIRECT DIRECTLY TO STEP R5 DASHBOARD
+          window.location.href = 'resto-r5.html';
 
         } catch (err) {
           console.error('[DIAGNOSTIC R4 SIGN IN ERROR]', err);

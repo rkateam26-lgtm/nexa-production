@@ -12,6 +12,9 @@
     { "source": "/r3", "destination": "/resto-r3.html" },
     { "source": "/resto-r4", "destination": "/resto-r4.html" },
     { "source": "/r4", "destination": "/resto-r4.html" },
+    { "source": "/resto-r5", "destination": "/resto-r5.html" },
+    { "source": "/r5", "destination": "/resto-r5.html" },
+    { "source": "/dashboard", "destination": "/resto-r5.html" },
     { "source": "/pitch", "destination": "/pitch.html" },
     { "source": "/qr", "destination": "/qr-generator.html" }
   ],

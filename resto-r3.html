@@ -433,8 +433,9 @@
         <div>Supabase Status: <strong style="color: #10B981;">● Connected & Auth Verified</strong></div>
       </div>
 
-      <a href="resto-r2.html" class="btn-create-account" style="text-decoration: none;">
-        <span>Return to Nexa Portal</span>
+      <a href="resto-r5.html" class="btn-create-account" style="text-decoration: none;">
+        <span>Access Restaurant Dashboard (R5)</span>
+        <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
       </a>
     </div>
 
@@ -550,7 +551,15 @@
             restoCategory
           });
 
-          // SUCCESS RESPONSE: DISPLAY TEMPORARY SUCCESS CONFIRMATION VIEW
+          // Save B2B Merchant Session
+          localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify({
+            email: ownerEmail,
+            restoName: restoName,
+            authUserId: result.authUserId,
+            loginTime: Date.now()
+          }));
+
+          // SUCCESS RESPONSE: DISPLAY SUCCESS CONFIRMATION VIEW
           document.getElementById('success-resto-name').textContent = restoName;
           document.getElementById('success-owner-email').textContent = ownerEmail;
 

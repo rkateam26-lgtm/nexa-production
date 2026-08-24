@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Nexa — Restaurant Dashboard (Step R5)</title>
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+  
+  <!-- Supabase Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Nexa Supabase Backend Engine -->
+  <script src="supabase.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    :root {
+      --bg-canvas: #FAF9F6;
+      --bg-surface: #FFFFFF;
+      --text-dark: #0F172A;
+      --text-muted: #64748B;
+      --nexa-red: #E53935;
+      --nexa-red-dark: #C62828;
+      --border-color: #E2E8F0;
+    }
+
+    body {
+      background: var(--bg-canvas);
+      color: var(--text-dark);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* B2B HEADER BAR */
+    .b2b-header {
+      background: #FFFFFF;
+      border-bottom: 1px solid var(--border-color);
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    .b2b-logo-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .b2b-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-family: var(--font-heading);
+      font-size: 1.4rem;
+      font-weight: 900;
+      color: var(--text-dark);
+      text-decoration: none;
+    }
+
+    .b2b-logo .badge {
+      background: var(--nexa-red);
+      color: #FFFFFF;
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 900;
+    }
+
+    .resto-tag-badge {
+      background: rgba(229, 57, 53, 0.08);
+      color: var(--nexa-red);
+      border: 1px solid rgba(229, 57, 53, 0.25);
+      padding: 0.25rem 0.65rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .user-menu-group {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .user-email-text {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: #DC2626;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-logout:hover {
+      background: #FEE2E2;
+      border-color: #FCA5A5;
+    }
+
+    /* B2B DASHBOARD MAIN LAYOUT */
+    .b2b-layout {
+      display: flex;
+      flex: 1;
+    }
+
+    /* SIDEBAR NAVIGATION */
+    .b2b-sidebar {
+      width: 240px;
+      background: #FFFFFF;
+      border-right: 1px solid var(--border-color);
+      padding: 1.25rem 0.75rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.7rem 0.9rem;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .nav-item:hover {
+      background: #F8F9FA;
+      color: var(--text-dark);
+    }
+
+    .nav-item.active {
+      background: rgba(229, 57, 53, 0.08);
+      color: var(--nexa-red);
+      font-weight: 800;
+    }
+
+    /* MAIN CONTENT CANVAS */
+    .b2b-content {
+      flex: 1;
+      padding: 1.75rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .section-title-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .section-title-group h1 {
+      font-family: var(--font-heading);
+      font-size: 1.6rem;
+      font-weight: 800;
+      margin: 0 0 0.25rem 0;
+    }
+
+    .section-title-group p {
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    /* METRICS GRID (6 CARDS) */
+    .metrics-grid-r5 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card-r5 {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 1.35rem 1.25rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+      transition: all 0.2s ease;
+    }
+
+    .metric-card-r5:hover {
+      border-color: rgba(229, 57, 53, 0.4);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .metric-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.85rem;
+    }
+
+    .metric-icon-badge {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+
+    .metric-icon-badge.red { background: rgba(229, 57, 53, 0.1); color: var(--nexa-red); }
+    .metric-icon-badge.blue { background: rgba(37, 99, 235, 0.1); color: #2563EB; }
+    .metric-icon-badge.amber { background: rgba(217, 119, 6, 0.1); color: #D97706; }
+    .metric-icon-badge.green { background: rgba(16, 185, 129, 0.1); color: #10B981; }
+    .metric-icon-badge.purple { background: rgba(147, 51, 234, 0.1); color: #9333EA; }
+
+    .metric-label {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .metric-val {
+      font-family: var(--font-heading);
+      font-size: 1.85rem;
+      font-weight: 900;
+      color: var(--text-dark);
+      margin: 0;
+    }
+
+    .metric-subtext {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.35rem;
+    }
+
+    /* SUBSCRIPTION CARD SPECIAL STYLING */
+    .sub-card-content {
+      font-size: 0.85rem;
+      text-align: left;
+    }
+
+    .sub-status-pill {
+      display: inline-block;
+      background: #D1FAE5;
+      color: #065F46;
+      font-weight: 800;
+      font-size: 0.75rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      margin-bottom: 0.6rem;
+    }
+
+    .sub-date-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* COMING SOON SECTION CONTAINER */
+    .coming-soon-container {
+      display: none;
+      background: #FFFFFF;
+      border: 1.5px dashed var(--border-color);
+      border-radius: 16px;
+      padding: 3rem 1.5rem;
+      text-align: center;
+      margin-top: 1rem;
+    }
+
+    .coming-soon-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    /* SESSION EXPIRED / NOT AUTHENTICATED STATE */
+    .auth-error-card {
+      display: none;
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 3rem 1.5rem;
+      max-width: 420px;
+      margin: 4rem auto;
+      text-align: center;
+      box-shadow: 0 10px 25px -4px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-auth-redirect {
+      background: var(--nexa-red);
+      color: #FFFFFF;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 0.85rem 1.5rem;
+      border-radius: 30px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 1.25rem;
+    }
+
+    /* MOBILE DOCK NAVIGATION */
+    .mobile-b2b-dock {
+      display: none;
+    }
+
+    @media (max-width: 768px) {
+      .b2b-sidebar { display: none; }
+      .b2b-content { padding: 1rem; margin-bottom: 70px; }
+      .user-email-text { display: none; }
+      
+      .mobile-b2b-dock {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: #FFFFFF;
+        border-top: 1px solid var(--border-color);
+        z-index: 90;
+        justify-content: space-around;
+        align-items: center;
+      }
+
+      .mobile-dock-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.2rem;
+        font-size: 0.68rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .mobile-dock-item.active {
+        color: var(--nexa-red);
+        font-weight: 800;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==========================================================================
+       TOP B2B HEADER BAR
+       ========================================================================== -->
+  <header class="b2b-header">
+    <div class="b2b-logo-group">
+      <a href="resto-r5.html" class="b2b-logo">
+        <div class="badge">N</div>
+        <span>Nexa<span style="color: var(--nexa-red);">.</span></span>
+      </a>
+      <span class="resto-tag-badge" id="header-resto-name">
+        <i data-lucide="store" style="width: 14px; height: 14px;"></i>
+        <span id="txt-resto-name">Chargement…</span>
+      </span>
+    </div>
+
+    <div class="user-menu-group">
+      <span class="user-email-text" id="txt-user-email">owner@restaurant.com</span>
+      <button class="btn-logout" onclick="handleR5SignOut()">
+        <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
+        <span>Déconnexion</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ==========================================================================
+       MAIN DASHBOARD LAYOUT
+       ========================================================================== -->
+  <div class="b2b-layout" id="b2b-main-layout">
+
+    <!-- LEFT SIDEBAR NAVIGATION -->
+    <aside class="b2b-sidebar">
+      <a class="nav-item active" onclick="switchR5Tab('dashboard', this)">
+        <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('clients', this)">
+        <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+        <span>Clients</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('points', this)">
+        <i data-lucide="zap" style="width: 18px; height: 18px;"></i>
+        <span>Loyalty / Points</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('rewards', this)">
+        <i data-lucide="gift" style="width: 18px; height: 18px;"></i>
+        <span>Rewards</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('offers', this)">
+        <i data-lucide="megaphone" style="width: 18px; height: 18px;"></i>
+        <span>Offers</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('qr', this)">
+        <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
+        <span>QR Code</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('analytics', this)">
+        <i data-lucide="trending-up" style="width: 18px; height: 18px;"></i>
+        <span>Analytics</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('subscription', this)">
+        <i data-lucide="credit-card" style="width: 18px; height: 18px;"></i>
+        <span>Subscription</span>
+      </a>
+      <a class="nav-item" onclick="switchR5Tab('settings', this)">
+        <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
+        <span>Settings</span>
+      </a>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <main class="b2b-content">
+      
+      <!-- DASHBOARD TAB CONTENT (R5 ACTIVE VIEW) -->
+      <div id="tab-r5-dashboard">
+        <div class="section-title-group">
+          <h1>Restaurant Overview</h1>
+          <p>Real-time metrics and customer activity from Supabase Cloud</p>
+        </div>
+
+        <!-- METRICS GRID (6 CARDS) -->
+        <div class="metrics-grid-r5">
+
+          <!-- 1. CLIENTS -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">👥 Clients</span>
+              <div class="metric-icon-badge red">👥</div>
+            </div>
+            <p class="metric-val" id="metric-clients-count">0</p>
+            <p class="metric-subtext">Total clients enregistrés</p>
+          </div>
+
+          <!-- 2. SCANS / VISITES -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">📱 Scans / Visites</span>
+              <div class="metric-icon-badge blue">📱</div>
+            </div>
+            <p class="metric-val" id="metric-scans-count">0</p>
+            <p class="metric-subtext">Scans QR de table effectués</p>
+          </div>
+
+          <!-- 3. POINTS DISTRIBUÉS -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">⭐ Points Distribués</span>
+              <div class="metric-icon-badge amber">⭐</div>
+            </div>
+            <p class="metric-val" id="metric-points-count">0 pts</p>
+            <p class="metric-subtext">Points attribués à vos clients</p>
+          </div>
+
+          <!-- 4. RÉCOMPENSES UTILISÉES -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">🎁 Récompenses Utilisées</span>
+              <div class="metric-icon-badge green">🎁</div>
+            </div>
+            <p class="metric-val" id="metric-rewards-count">0</p>
+            <p class="metric-subtext">Récompenses validées en caisse</p>
+          </div>
+
+          <!-- 5. OFFRES ACTIVES -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">📢 Offres Actives</span>
+              <div class="metric-icon-badge purple">📢</div>
+            </div>
+            <p class="metric-val" id="metric-offers-count">0</p>
+            <p class="metric-subtext">Privilèges & offres disponibles</p>
+          </div>
+
+          <!-- 6. ABONNEMENT -->
+          <div class="metric-card-r5">
+            <div class="metric-header">
+              <span class="metric-label">💳 Abonnement</span>
+              <div class="metric-icon-badge red">💳</div>
+            </div>
+            <div class="sub-card-content">
+              <span class="sub-status-pill" id="sub-status-text">Actif - Essai Pro</span>
+              <div class="sub-date-row">
+                <span>Début :</span>
+                <strong id="sub-start-date">2026-08-24</strong>
+              </div>
+              <div class="sub-date-row">
+                <span>Expiration :</span>
+                <strong id="sub-expire-date">2026-09-24</strong>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R6 - R14) -->
+      <div class="coming-soon-container" id="tab-r5-coming-soon">
+        <div class="coming-soon-icon">🚧</div>
+        <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;" id="coming-soon-title">Section Coming Soon</h2>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 1.5rem 0;" id="coming-soon-desc">
+          This B2B feature will be implemented in upcoming Step R6-R14.
+        </p>
+        <button class="btn-logout" style="color: var(--nexa-red); border-color: var(--nexa-red); margin: 0 auto;" onclick="switchR5Tab('dashboard', document.querySelector('.nav-item'))">
+          ← Back to Dashboard Overview
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MOBILE BOTTOM NAVIGATION DOCK -->
+  <nav class="mobile-b2b-dock">
+    <a class="mobile-dock-item active" onclick="switchR5Tab('dashboard', this)">
+      <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>
+      <span>Dashboard</span>
+    </a>
+    <a class="mobile-dock-item" onclick="switchR5Tab('clients', this)">
+      <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+      <span>Clients</span>
+    </a>
+    <a class="mobile-dock-item" onclick="switchR5Tab('rewards', this)">
+      <i data-lucide="gift" style="width: 18px; height: 18px;"></i>
+      <span>Rewards</span>
+    </a>
+    <a class="mobile-dock-item" onclick="switchR5Tab('qr', this)">
+      <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
+      <span>QR Code</span>
+    </a>
+  </nav>
+
+  <!-- AUTH EXPIRED / NOT LOGGED IN CARD -->
+  <div class="auth-error-card" id="view-r5-auth-error">
+    <div style="font-size: 3rem; margin-bottom: 0.75rem;">🔒</div>
+    <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;">Session Expired or Invalid</h2>
+    <p style="font-size: 0.88rem; color: var(--text-muted); line-height: 1.5; margin: 0;">
+      You must be logged in with a valid restaurant manager account to access this dashboard.
+    </p>
+    <a href="resto-r4.html" class="btn-auth-redirect">
+      <span>Go to Sign In (Se connecter)</span>
+      <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+    </a>
+  </div>
+
+  <script>
+    // Initialize Lucide Icons
+    if (window.lucide) {
+      try { lucide.createIcons(); } catch (e) {}
+    }
+
+    let activeB2BSession = null;
+
+    // PAGE LOAD: CHECK AUTHENTICATED SESSION & FETCH SUPABASE METRICS
+    window.addEventListener('DOMContentLoaded', async () => {
+      const storedSession = localStorage.getItem('nexa_merchant_b2b_session');
+      if (!storedSession) {
+        showR5AuthError();
+        return;
+      }
+
+      try {
+        activeB2BSession = JSON.parse(storedSession);
+        if (!activeB2BSession || !activeB2BSession.email || !activeB2BSession.restoName) {
+          showR5AuthError();
+          return;
+        }
+
+        // Display Header Resto Name & User Email
+        document.getElementById('txt-resto-name').textContent = activeB2BSession.restoName;
+        document.getElementById('txt-user-email').textContent = activeB2BSession.email;
+
+        // Fetch Real Supabase Metrics
+        await loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC R5 INIT ERROR]', err);
+        showR5AuthError();
+      }
+    });
+
+    function showR5AuthError() {
+      document.getElementById('b2b-main-layout').style.display = 'none';
+      document.getElementById('view-r5-auth-error').style.display = 'block';
+    }
+
+    async function loadDashboardMetrics(restoName, userEmail) {
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const metrics = await backend.getRestaurantDashboardMetrics(restoName, userEmail);
+
+        if (metrics) {
+          document.getElementById('metric-clients-count').textContent = metrics.totalClients || 0;
+          document.getElementById('metric-scans-count').textContent = metrics.totalScans || 0;
+          document.getElementById('metric-points-count').textContent = `${metrics.totalPoints || 0} pts`;
+          document.getElementById('metric-rewards-count').textContent = metrics.rewardsRedeemed || 0;
+          document.getElementById('metric-offers-count').textContent = metrics.activeOffers || 0;
+
+          if (metrics.subscription) {
+            document.getElementById('sub-status-text').textContent = metrics.subscription.status;
+            document.getElementById('sub-start-date').textContent = metrics.subscription.startDate;
+            document.getElementById('sub-expire-date').textContent = metrics.subscription.expireDate;
+          }
+        }
+      } catch (err) {
+        console.error('[DIAGNOSTIC R5 FETCH METRICS ERROR]', err);
+      }
+    }
+
+    // TAB SWITCHER HANDLER
+    function switchR5Tab(tabName, clickedEl) {
+      document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => el.classList.remove('active'));
+      if (clickedEl) clickedEl.classList.add('active');
+
+      const dashTab = document.getElementById('tab-r5-dashboard');
+      const comingSoonTab = document.getElementById('tab-r5-coming-soon');
+
+      if (tabName === 'dashboard') {
+        dashTab.style.display = 'block';
+        comingSoonTab.style.display = 'none';
+      } else {
+        dashTab.style.display = 'none';
+        comingSoonTab.style.display = 'block';
+        
+        const titles = {
+          clients: '👥 Clients Management (Étape R6)',
+          points: '⚡ Loyalty & Points Engine (Étape R7)',
+          rewards: '🎁 Rewards Catalogue (Étape R8)',
+          offers: '📢 Push Offers & Campaigns (Étape R9)',
+          qr: '📷 Table QR Code Generator (Étape R10)',
+          analytics: '📈 Advanced Analytics (Étape R11)',
+          subscription: '💳 B2B Subscription & Billing (Étape R13)',
+          settings: '⚙️ Restaurant Settings (Étape R14)'
+        };
+
+        document.getElementById('coming-soon-title').textContent = titles[tabName] || 'Coming Soon';
+        document.getElementById('coming-soon-desc').textContent = `The ${tabName.toUpperCase()} module will be implemented in upcoming development steps.`;
+      }
+    }
+
+    // SIGN OUT HANDLER
+    function handleR5SignOut() {
+      localStorage.removeItem('nexa_merchant_b2b_session');
+      window.location.href = 'resto-r4.html';
+    }
+  </script>
+
+</body>
+</html>

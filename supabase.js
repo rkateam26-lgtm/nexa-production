@@ -279,6 +279,88 @@ class NexaProductionBackend {
     }
   }
 
+  // 1e. ÉTAPE R5: Fetch Real Restaurant Dashboard Metrics from Supabase Cloud PostgreSQL
+  async getRestaurantDashboardMetrics(restoName, userEmail) {
+    console.log(`[DIAGNOSTIC R5 METRICS] Fetching metrics for resto: "${restoName}", email: "${userEmail}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      // 1. Query clients associated with this restaurant (composite key: phone_slug)
+      const { data: clientRows, error: clientErr } = await client
+        .from('clients')
+        .select('*')
+        .ilike('whatsapp_phone', `%_${slug}`);
+
+      if (clientErr) {
+        console.error('[DIAGNOSTIC R5 CLIENTS ERR]', clientErr);
+      }
+
+      const clients = clientRows || [];
+      const totalClientsCount = clients.length;
+      const totalScansCount = clients.reduce((sum, c) => sum + (c.visits_count || 1), 0);
+      const totalPointsDistributed = clients.reduce((sum, c) => sum + (c.points_balance || 0), 0);
+
+      // 2. Query active rewards / offers for this restaurant
+      let activeOffersCount = 0;
+      let rewardsRedeemedCount = 0;
+      try {
+        const { data: rewardsRows } = await client
+          .from('rewards')
+          .select('*')
+          .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`);
+
+        if (rewardsRows) {
+          activeOffersCount = rewardsRows.length;
+        }
+      } catch (err) {
+        console.warn('[DIAGNOSTIC R5 REWARDS WARN]', err);
+      }
+
+      // 3. Query restaurant record for subscription status & creation date
+      let subscriptionStatus = 'Actif - Période d\'Essai';
+      let startDateStr = new Date().toISOString().split('T')[0];
+      let expireDateStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+      try {
+        const { data: restoData } = await client
+          .from('restaurants')
+          .select('*')
+          .eq('email', userEmail)
+          .maybeSingle();
+
+        if (restoData && restoData.created_at) {
+          const createdDate = new Date(restoData.created_at);
+          startDateStr = createdDate.toISOString().split('T')[0];
+          const expDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          expireDateStr = expDate.toISOString().split('T')[0];
+        }
+      } catch (err) {
+        console.warn('[DIAGNOSTIC R5 RESTO INFO WARN]', err);
+      }
+
+      return {
+        totalClients: totalClientsCount,
+        totalScans: totalScansCount,
+        totalPoints: totalPointsDistributed,
+        rewardsRedeemed: rewardsRedeemedCount,
+        activeOffers: activeOffersCount,
+        subscription: {
+          status: subscriptionStatus,
+          startDate: startDateStr,
+          expireDate: expireDateStr
+        }
+      };
+    } catch (err) {
+      console.error('[DIAGNOSTIC R5 METRICS EXCEPTION]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
