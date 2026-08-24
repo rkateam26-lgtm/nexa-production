@@ -481,6 +481,134 @@ class NexaProductionBackend {
     }
   }
 
+  // 1h. ÉTAPE R7: Fetch Loyalty Program Rules & Configuration for this Restaurant
+  async getRestaurantLoyaltyConfig(restoName, userEmail) {
+    console.log(`[DIAGNOSTIC R7 CONFIG] Fetching loyalty config for resto: "${restoName}", email: "${userEmail}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+    let pointsPerScan = 20; // Default: 20 points
+    const cooldownHours = 3; // Fixed 3 hours anti-cheat rule
+
+    // 1. Fetch current pointsPerScan setting from `restaurants` table
+    try {
+      const { data: restoData } = await client
+        .from('restaurants')
+        .select('*')
+        .or(`email.eq.${userEmail},name.eq.${restoName}`)
+        .maybeSingle();
+
+      if (restoData && restoData.city) {
+        try {
+          const metaObj = typeof restoData.city === 'string' ? JSON.parse(restoData.city) : restoData.city;
+          if (metaObj && metaObj.scanPts) {
+            pointsPerScan = parseInt(metaObj.scanPts, 10) || 20;
+          }
+        } catch (e) {
+          console.warn('City JSON parse warn:', e);
+        }
+      }
+    } catch (err) {
+      console.warn('Resto loyalty fetch warn:', err);
+    }
+
+    // 2. Fetch total points distributed & participating clients count
+    let totalPointsDistributed = 0;
+    let totalClientsCount = 0;
+
+    try {
+      const { data: clientRows } = await client
+        .from('clients')
+        .select('*')
+        .ilike('whatsapp_phone', `%_${slug}`);
+
+      if (clientRows) {
+        totalClientsCount = clientRows.length;
+        totalPointsDistributed = clientRows.reduce((sum, c) => sum + (c.points_balance || 0), 0);
+      }
+    } catch (err) {
+      console.warn('Clients stats warn:', err);
+    }
+
+    return {
+      pointsPerScan,
+      cooldownHours,
+      totalPointsDistributed,
+      totalClientsCount
+    };
+  }
+
+  // 1i. ÉTAPE R7: Update Points Granted Per Scan in Supabase Cloud PostgreSQL
+  async updateRestaurantPointsConfig(restoName, userEmail, newPoints) {
+    console.log(`[DIAGNOSTIC R7 UPDATE] Updating points config to ${newPoints} pts for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const val = parseInt(newPoints, 10);
+    if (isNaN(val) || val <= 0) {
+      throw new Error('Le nombre de points doit être un nombre entier strictement positif (supérieur à 0).');
+    }
+    if (val > 500) {
+      throw new Error('Le nombre de points ne peut pas dépasser la limite maximale autorisée de 500 points par scan.');
+    }
+
+    try {
+      // 1. Fetch current restaurant record
+      const { data: restoData, error: fetchErr } = await client
+        .from('restaurants')
+        .select('*')
+        .or(`email.eq.${userEmail},name.eq.${restoName}`)
+        .maybeSingle();
+
+      if (fetchErr) {
+        console.error('[DIAGNOSTIC R7 FETCH RESTO ERR]', fetchErr);
+        throw new Error(`[Supabase DB] ${fetchErr.message}`);
+      }
+
+      let metaObj = {};
+      if (restoData && restoData.city) {
+        try {
+          metaObj = typeof restoData.city === 'string' ? JSON.parse(restoData.city) : restoData.city;
+        } catch (e) {
+          metaObj = { type: 'Bistro & Grillades' };
+        }
+      }
+
+      metaObj.scanPts = val;
+      const updatedMetaJson = JSON.stringify(metaObj);
+
+      // 2. Update metadata in `restaurants` table
+      const { data: updatedResto, error: updateErr } = await client
+        .from('restaurants')
+        .upsert({
+          name: restoName,
+          email: userEmail,
+          city: updatedMetaJson
+        }, { onConflict: 'email' })
+        .select()
+        .single();
+
+      if (updateErr) {
+        console.error('[DIAGNOSTIC R7 UPDATE RESTO ERR]', updateErr);
+        throw new Error(`[Supabase DB] ${updateErr.message}`);
+      }
+
+      console.log(`[DIAGNOSTIC R7 UPDATE SUCCESS] Points updated to ${val} pts in Supabase Cloud!`);
+      return {
+        pointsPerScan: val,
+        restoName
+      };
+    } catch (err) {
+      console.error('[DIAGNOSTIC R7 UPDATE EXCEPTION]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
