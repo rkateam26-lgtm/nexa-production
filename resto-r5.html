@@ -791,12 +791,37 @@
         </div>
       </div>
 
-      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R8 - R14) -->
+      <!-- REWARDS TAB CONTENT (ÉTAPE R8 ACTIVE VIEW) -->
+      <div id="tab-r8-rewards" style="display: none;">
+        <div class="section-title-group" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h1>🎁 Catalogue des Récompenses</h1>
+            <p>Créez et gérez les avantages offerts à vos clients fidèles</p>
+          </div>
+          <button class="btn-create-account" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.85rem;" onclick="openR8RewardModal()">
+            <span>+ Add reward</span>
+          </button>
+        </div>
+
+        <!-- BANNIÈRE D'ERREUR ET DE SUCCÈS R8 -->
+        <div class="alert-banner error" id="r8-rewards-error-banner" style="display: none; margin-bottom: 1rem;"></div>
+        <div class="alert-banner success" id="r8-rewards-success-banner" style="display: none; margin-bottom: 1rem;"></div>
+
+        <!-- FEED DE CARTES DES RÉCOMPENSES -->
+        <div id="r8-rewards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">
+            ⏳ Chargement des récompenses depuis Supabase Cloud…
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R9 - R14) -->
       <div class="coming-soon-container" id="tab-r5-coming-soon">
         <div class="coming-soon-icon">🚧</div>
         <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;" id="coming-soon-title">Section Coming Soon</h2>
         <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 1.5rem 0;" id="coming-soon-desc">
-          This B2B feature will be implemented in upcoming Step R8-R14.
+          This B2B feature will be implemented in upcoming Step R9-R14.
         </p>
         <button class="btn-logout" style="color: var(--nexa-red); border-color: var(--nexa-red); margin: 0 auto;" onclick="switchR5Tab('dashboard', document.querySelector('.nav-item'))">
           ← Back to Dashboard Overview
@@ -895,6 +920,81 @@
     </div>
   </div>
 
+  <!-- REWARD CREATION / EDITING MODAL (ÉTAPE R8) -->
+  <div class="r6-detail-modal" id="modal-r8-reward">
+    <div class="r6-detail-card" style="max-width: 480px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--nexa-red); background: rgba(229,57,53,0.1); padding: 2px 8px; border-radius: 10px;">Récompense B2B R8</span>
+          <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-dark); margin: 0.3rem 0 0 0;" id="r8-modal-title">Add reward</h2>
+        </div>
+        <button onclick="closeR8RewardModal()" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted);">✕</button>
+      </div>
+
+      <div class="alert-banner error" id="r8-modal-alert-error" style="display: none; margin-bottom: 1rem;"></div>
+
+      <form id="form-r8-reward" novalidate>
+        <input type="hidden" id="r8-reward-id" value="">
+
+        <!-- TITLE / NAME -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Nom de la récompense <span style="color: var(--nexa-red);">*</span>
+          </label>
+          <input type="text" id="r8-reward-title" class="form-control-r4" placeholder="Ex: Café Espresso Offert, Tiramisu..." required>
+        </div>
+
+        <!-- CATEGORY & ICON SELECT -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Catégorie & Icône <span style="color: var(--nexa-red);">*</span>
+          </label>
+          <select id="r8-reward-icon" class="form-control-r4" required>
+            <option value="☕">☕ Boisson Chaude / Espresso</option>
+            <option value="🥤">🥤 Boisson Fraîche / Jus</option>
+            <option value="🍔">🍔 Burger / Plat Signature</option>
+            <option value="🍕">🍕 Pizza / Entrée</option>
+            <option value="🍰">🍰 Desserts / Gourmandises</option>
+            <option value="🎁">🎁 Privilège / Cadeau Spécial</option>
+          </select>
+        </div>
+
+        <!-- POINTS COST -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Coût en points (pts) <span style="color: var(--nexa-red);">*</span>
+          </label>
+          <input type="number" id="r8-reward-pts" class="form-control-r4" min="1" max="10000" step="1" placeholder="Ex: 50" required style="font-size: 1.05rem; font-weight: 800; color: var(--nexa-red);">
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Doit être un nombre entier positif (supérieur à 0, max 10 000 pts).
+          </p>
+        </div>
+
+        <!-- DESCRIPTION -->
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Description / Conditions (facultatif)
+          </label>
+          <textarea id="r8-reward-desc" class="form-control-r4" style="height: 70px; font-family: inherit;" placeholder="Ex: Valable du lundi au vendredi sur présentation de l'application..."></textarea>
+        </div>
+
+        <!-- STATUS TOGGLE -->
+        <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem; background: #F8F9FA; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color);">
+          <input type="checkbox" id="r8-reward-active" checked style="width: 18px; height: 18px; accent-color: var(--nexa-red);">
+          <label for="r8-reward-active" style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); cursor: pointer;">
+            Récompense active (visible immédiatement par vos clients)
+          </label>
+        </div>
+
+        <button type="submit" class="btn-create-account" id="btn-save-r8-reward">
+          <span>Enregistrer la Récompense</span>
+          <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+        </button>
+
+      </form>
+    </div>
+  </div>
+
   <script>
     // Initialize Lucide Icons
     if (window.lucide) {
@@ -967,33 +1067,44 @@
       const dashTab = document.getElementById('tab-r5-dashboard');
       const clientsTab = document.getElementById('tab-r6-clients');
       const loyaltyTab = document.getElementById('tab-r7-loyalty');
+      const rewardsTab = document.getElementById('tab-r8-rewards');
       const comingSoonTab = document.getElementById('tab-r5-coming-soon');
 
       if (tabName === 'dashboard') {
         dashTab.style.display = 'block';
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
       } else if (tabName === 'clients') {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'block';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR6Clients();
       } else if (tabName === 'points') {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'block';
+        if (rewardsTab) rewardsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR7LoyaltyConfig();
+      } else if (tabName === 'rewards') {
+        dashTab.style.display = 'none';
+        if (clientsTab) clientsTab.style.display = 'none';
+        if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'block';
+        comingSoonTab.style.display = 'none';
+        loadR8Rewards();
       } else {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
         comingSoonTab.style.display = 'block';
         
         const titles = {
-          rewards: '🎁 Rewards Catalogue (Étape R8)',
           offers: '📢 Push Offers & Campaigns (Étape R9)',
           qr: '📷 Table QR Code Generator (Étape R10)',
           analytics: '📈 Advanced Analytics (Étape R11)',
@@ -1314,6 +1425,250 @@
           }
         }
       });
+    }
+
+    // ==========================================================================
+    // ÉTAPE R8: REWARDS CATALOGUE ENGINE (CREATE, EDIT, TOGGLE STATUS, RENDER)
+    // ==========================================================================
+    let rawR8RewardsList = [];
+
+    async function loadR8Rewards() {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      const grid = document.getElementById('r8-rewards-grid');
+      const errBanner = document.getElementById('r8-rewards-error-banner');
+      const succBanner = document.getElementById('r8-rewards-success-banner');
+
+      if (errBanner) errBanner.style.display = 'none';
+      if (succBanner) succBanner.style.display = 'none';
+
+      if (grid) {
+        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des récompenses depuis Supabase Cloud…</div>`;
+      }
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        rawR8RewardsList = await backend.getRestaurantRewards(activeB2BSession.restoName);
+
+        renderR8RewardsFeed(rawR8RewardsList);
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC R8 LOAD REWARDS ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = `Erreur lors du chargement des récompenses : ${err.message || 'Problème réseau Supabase'}`;
+          errBanner.style.display = 'block';
+        }
+        if (grid) {
+          grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #DC2626; padding: 2rem; background: #FFFFFF; border-radius: 16px;">❌ Impossible de charger les récompenses.</div>`;
+        }
+      }
+    }
+
+    function renderR8RewardsFeed(rewardsArray) {
+      const grid = document.getElementById('r8-rewards-grid');
+      if (!grid) return;
+
+      // EMPTY STATE: NO REWARDS YET
+      if (!rewardsArray || rewardsArray.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3.5rem 1.5rem; background: #FFFFFF; border-radius: 16px; border: 1px dashed var(--border-color);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎁</div>
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-dark); margin: 0 0 0.3rem 0;">No rewards yet</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 400px; margin: 0 auto 1.25rem auto;">
+              Vous n'avez pas encore créé de récompenses pour vos clients. Ajoutez votre premier privilège pour dynamiser votre programme de fidélité !
+            </p>
+            <button class="btn-create-account" style="width: auto; margin: 0 auto; padding: 0.5rem 1.2rem; font-size: 0.85rem;" onclick="openR8RewardModal()">
+              <span>+ Add reward</span>
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      // RENDER REWARDS CARDS
+      grid.innerHTML = rewardsArray.map(r => {
+        const activeBadge = r.active 
+          ? `<span style="background: #D1FAE5; color: #065F46; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">🟢 Actif</span>`
+          : `<span style="background: #F1F5F9; color: #64748B; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">🔴 Inactif</span>`;
+
+        const usageText = r.useCount > 0 ? `🔥 ${r.useCount} utilisation(s)` : `0 utilisation`;
+
+        return `
+          <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 1.5rem;">${escapeHtml(r.icon)}</span>
+                  <div>
+                    <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0;">${escapeHtml(r.title)}</h3>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">${escapeHtml(r.category)}</span>
+                  </div>
+                </div>
+                ${activeBadge}
+              </div>
+
+              <div style="margin-bottom: 0.85rem;">
+                <span style="font-size: 1.25rem; font-weight: 900; color: var(--nexa-red);">${r.pts} PTS</span>
+              </div>
+
+              <p style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.4; margin: 0 0 1rem 0;">
+                ${escapeHtml(r.desc || 'Valable sur présentation en caisse.')}
+              </p>
+            </div>
+
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.85rem; padding-top: 0.6rem; border-top: 1px solid #F1F5F9;">
+                <span>${usageText}</span>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center;" onclick="openR8RewardModal('${r.id}')">
+                  ✏️ Modifier
+                </button>
+                <button class="btn-logout" style="flex: 1; font-size: 0.78rem; padding: 0.4rem 0.5rem; justify-content: center; color: ${r.active ? '#DC2626' : '#10B981'}; border-color: ${r.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR8RewardStatus('${r.id}', ${r.active})">
+                  ${r.active ? 'Désactiver' : 'Activer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // OPEN ADD / EDIT REWARD MODAL
+    function openR8RewardModal(rewardId = null) {
+      const modal = document.getElementById('modal-r8-reward');
+      const errBanner = document.getElementById('r8-modal-alert-error');
+      if (errBanner) errBanner.style.display = 'none';
+
+      if (rewardId) {
+        const reward = rawR8RewardsList.find(r => r.id === rewardId);
+        if (reward) {
+          document.getElementById('r8-modal-title').textContent = 'Modifier la Récompense';
+          document.getElementById('r8-reward-id').value = reward.id;
+          document.getElementById('r8-reward-title').value = reward.title;
+          document.getElementById('r8-reward-icon').value = reward.icon || '☕';
+          document.getElementById('r8-reward-pts').value = reward.pts;
+          document.getElementById('r8-reward-desc').value = reward.desc || '';
+          document.getElementById('r8-reward-active').checked = reward.active;
+        }
+      } else {
+        document.getElementById('r8-modal-title').textContent = 'Add reward';
+        document.getElementById('r8-reward-id').value = '';
+        document.getElementById('r8-reward-title').value = '';
+        document.getElementById('r8-reward-icon').value = '☕';
+        document.getElementById('r8-reward-pts').value = 50;
+        document.getElementById('r8-reward-desc').value = '';
+        document.getElementById('r8-reward-active').checked = true;
+      }
+
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeR8RewardModal() {
+      const modal = document.getElementById('modal-r8-reward');
+      if (modal) modal.classList.remove('active');
+    }
+
+    // SAVE REWARD SUBMIT HANDLER
+    const formR8Reward = document.getElementById('form-r8-reward');
+    if (formR8Reward) {
+      formR8Reward.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const errBanner = document.getElementById('r8-modal-alert-error');
+        const btnSave = document.getElementById('btn-save-r8-reward');
+        if (errBanner) errBanner.style.display = 'none';
+
+        const rewardId = document.getElementById('r8-reward-id').value;
+        const title = document.getElementById('r8-reward-title').value.trim();
+        const icon = document.getElementById('r8-reward-icon').value;
+        const pts = parseInt(document.getElementById('r8-reward-pts').value, 10);
+        const desc = document.getElementById('r8-reward-desc').value.trim();
+        const active = document.getElementById('r8-reward-active').checked;
+
+        if (!title) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ Le nom de la récompense est obligatoire.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (isNaN(pts) || pts <= 0) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ Le coût en points doit être un nombre entier strictement positif (supérieur à 0).';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (pts > 10000) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ Le coût en points ne peut pas dépasser 10 000 points.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (btnSave) {
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span>Enregistrement dans Supabase…</span>';
+        }
+
+        try {
+          const backend = window.nexaBackend || new NexaProductionBackend();
+          await backend.createOrUpdateRestaurantReward(activeB2BSession.restoName, {
+            id: rewardId || null,
+            title,
+            icon,
+            pts,
+            desc,
+            active
+          });
+
+          closeR8RewardModal();
+          
+          const succBanner = document.getElementById('r8-rewards-success-banner');
+          if (succBanner) {
+            succBanner.textContent = `✅ Récompense « ${title} » enregistrée avec succès dans Supabase Cloud !`;
+            succBanner.style.display = 'block';
+          }
+
+          loadR8Rewards();
+
+        } catch (err) {
+          console.error('[DIAGNOSTIC R8 SAVE REWARD ERROR]', err);
+          if (errBanner) {
+            errBanner.textContent = err.message || 'Échec de l\'enregistrement de la récompense.';
+            errBanner.style.display = 'block';
+          }
+        } finally {
+          if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<span>Enregistrer la Récompense</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
+            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+          }
+        }
+      });
+    }
+
+    // TOGGLE REWARD STATUS HANDLER
+    async function toggleR8RewardStatus(rewardId, currentActiveState) {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.toggleRestaurantRewardStatus(activeB2BSession.restoName, rewardId, currentActiveState);
+        loadR8Rewards();
+      } catch (err) {
+        console.error('[DIAGNOSTIC R8 TOGGLE STATUS ERROR]', err);
+        const errBanner = document.getElementById('r8-rewards-error-banner');
+        if (errBanner) {
+          errBanner.textContent = `Erreur lors de la modification du statut : ${err.message}`;
+          errBanner.style.display = 'block';
+        }
+      }
     }
   </script>
 

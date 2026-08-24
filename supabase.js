@@ -609,6 +609,143 @@ class NexaProductionBackend {
     }
   }
 
+  // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only
+  async getRestaurantRewards(restoName) {
+    console.log(`[DIAGNOSTIC R8 REWARDS] Fetching rewards for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      // 1. Fetch rewards registered for this restaurant (by resto_id or restaurant_name)
+      const { data: rewardRows, error } = await client
+        .from('rewards')
+        .select('*')
+        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[DIAGNOSTIC R8 REWARDS ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      const rewards = rewardRows || [];
+
+      // 2. Format rewards cleanly
+      const formattedRewards = rewards.map(r => {
+        return {
+          id: r.id,
+          restoId: r.resto_id || slug,
+          restoName: r.restaurant_name || restoName,
+          title: r.title || 'Récompense',
+          desc: r.desc || r.description || 'Valable sur présentation en caisse.',
+          pts: r.pts || r.points_cost || 50,
+          icon: r.icon || '🎁',
+          category: r.category || 'Boisson',
+          active: r.active !== false && r.is_active !== false,
+          useCount: r.redemptions_count || r.use_count || 0,
+          createdAt: r.created_at
+        };
+      });
+
+      return formattedRewards;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R8 GET REWARDS EXCEPTION]', err);
+      throw err;
+    }
+  }
+
+  // 1k. ÉTAPE R8: Create or Update Reward in Supabase Cloud PostgreSQL
+  async createOrUpdateRestaurantReward(restoName, rewardData) {
+    console.log(`[DIAGNOSTIC R8 SAVE REWARD] Saving reward "${rewardData.title}" for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    if (!rewardData.title || !rewardData.title.trim()) {
+      throw new Error('Le nom de la récompense est obligatoire.');
+    }
+
+    const ptsVal = parseInt(rewardData.pts, 10);
+    if (isNaN(ptsVal) || ptsVal <= 0) {
+      throw new Error('Le coût en points doit être un nombre entier strictement positif (supérieur à 0).');
+    }
+    if (ptsVal > 10000) {
+      throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
+    }
+
+    const recordPayload = {
+      resto_id: slug,
+      restaurant_name: restoName,
+      title: rewardData.title.trim(),
+      desc: (rewardData.desc || '').trim(),
+      pts: ptsVal,
+      icon: rewardData.icon || '🎁',
+      category: rewardData.category || 'Général',
+      active: rewardData.active !== false
+    };
+
+    if (rewardData.id) {
+      recordPayload.id = rewardData.id;
+    }
+
+    try {
+      const { data, error } = await client
+        .from('rewards')
+        .upsert(recordPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DIAGNOSTIC R8 SAVE REWARD ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      console.log(`[DIAGNOSTIC R8 SAVE SUCCESS] Reward saved successfully with ID: ${data.id}`);
+      return data;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R8 SAVE EXCEPTION]', err);
+      throw err;
+    }
+  }
+
+  // 1l. ÉTAPE R8: Toggle Active/Inactive Status of a Reward
+  async toggleRestaurantRewardStatus(restoName, rewardId, currentActiveState) {
+    console.log(`[DIAGNOSTIC R8 TOGGLE STATUS] Toggling reward ${rewardId} status to ${!currentActiveState}`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      const { data, error } = await client
+        .from('rewards')
+        .update({ active: !currentActiveState })
+        .eq('id', rewardId)
+        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DIAGNOSTIC R8 TOGGLE STATUS ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      return data;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R8 TOGGLE STATUS EXCEPTION]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
