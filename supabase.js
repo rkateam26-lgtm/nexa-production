@@ -105,6 +105,8 @@ class NexaProductionBackend {
 
     // A. Create Supabase Auth User for Manager
     let authUserId = null;
+    let authUser = null;
+
     try {
       const { data: authData, error: authError } = await client.auth.signUp({
         email: ownerEmail,
@@ -120,18 +122,50 @@ class NexaProductionBackend {
         }
       });
 
-      if (authError) {
-        if (authError.message.includes('already registered') || authError.status === 400 || authError.status === 422) {
-          throw new Error('Cet e-mail est déjà utilisé pour un compte Nexa. Veuillez utiliser un autre e-mail ou vous connecter.');
-        }
-        throw new Error(`[Supabase Auth] ${authError.message}`);
-      }
+      // Handle cases where email is already registered or identities array is empty
+      const isAlreadyRegistered = authError && (
+        authError.message.toLowerCase().includes('already registered') ||
+        authError.message.toLowerCase().includes('already in use') ||
+        authError.message.toLowerCase().includes('user already exists') ||
+        authError.status === 400 ||
+        authError.status === 422
+      );
 
-      if (authData && authData.user) {
+      const isIdentityEmpty = authData && authData.user && Array.isArray(authData.user.identities) && authData.user.identities.length === 0;
+
+      if (isAlreadyRegistered || isIdentityEmpty) {
+        console.warn('[DIAGNOSTIC B2B AUTH WARN] Email already registered. Attempting signInWithPassword fallback...');
+        
+        // Attempt sign-in with provided password
+        const { data: loginData, error: loginErr } = await client.auth.signInWithPassword({
+          email: ownerEmail,
+          password: ownerPassword
+        });
+
+        if (loginErr || !loginData || !loginData.user) {
+          throw new Error('Cet e-mail est déjà inscrit sur Nexa. Si c\'est votre compte, veuillez utiliser la page "Sign In" pour vous connecter ou réinitialiser votre mot de passe.');
+        }
+
+        authUser = loginData.user;
+        authUserId = loginData.user.id;
+      } else if (authError) {
+        console.error('[DIAGNOSTIC B2B AUTH ERROR]', authError);
+        
+        if (authError.message.toLowerCase().includes('password')) {
+          throw new Error('Le mot de passe doit contenir au moins 6 caractères.');
+        } else if (authError.message.toLowerCase().includes('rate limit') || authError.status === 429) {
+          throw new Error('Trop de tentatives d\'inscription. Veuillez patienter 1 minute avant de réanalyser.');
+        } else if (authError.message.toLowerCase().includes('invalid email')) {
+          throw new Error('L\'adresse e-mail saisie est invalide.');
+        } else {
+          throw new Error(`[Supabase Auth] ${authError.message}`);
+        }
+      } else if (authData && authData.user) {
+        authUser = authData.user;
         authUserId = authData.user.id;
       }
     } catch (authErr) {
-      console.error('[DIAGNOSTIC B2B AUTH ERROR]', authErr);
+      console.error('[DIAGNOSTIC B2B AUTH CATCH]', authErr);
       throw authErr;
     }
 
@@ -160,10 +194,27 @@ class NexaProductionBackend {
           currency: 'FCFA'
         }, { onConflict: 'email' })
         .select()
-        .single();
+        .maybeSingle();
 
       if (restoError) {
-        console.error('[DIAGNOSTIC B2B RESTO ERROR]', restoError);
+        console.warn('[DIAGNOSTIC B2B RESTO UPSERT WARN]', restoError);
+        
+        // Fallback: search existing restaurant or insert without onConflict
+        const { data: existingResto } = await client
+          .from('restaurants')
+          .select('*')
+          .or(`email.eq.${ownerEmail},name.eq.${restoName}`)
+          .maybeSingle();
+
+        if (existingResto) {
+          return {
+            authUserId,
+            restoId: existingResto.id || slug,
+            restoName: existingResto.name || restoName,
+            email: ownerEmail
+          };
+        }
+
         throw new Error(`[Supabase DB] ${restoError.message}`);
       }
 
