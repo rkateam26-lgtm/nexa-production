@@ -361,6 +361,126 @@ class NexaProductionBackend {
     }
   }
 
+  // 1f. ÉTAPE R6: Fetch Real Clients associated with this Restaurant only
+  async getRestaurantClients(restoName) {
+    console.log(`[DIAGNOSTIC R6 CLIENTS] Fetching clients for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      const { data: clientRows, error } = await client
+        .from('clients')
+        .select('*')
+        .ilike('whatsapp_phone', `%_${slug}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[DIAGNOSTIC R6 CLIENTS ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      const formattedClients = (clientRows || []).map(c => {
+        const cleanPhone = c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : 'N/A';
+        const lastVisitDate = c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR', {
+          year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        }) : 'Aucune récente';
+
+        return {
+          rawKey: c.whatsapp_phone,
+          phone: cleanPhone,
+          name: c.full_name || 'Client Nexa',
+          points: c.points_balance || 0,
+          visits: c.visits_count || 1,
+          lastVisit: lastVisitDate,
+          createdAt: c.created_at
+        };
+      });
+
+      return formattedClients;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R6 GET CLIENTS EXCEPTION]', err);
+      throw err;
+    }
+  }
+
+  // 1g. ÉTAPE R6: Fetch Specific Client Activity Details for this Restaurant
+  async getRestaurantClientDetails(restoName, rawCompositeKey) {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      // 1. Fetch main client profile
+      const { data: profile } = await client
+        .from('clients')
+        .select('*')
+        .eq('whatsapp_phone', rawCompositeKey)
+        .maybeSingle();
+
+      const cleanPhone = rawCompositeKey ? rawCompositeKey.split('_')[0] : 'N/A';
+
+      // 2. Fetch scan history for this client & restaurant
+      let scanHistory = [];
+      try {
+        const { data: scans } = await client
+          .from('scans')
+          .select('*')
+          .or(`restaurant_name.eq.${restoName},restaurant_name.eq.${slug}`)
+          .eq('client_phone', cleanPhone)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (scans) scanHistory = scans;
+      } catch (e) {
+        console.warn('Scans fetch warn:', e);
+      }
+
+      // 3. Fetch redeemed rewards history for this client & restaurant
+      let redeemedRewards = [];
+      try {
+        const { data: rewards } = await client
+          .from('rewards')
+          .select('*')
+          .or(`restaurant_name.eq.${restoName},resto_id.eq.${slug}`)
+          .eq('client_phone', cleanPhone)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        if (rewards) redeemedRewards = rewards;
+      } catch (e) {
+        console.warn('Rewards fetch warn:', e);
+      }
+
+      return {
+        profile: profile ? {
+          name: profile.full_name || 'Client Nexa',
+          phone: cleanPhone,
+          points: profile.points_balance || 0,
+          visits: profile.visits_count || 1,
+          lastScanAt: profile.last_scan_at ? new Date(profile.last_scan_at).toLocaleString('fr-FR') : 'N/A'
+        } : {
+          name: 'Client Nexa',
+          phone: cleanPhone,
+          points: 0,
+          visits: 1,
+          lastScanAt: 'N/A'
+        },
+        scans: scanHistory,
+        rewards: redeemedRewards
+      };
+    } catch (err) {
+      console.error('[DIAGNOSTIC R6 CLIENT DETAILS ERROR]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
