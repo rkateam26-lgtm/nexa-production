@@ -816,12 +816,56 @@
 
       </div>
 
-      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R9 - R14) -->
+      <!-- OFFERS TAB CONTENT (ÉTAPE R9 ACTIVE VIEW) -->
+      <div id="tab-r9-offers" style="display: none;">
+        <div class="section-title-group" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h1>📢 Offres Commerciales & Campagnes</h1>
+            <p>Créez et gérez les offres spéciales affichées dans l'espace client</p>
+          </div>
+          <button class="btn-create-account" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.85rem;" onclick="openR9OfferModal()">
+            <span>+ Create offer</span>
+          </button>
+        </div>
+
+        <!-- BANNIÈRE D'ERREUR ET DE SUCCÈS R9 -->
+        <div class="alert-banner error" id="r9-offers-error-banner" style="display: none; margin-bottom: 1rem;"></div>
+        <div class="alert-banner success" id="r9-offers-success-banner" style="display: none; margin-bottom: 1rem;"></div>
+
+        <!-- FILTRES DE STATUT R9 -->
+        <div style="display: flex; gap: 0.5rem; overflow-x: auto; margin-bottom: 1.5rem; padding-bottom: 0.25rem;">
+          <button class="r6-btn-detail" id="filter-r9-all" style="background: var(--nexa-red); color: white; border-color: var(--nexa-red);" onclick="filterR9OffersByStatus('ALL')">
+            Toutes les offres (<span id="count-r9-all">0</span>)
+          </button>
+          <button class="r6-btn-detail" id="filter-r9-active" style="background: #F8F9FA; color: var(--text-dark); border-color: var(--border-color);" onclick="filterR9OffersByStatus('ACTIVE')">
+            🟢 Actives (<span id="count-r9-active">0</span>)
+          </button>
+          <button class="r6-btn-detail" id="filter-r9-scheduled" style="background: #F8F9FA; color: var(--text-dark); border-color: var(--border-color);" onclick="filterR9OffersByStatus('SCHEDULED')">
+            ⏳ Programmées (<span id="count-r9-scheduled">0</span>)
+          </button>
+          <button class="r6-btn-detail" id="filter-r9-expired" style="background: #F8F9FA; color: var(--text-dark); border-color: var(--border-color);" onclick="filterR9OffersByStatus('EXPIRED')">
+            ⏰ Expirées (<span id="count-r9-expired">0</span>)
+          </button>
+          <button class="r6-btn-detail" id="filter-r9-disabled" style="background: #F8F9FA; color: var(--text-dark); border-color: var(--border-color);" onclick="filterR9OffersByStatus('DISABLED')">
+            🔴 Désactivées (<span id="count-r9-disabled">0</span>)
+          </button>
+        </div>
+
+        <!-- FEED DE CARTES DES OFFRES -->
+        <div id="r9-offers-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.25rem;">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">
+            ⏳ Chargement des offres depuis Supabase Cloud…
+          </div>
+        </div>
+
+      </div>
+
+      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R10 - R14) -->
       <div class="coming-soon-container" id="tab-r5-coming-soon">
         <div class="coming-soon-icon">🚧</div>
         <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;" id="coming-soon-title">Section Coming Soon</h2>
         <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0 0 1.5rem 0;" id="coming-soon-desc">
-          This B2B feature will be implemented in upcoming Step R9-R14.
+          This B2B feature will be implemented in upcoming Step R10-R14.
         </p>
         <button class="btn-logout" style="color: var(--nexa-red); border-color: var(--nexa-red); margin: 0 auto;" onclick="switchR5Tab('dashboard', document.querySelector('.nav-item'))">
           ← Back to Dashboard Overview
@@ -995,6 +1039,71 @@
     </div>
   </div>
 
+  <!-- OFFER CREATION / EDITING MODAL (ÉTAPE R9) -->
+  <div class="r6-detail-modal" id="modal-r9-offer">
+    <div class="r6-detail-card" style="max-width: 500px;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+        <div>
+          <span style="font-size: 0.75rem; font-weight: 800; color: var(--nexa-red); background: rgba(229,57,53,0.1); padding: 2px 8px; border-radius: 10px;">Campagne B2B R9</span>
+          <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-dark); margin: 0.3rem 0 0 0;" id="r9-modal-title">Create offer</h2>
+        </div>
+        <button onclick="closeR9OfferModal()" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted);">✕</button>
+      </div>
+
+      <div class="alert-banner error" id="r9-modal-alert-error" style="display: none; margin-bottom: 1rem;"></div>
+
+      <form id="form-r9-offer" novalidate>
+        <input type="hidden" id="r9-offer-id" value="">
+
+        <!-- TITLE -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Titre de l'offre <span style="color: var(--nexa-red);">*</span>
+          </label>
+          <input type="text" id="r9-offer-title" class="form-control-r4" placeholder="Ex: 🎉 -20% sur les Pizzas le Mardi !" required>
+        </div>
+
+        <!-- DESCRIPTION -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Description de l'offre <span style="color: var(--nexa-red);">*</span>
+          </label>
+          <textarea id="r9-offer-desc" class="form-control-r4" style="height: 80px; font-family: inherit;" placeholder="Ex: Profitez de 20% de réduction sur toutes nos pizzas tous les mardis soir sur présentation de l'application..." required></textarea>
+        </div>
+
+        <!-- DATES GRID (START & END DATE) -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+          <div>
+            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+              Date de début <span style="color: var(--nexa-red);">*</span>
+            </label>
+            <input type="date" id="r9-offer-start-date" class="form-control-r4" required>
+          </div>
+          <div>
+            <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+              Date d'expiration <span style="color: var(--nexa-red);">*</span>
+            </label>
+            <input type="date" id="r9-offer-end-date" class="form-control-r4" required>
+          </div>
+        </div>
+
+        <!-- STATUS TOGGLE -->
+        <div style="margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.6rem; background: #F8F9FA; padding: 0.75rem 1rem; border-radius: 10px; border: 1px solid var(--border-color);">
+          <input type="checkbox" id="r9-offer-active" checked style="width: 18px; height: 18px; accent-color: var(--nexa-red);">
+          <label for="r9-offer-active" style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark); cursor: pointer;">
+            Offre activée (sera diffusée aux clients selon ses dates)
+          </label>
+        </div>
+
+        <button type="submit" class="btn-create-account" id="btn-save-r9-offer">
+          <span>Enregistrer l'Offre</span>
+          <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+        </button>
+
+      </form>
+    </div>
+  </div>
+
   <script>
     // Initialize Lucide Icons
     if (window.lucide) {
@@ -1068,6 +1177,7 @@
       const clientsTab = document.getElementById('tab-r6-clients');
       const loyaltyTab = document.getElementById('tab-r7-loyalty');
       const rewardsTab = document.getElementById('tab-r8-rewards');
+      const offersTab = document.getElementById('tab-r9-offers');
       const comingSoonTab = document.getElementById('tab-r5-coming-soon');
 
       if (tabName === 'dashboard') {
@@ -1075,12 +1185,14 @@
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
         if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
       } else if (tabName === 'clients') {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'block';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
         if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR6Clients();
       } else if (tabName === 'points') {
@@ -1088,6 +1200,7 @@
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'block';
         if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR7LoyaltyConfig();
       } else if (tabName === 'rewards') {
@@ -1095,17 +1208,26 @@
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
         if (rewardsTab) rewardsTab.style.display = 'block';
+        if (offersTab) offersTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR8Rewards();
+      } else if (tabName === 'offers') {
+        dashTab.style.display = 'none';
+        if (clientsTab) clientsTab.style.display = 'none';
+        if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'block';
+        comingSoonTab.style.display = 'none';
+        loadR9Offers();
       } else {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'none';
         if (loyaltyTab) loyaltyTab.style.display = 'none';
         if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
         comingSoonTab.style.display = 'block';
         
         const titles = {
-          offers: '📢 Push Offers & Campaigns (Étape R9)',
           qr: '📷 Table QR Code Generator (Étape R10)',
           analytics: '📈 Advanced Analytics (Étape R11)',
           subscription: '💳 B2B Subscription & Billing (Étape R13)',
@@ -1664,6 +1786,304 @@
       } catch (err) {
         console.error('[DIAGNOSTIC R8 TOGGLE STATUS ERROR]', err);
         const errBanner = document.getElementById('r8-rewards-error-banner');
+        if (errBanner) {
+          errBanner.textContent = `Erreur lors de la modification du statut : ${err.message}`;
+          errBanner.style.display = 'block';
+        }
+      }
+    }
+
+    // ==========================================================================
+    // ÉTAPE R9: COMMERCIAL OFFERS ENGINE (STATUS FILTERS, CREATE, EDIT, RENDER)
+    // ==========================================================================
+    let rawR9OffersList = [];
+    let currentR9StatusFilter = 'ALL';
+
+    async function loadR9Offers() {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      const grid = document.getElementById('r9-offers-grid');
+      const errBanner = document.getElementById('r9-offers-error-banner');
+      const succBanner = document.getElementById('r9-offers-success-banner');
+
+      if (errBanner) errBanner.style.display = 'none';
+      if (succBanner) succBanner.style.display = 'none';
+
+      if (grid) {
+        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des offres depuis Supabase Cloud…</div>`;
+      }
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        rawR9OffersList = await backend.getRestaurantOffers(activeB2BSession.restoName);
+
+        // Update status counts
+        const allCount = rawR9OffersList.length;
+        const activeCount = rawR9OffersList.filter(o => o.computedStatus === 'ACTIVE').length;
+        const scheduledCount = rawR9OffersList.filter(o => o.computedStatus === 'SCHEDULED').length;
+        const expiredCount = rawR9OffersList.filter(o => o.computedStatus === 'EXPIRED').length;
+        const disabledCount = rawR9OffersList.filter(o => o.computedStatus === 'DISABLED').length;
+
+        document.getElementById('count-r9-all').textContent = allCount;
+        document.getElementById('count-r9-active').textContent = activeCount;
+        document.getElementById('count-r9-scheduled').textContent = scheduledCount;
+        document.getElementById('count-r9-expired').textContent = expiredCount;
+        document.getElementById('count-r9-disabled').textContent = disabledCount;
+
+        renderR9OffersFeed();
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC R9 LOAD OFFERS ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = `Erreur lors du chargement des offres : ${err.message || 'Problème réseau Supabase'}`;
+          errBanner.style.display = 'block';
+        }
+        if (grid) {
+          grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #DC2626; padding: 2rem; background: #FFFFFF; border-radius: 16px;">❌ Impossible de charger les offres.</div>`;
+        }
+      }
+    }
+
+    function filterR9OffersByStatus(statusKey) {
+      currentR9StatusFilter = statusKey;
+
+      // Update button highlights
+      const statusKeys = ['all', 'active', 'scheduled', 'expired', 'disabled'];
+      statusKeys.forEach(k => {
+        const btn = document.getElementById(`filter-r9-${k}`);
+        if (btn) {
+          if (k.toUpperCase() === statusKey) {
+            btn.style.background = 'var(--nexa-red)';
+            btn.style.color = 'white';
+            btn.style.borderColor = 'var(--nexa-red)';
+          } else {
+            btn.style.background = '#F8F9FA';
+            btn.style.color = 'var(--text-dark)';
+            btn.style.borderColor = 'var(--border-color)';
+          }
+        }
+      });
+
+      renderR9OffersFeed();
+    }
+
+    function renderR9OffersFeed() {
+      const grid = document.getElementById('r9-offers-grid');
+      if (!grid) return;
+
+      let filtered = rawR9OffersList;
+      if (currentR9StatusFilter !== 'ALL') {
+        filtered = rawR9OffersList.filter(o => o.computedStatus === currentR9StatusFilter);
+      }
+
+      if (!filtered || filtered.length === 0) {
+        grid.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3.5rem 1.5rem; background: #FFFFFF; border-radius: 16px; border: 1px dashed var(--border-color);">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📢</div>
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--text-dark); margin: 0 0 0.3rem 0;">Aucune offre disponible</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 400px; margin: 0 auto 1.25rem auto;">
+              Aucune offre ne correspond au filtre sélectionné (${currentR9StatusFilter}). Cliquez ci-dessous pour créer une offre !
+            </p>
+            <button class="btn-create-account" style="width: auto; margin: 0 auto; padding: 0.5rem 1.2rem; font-size: 0.85rem;" onclick="openR9OfferModal()">
+              <span>+ Create offer</span>
+            </button>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(o => {
+        let statusPill = '';
+        if (o.computedStatus === 'ACTIVE') {
+          statusPill = `<span style="background: #D1FAE5; color: #065F46; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 10px;">🟢 ACTIVE</span>`;
+        } else if (o.computedStatus === 'SCHEDULED') {
+          statusPill = `<span style="background: #FEF3C7; color: #92400E; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 10px;">⏳ SCHEDULED</span>`;
+        } else if (o.computedStatus === 'EXPIRED') {
+          statusPill = `<span style="background: #F1F5F9; color: #64748B; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 10px;">⏰ EXPIRED</span>`;
+        } else {
+          statusPill = `<span style="background: #FEE2E2; color: #991B1B; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 10px;">🔴 DISABLED</span>`;
+        }
+
+        return `
+          <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0; padding-right: 0.5rem;">${escapeHtml(o.title)}</h3>
+                ${statusPill}
+              </div>
+
+              <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; margin: 0 0 1rem 0;">
+                ${escapeHtml(o.desc)}
+              </p>
+            </div>
+
+            <div>
+              <div style="background: #F8F9FA; padding: 0.5rem 0.75rem; border-radius: 8px; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 0.85rem;">
+                📅 <strong>Du ${o.startDate} au ${o.endDate}</strong>
+              </div>
+
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center;" onclick="openR9OfferModal('${o.id}')">
+                  ✏️ Modifier
+                </button>
+                <button class="btn-logout" style="flex: 1; font-size: 0.78rem; padding: 0.4rem 0.5rem; justify-content: center; color: ${o.active ? '#DC2626' : '#10B981'}; border-color: ${o.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR9OfferStatus('${o.id}', ${o.active})">
+                  ${o.active ? 'Désactiver' : 'Activer'}
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // OPEN ADD / EDIT OFFER MODAL
+    function openR9OfferModal(offerId = null) {
+      const modal = document.getElementById('modal-r9-offer');
+      const errBanner = document.getElementById('r9-modal-alert-error');
+      if (errBanner) errBanner.style.display = 'none';
+
+      const todayStr = new Date().toISOString().split('T')[0];
+      const nextWeekStr = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+
+      if (offerId) {
+        const offer = rawR9OffersList.find(o => o.id === offerId);
+        if (offer) {
+          document.getElementById('r9-modal-title').textContent = 'Modifier l\'Offre';
+          document.getElementById('r9-offer-id').value = offer.id;
+          document.getElementById('r9-offer-title').value = offer.title;
+          document.getElementById('r9-offer-desc').value = offer.desc;
+          document.getElementById('r9-offer-start-date').value = offer.startDate;
+          document.getElementById('r9-offer-end-date').value = offer.endDate;
+          document.getElementById('r9-offer-active').checked = offer.active;
+        }
+      } else {
+        document.getElementById('r9-modal-title').textContent = 'Create offer';
+        document.getElementById('r9-offer-id').value = '';
+        document.getElementById('r9-offer-title').value = '';
+        document.getElementById('r9-offer-desc').value = '';
+        document.getElementById('r9-offer-start-date').value = todayStr;
+        document.getElementById('r9-offer-end-date').value = nextWeekStr;
+        document.getElementById('r9-offer-active').checked = true;
+      }
+
+      if (modal) modal.classList.add('active');
+    }
+
+    function closeR9OfferModal() {
+      const modal = document.getElementById('modal-r9-offer');
+      if (modal) modal.classList.remove('active');
+    }
+
+    // SAVE OFFER SUBMIT HANDLER
+    const formR9Offer = document.getElementById('form-r9-offer');
+    if (formR9Offer) {
+      formR9Offer.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const errBanner = document.getElementById('r9-modal-alert-error');
+        const btnSave = document.getElementById('btn-save-r9-offer');
+        if (errBanner) errBanner.style.display = 'none';
+
+        const offerId = document.getElementById('r9-offer-id').value;
+        const title = document.getElementById('r9-offer-title').value.trim();
+        const desc = document.getElementById('r9-offer-desc').value.trim();
+        const startDate = document.getElementById('r9-offer-start-date').value;
+        const endDate = document.getElementById('r9-offer-end-date').value;
+        const active = document.getElementById('r9-offer-active').checked;
+
+        if (!title) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ Le titre de l\'offre est obligatoire.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (!desc) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ La description de l\'offre est obligatoire.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (!startDate) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ La date de début est obligatoire.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (!endDate) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ La date d\'expiration est obligatoire.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (new Date(endDate) < new Date(startDate)) {
+          if (errBanner) {
+            errBanner.textContent = '⚠️ La date d\'expiration doit être postérieure à la date de début.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        if (btnSave) {
+          btnSave.disabled = true;
+          btnSave.innerHTML = '<span>Enregistrement dans Supabase…</span>';
+        }
+
+        try {
+          const backend = window.nexaBackend || new NexaProductionBackend();
+          await backend.createOrUpdateRestaurantOffer(activeB2BSession.restoName, {
+            id: offerId || null,
+            title,
+            desc,
+            startDate,
+            endDate,
+            active
+          });
+
+          closeR9OfferModal();
+
+          const succBanner = document.getElementById('r9-offers-success-banner');
+          if (succBanner) {
+            succBanner.textContent = `✅ Offre « ${title} » enregistrée avec succès dans Supabase Cloud !`;
+            succBanner.style.display = 'block';
+          }
+
+          loadR9Offers();
+
+        } catch (err) {
+          console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', err);
+          if (errBanner) {
+            errBanner.textContent = err.message || 'Échec de l\'enregistrement de l\'offre.';
+            errBanner.style.display = 'block';
+          }
+        } finally {
+          if (btnSave) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = '<span>Enregistrer l\'Offre</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
+            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+          }
+        }
+      });
+    }
+
+    // TOGGLE OFFER STATUS HANDLER
+    async function toggleR9OfferStatus(offerId, currentActiveState) {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.toggleRestaurantOfferStatus(activeB2BSession.restoName, offerId, currentActiveState);
+        loadR9Offers();
+      } catch (err) {
+        console.error('[DIAGNOSTIC R9 TOGGLE OFFER ERROR]', err);
+        const errBanner = document.getElementById('r9-offers-error-banner');
         if (errBanner) {
           errBanner.textContent = `Erreur lors de la modification du statut : ${err.message}`;
           errBanner.style.display = 'block';

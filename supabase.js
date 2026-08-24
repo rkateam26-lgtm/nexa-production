@@ -746,6 +746,179 @@ class NexaProductionBackend {
     }
   }
 
+  // 1m. ÉTAPE R9: Fetch Commercial Offers & Campaigns for this Restaurant only
+  async getRestaurantOffers(restoName) {
+    console.log(`[DIAGNOSTIC R9 OFFERS] Fetching offers for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      // Fetch offers registered for this restaurant in `offers` table
+      const { data: offerRows, error } = await client
+        .from('offers')
+        .select('*')
+        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('[DIAGNOSTIC R9 OFFERS ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      const offers = offerRows || [];
+
+      // Compute dynamic time-aware status for each offer
+      const now = new Date();
+
+      const formattedOffers = offers.map(o => {
+        const startDateStr = o.start_date ? o.start_date.split('T')[0] : new Date().toISOString().split('T')[0];
+        const endDateStr = o.end_date ? o.end_date.split('T')[0] : new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+
+        const start = new Date(o.start_date || startDateStr);
+        const end = new Date(o.end_date || endDateStr);
+        end.setHours(23, 59, 59, 999);
+
+        let computedStatus = 'ACTIVE';
+        if (o.active === false || o.is_active === false) {
+          computedStatus = 'DISABLED';
+        } else if (now > end) {
+          computedStatus = 'EXPIRED';
+        } else if (now < start) {
+          computedStatus = 'SCHEDULED';
+        } else {
+          computedStatus = 'ACTIVE';
+        }
+
+        return {
+          id: o.id,
+          restoId: o.resto_id || slug,
+          restoName: o.restaurant_name || restoName,
+          title: o.title || 'Offre Spéciale',
+          desc: o.description || o.desc || 'Offre privilège pour les clients Nexa.',
+          startDate: startDateStr,
+          endDate: endDateStr,
+          active: o.active !== false && o.is_active !== false,
+          computedStatus: computedStatus,
+          createdAt: o.created_at
+        };
+      });
+
+      return formattedOffers;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R9 GET OFFERS EXCEPTION]', err);
+      throw err;
+    }
+  }
+
+  // 1n. ÉTAPE R9: Create or Update Commercial Offer in Supabase Cloud PostgreSQL
+  async createOrUpdateRestaurantOffer(restoName, offerData) {
+    console.log(`[DIAGNOSTIC R9 SAVE OFFER] Saving offer "${offerData.title}" for resto: "${restoName}"`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    if (!offerData.title || !offerData.title.trim()) {
+      throw new Error('Le titre de l\'offre est obligatoire.');
+    }
+
+    if (!offerData.desc || !offerData.desc.trim()) {
+      throw new Error('La description de l\'offre est obligatoire.');
+    }
+
+    if (!offerData.startDate) {
+      throw new Error('La date de début est obligatoire.');
+    }
+
+    if (!offerData.endDate) {
+      throw new Error('La date d\'expiration est obligatoire.');
+    }
+
+    const startObj = new Date(offerData.startDate);
+    const endObj = new Date(offerData.endDate);
+
+    if (isNaN(startObj.getTime())) {
+      throw new Error('Date de début invalide.');
+    }
+    if (isNaN(endObj.getTime())) {
+      throw new Error('Date d\'expiration invalide.');
+    }
+
+    if (endObj < startObj) {
+      throw new Error('La date d\'expiration doit être postérieure à la date de début.');
+    }
+
+    const recordPayload = {
+      resto_id: slug,
+      restaurant_name: restoName,
+      title: offerData.title.trim(),
+      description: offerData.desc.trim(),
+      start_date: offerData.startDate,
+      end_date: offerData.endDate,
+      active: offerData.active !== false
+    };
+
+    if (offerData.id) {
+      recordPayload.id = offerData.id;
+    }
+
+    try {
+      const { data, error } = await client
+        .from('offers')
+        .upsert(recordPayload)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      console.log(`[DIAGNOSTIC R9 SAVE OFFER SUCCESS] Offer saved with ID: ${data.id}`);
+      return data;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R9 SAVE OFFER EXCEPTION]', err);
+      throw err;
+    }
+  }
+
+  // 1o. ÉTAPE R9: Toggle Active/Disabled Status of an Offer
+  async toggleRestaurantOfferStatus(restoName, offerId, currentActiveState) {
+    console.log(`[DIAGNOSTIC R9 TOGGLE OFFER STATUS] Toggling offer ${offerId} status to ${!currentActiveState}`);
+    const client = this.getClient();
+    if (!client) {
+      throw new Error('Supabase client indisponible.');
+    }
+
+    const slug = this.getSlug(restoName || 'savane');
+
+    try {
+      const { data, error } = await client
+        .from('offers')
+        .update({ active: !currentActiveState })
+        .eq('id', offerId)
+        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[DIAGNOSTIC R9 TOGGLE OFFER ERROR]', error);
+        throw new Error(`[Supabase DB] ${error.message}`);
+      }
+
+      return data;
+    } catch (err) {
+      console.error('[DIAGNOSTIC R9 TOGGLE OFFER EXCEPTION]', err);
+      throw err;
+    }
+  }
+
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
