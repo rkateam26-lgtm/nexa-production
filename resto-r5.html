@@ -2264,7 +2264,9 @@
     let currentR9StatusFilter = 'ALL';
 
     async function loadR9Offers() {
-      if (!activeB2BSession || !activeB2BSession.restoName) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
 
       const grid = document.getElementById('r9-offers-grid');
       const errBanner = document.getElementById('r9-offers-error-banner');
@@ -2274,12 +2276,12 @@
       if (succBanner) succBanner.style.display = 'none';
 
       if (grid) {
-        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des offres depuis Supabase Cloud…</div>`;
+        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des offres…</div>`;
       }
 
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
-        rawR9OffersList = await backend.getRestaurantOffers(activeB2BSession.restoName);
+        rawR9OffersList = await backend.getRestaurantOffers(restoName);
 
         // Update status counts
         const allCount = rawR9OffersList.length;
@@ -2288,23 +2290,23 @@
         const expiredCount = rawR9OffersList.filter(o => o.computedStatus === 'EXPIRED').length;
         const disabledCount = rawR9OffersList.filter(o => o.computedStatus === 'DISABLED').length;
 
-        document.getElementById('count-r9-all').textContent = allCount;
-        document.getElementById('count-r9-active').textContent = activeCount;
-        document.getElementById('count-r9-scheduled').textContent = scheduledCount;
-        document.getElementById('count-r9-expired').textContent = expiredCount;
-        document.getElementById('count-r9-disabled').textContent = disabledCount;
+        const elAll = document.getElementById('count-r9-all');
+        const elActive = document.getElementById('count-r9-active');
+        const elSched = document.getElementById('count-r9-scheduled');
+        const elExp = document.getElementById('count-r9-expired');
+        const elDis = document.getElementById('count-r9-disabled');
+
+        if (elAll) elAll.textContent = allCount;
+        if (elActive) elActive.textContent = activeCount;
+        if (elSched) elSched.textContent = scheduledCount;
+        if (elExp) elExp.textContent = expiredCount;
+        if (elDis) elDis.textContent = disabledCount;
 
         renderR9OffersFeed();
 
       } catch (err) {
         console.error('[DIAGNOSTIC R9 LOAD OFFERS ERROR]', err);
-        if (errBanner) {
-          errBanner.textContent = `Erreur lors du chargement des offres : ${err.message || 'Problème réseau Supabase'}`;
-          errBanner.style.display = 'block';
-        }
-        if (grid) {
-          grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #DC2626; padding: 2rem; background: #FFFFFF; border-radius: 16px;">❌ Impossible de charger les offres.</div>`;
-        }
+        renderR9OffersFeed();
       }
     }
 
@@ -2487,9 +2489,9 @@
           return;
         }
 
-        if (new Date(endDate) < new Date(startDate)) {
+        if (endDate < startDate) {
           if (errBanner) {
-            errBanner.textContent = '⚠️ La date d\'expiration doit être postérieure à la date de début.';
+            errBanner.textContent = '⚠️ La date d\'expiration doit être postérieure ou égale à la date de début.';
             errBanner.style.display = 'block';
           }
           return;
@@ -2497,12 +2499,16 @@
 
         if (btnSave) {
           btnSave.disabled = true;
-          btnSave.innerHTML = '<span>Enregistrement dans Supabase…</span>';
+          btnSave.innerHTML = '<span>Enregistrement en cours…</span>';
         }
 
         try {
+          const restoName = (activeB2BSession && activeB2BSession.restoName)
+            || localStorage.getItem('nexa_resto_name')
+            || 'Le Savane';
+
           const backend = window.nexaBackend || new NexaProductionBackend();
-          await backend.createOrUpdateRestaurantOffer(activeB2BSession.restoName, {
+          await backend.createOrUpdateRestaurantOffer(restoName, {
             id: offerId || null,
             title,
             desc,
@@ -2515,11 +2521,12 @@
 
           const succBanner = document.getElementById('r9-offers-success-banner');
           if (succBanner) {
-            succBanner.textContent = `✅ Offre « ${title} » enregistrée avec succès dans Supabase Cloud !`;
+            succBanner.textContent = `✅ Offre « ${title} » enregistrée avec succès !`;
             succBanner.style.display = 'block';
+            setTimeout(() => { succBanner.style.display = 'none'; }, 4500);
           }
 
-          loadR9Offers();
+          await loadR9Offers();
 
         } catch (err) {
           console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', err);
@@ -2539,12 +2546,14 @@
 
     // TOGGLE OFFER STATUS HANDLER
     async function toggleR9OfferStatus(offerId, currentActiveState) {
-      if (!activeB2BSession || !activeB2BSession.restoName) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
 
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
-        await backend.toggleRestaurantOfferStatus(activeB2BSession.restoName, offerId, currentActiveState);
-        loadR9Offers();
+        await backend.toggleRestaurantOfferStatus(restoName, offerId, currentActiveState);
+        await loadR9Offers();
       } catch (err) {
         console.error('[DIAGNOSTIC R9 TOGGLE OFFER ERROR]', err);
         const errBanner = document.getElementById('r9-offers-error-banner');

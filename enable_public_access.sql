@@ -17,3 +17,17 @@ ALTER TABLE public.scans DISABLE ROW LEVEL SECURITY;
 
 -- 5. Autoriser la lecture/écriture publique sur les tables QR
 ALTER TABLE public.tables_qr DISABLE ROW LEVEL SECURITY;
+
+-- 6. Créer et autoriser la table des offres commerciales (Étape R9)
+CREATE TABLE IF NOT EXISTS public.offers (
+  id TEXT PRIMARY KEY,
+  resto_id TEXT NOT NULL,
+  restaurant_name TEXT,
+  title TEXT NOT NULL,
+  description TEXT,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.offers DISABLE ROW LEVEL SECURITY;
