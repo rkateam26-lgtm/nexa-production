@@ -455,7 +455,7 @@ class NexaProductionBackend {
 
     const slug = this.getSlug(restoName || 'savane');
     let pointsPerScan = 20; // Default: 20 points
-    const cooldownHours = 3; // Fixed 3 hours anti-cheat rule
+    const cooldownHours = 2; // Fixed 2 hours anti-cheat rule (aligned with client app)
 
     // 1. Fetch current pointsPerScan setting from `restaurants` table
     try {

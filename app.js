@@ -609,7 +609,7 @@ function initNexaApp() {
     if (lastScanTime > 0 && (now - lastScanTime < twoHoursMs)) {
       const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
       
-      showToast('⚠️ Anti-Triche NEXA', `0 point ajouté. Prochain scan disponible dans ${remainingMinutes} min.`);
+      showToast('⚠️ Anti-Triche NEXA', `Prochain scan disponible dans ${remainingMinutes} min.`);
       
       const clientWarningBox = document.getElementById('client-login-banner');
       if (clientWarningBox) {
@@ -618,13 +618,17 @@ function initNexaApp() {
         clientWarningBox.style.borderColor = '#EF4444';
         clientWarningBox.style.color = '#991B1B';
         clientWarningBox.innerHTML = `
-          <strong>⚠️ Anti-Triche NEXA : 0 point attribué !</strong><br/>
-          Vous avez déjà crédité vos points pour ce repas à la Table #${tableParam}.<br/>
+          <strong>⚠️ Anti-Triche NEXA : 0 point attribué</strong><br/>
+          Vous avez déjà crédité vos points pour ce repas chez <strong>${escapeHtml(state.restaurant.name)}</strong>.<br/>
           Prochain scan disponible dans <strong>${remainingMinutes} minutes</strong>.
         `;
+        setTimeout(() => {
+          if (clientWarningBox && state.clientSession.whatsapp) {
+            clientWarningBox.style.display = 'none';
+          }
+        }, 5000);
       }
 
-      alert(`⚠️ Anti-Triche NEXA :\n\n0 POINT ATTRIBUÉ !\n\nVous avez déjà crédité vos points pour ce repas chez ${state.restaurant.name} !\n\nProchain scan disponible dans ${remainingMinutes} minutes.`);
       stopCameraScanner();
       return; // STOP EXECUTION COMPLETELY! ZERO POINTS GRANTED!
     }
@@ -690,11 +694,6 @@ function initNexaApp() {
   if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
   const btnFastScan = document.getElementById('btn-fast-scan');
   if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
-
-  // AUTOMATIC INITIAL POINT CREDIT IF SCANNED DIRECTLY FROM TABLE
-  if (isDirectTableScan && state.clientSession.whatsapp) {
-    setTimeout(() => triggerQRScanSuccess(`Table #${tableParam}`), 800);
-  }
 
   /* ==========================================================================
      5. MOBILE NAVIGATION & MERCHANT 1-CLICK VALIDATION ENGINE
