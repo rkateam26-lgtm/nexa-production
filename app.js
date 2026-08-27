@@ -17,13 +17,27 @@ function initNexaApp() {
   const hasQrParam = urlParams.has('resto') || urlParams.has('r') || urlParams.has('table') || urlParams.has('t');
   const isDirectTableScan = hasQrParam;
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
   // CAS A vs CAS B logic
   let currentRestoName = '';
   if (urlRestoName) {
     currentRestoName = decodeURIComponent(urlRestoName);
+    // If it's a public identifier e.g. "nx_le-savane", resolve to friendly name
+    if (currentRestoName.startsWith('nx_')) {
+      const cleanSlug = currentRestoName.replace(/^nx_/, '');
+      currentRestoName = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
     localStorage.setItem('nexa_resto_name', currentRestoName);
   } else if (hasQrParam && localStorage.getItem('nexa_resto_name')) {
     currentRestoName = localStorage.getItem('nexa_resto_name');
+    if (currentRestoName && currentRestoName.startsWith('nx_')) {
+      const cleanSlug = currentRestoName.replace(/^nx_/, '');
+      currentRestoName = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    }
   }
 
   // CAS B: When NO restaurant QR parameter is present, do NOT auto-select Chitir Chicken or any default restaurant!
@@ -50,6 +64,7 @@ function initNexaApp() {
       history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
     rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
+    offers: [],
     notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
     validatedProofs: JSON.parse(localStorage.getItem(`nexa_validated_proofs_${slug}`) || '[]'),
     pendingClaims: JSON.parse(localStorage.getItem(`nexa_pending_claims_${slug}`) || '[]'),
@@ -79,11 +94,23 @@ function initNexaApp() {
           state.rewards = cloudRewards.map(r => ({
             id: String(r.id),
             title: r.title,
-            pts: r.points_required,
-            desc: r.description,
+            pts: r.pts || r.points_required || 50,
+            desc: r.desc || r.description || 'Valable sur présentation en caisse.',
             icon: r.icon || '🎁'
           }));
           localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
+        }
+
+        // 1b. ALWAYS FETCH ACTIVE COMMERCIAL OFFERS (ÉTAPE R9) FOR CLIENT!
+        try {
+          if (window.nexaBackend && window.nexaBackend.getRestaurantOffers) {
+            const cloudOffers = await window.nexaBackend.getRestaurantOffers(state.restaurant.name);
+            if (cloudOffers && Array.isArray(cloudOffers)) {
+              state.offers = cloudOffers.filter(o => o.active !== false && o.computedStatus === 'ACTIVE');
+            }
+          }
+        } catch (offErr) {
+          console.warn('[CLIENT OFFERS SYNC]', offErr);
         }
 
         // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE!
@@ -835,19 +862,42 @@ function initNexaApp() {
       }
     }
 
-    // Render Notifications Feed in Client App
+    // Render Offers & Notifications Feed in Client App
     const notifsFeed = document.getElementById('client-notifs-feed');
     if (notifsFeed) {
-      if (state.notifications.length === 0) {
+      let offersHtml = '';
+      if (state.offers && state.offers.length > 0) {
+        offersHtml = `
+          <div style="margin-bottom: 1.25rem;">
+            <span style="font-size: 0.75rem; font-weight: 800; color: #DC2626; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.5rem;">
+              📢 Offres Spéciales en Cours
+            </span>
+            ${state.offers.map(o => `
+              <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 12px; padding: 0.9rem; margin-bottom: 0.65rem; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
+                  <strong style="font-size: 0.92rem; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
+                  <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 8px;">Actif</span>
+                </div>
+                <p style="font-size: 0.8rem; color: #4B5563; margin: 0 0 0.4rem 0;">${escapeHtml(o.desc || 'Offre spéciale valable en restaurant.')}</p>
+                <div style="font-size: 0.72rem; color: #6B7280;">
+                  <span>📅 Du ${o.startDate} au ${o.endDate}</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }
+
+      if (state.notifications.length === 0 && (!state.offers || state.offers.length === 0)) {
         notifsFeed.innerHTML = `
           <div style="text-align:center; padding:2rem; color:var(--text-muted); background:white; border-radius:12px;">
             <div style="font-size:1.8rem; margin-bottom:0.4rem;">🔔</div>
-            <p style="font-size:0.85rem; font-weight:700; margin:0 0 0.2rem 0;">Aucune notification</p>
-            <p style="font-size:0.75rem; margin:0;">Vos reçus d'échanges validés en caisse et vos alertes de points apparaîtront ici !</p>
+            <p style="font-size:0.85rem; font-weight:700; margin:0 0 0.2rem 0;">Aucune offre ni notification</p>
+            <p style="font-size:0.75rem; margin:0;">Les offres exclusives et reçus de points de ${state.restaurant.name} apparaîtront ici !</p>
           </div>
         `;
       } else {
-        notifsFeed.innerHTML = state.notifications.map(n => `
+        const notifsHtml = state.notifications.map(n => `
           <div style="background: white; border: 1.5px solid var(--primary-gold); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.3rem;">
               <strong style="font-size: 0.88rem; color: var(--marron-dark);">${n.title}</strong>
@@ -856,6 +906,8 @@ function initNexaApp() {
             <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">${n.text}</p>
           </div>
         `).join('');
+
+        notifsFeed.innerHTML = offersHtml + notifsHtml;
       }
     }
 

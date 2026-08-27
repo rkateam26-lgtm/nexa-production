@@ -1047,21 +1047,27 @@ class NexaProductionBackend {
     return null;
   }
 
-  // 3. Fetch Cloud Rewards STRICTLY for THIS Restaurant Slug!
+  // 3. Fetch Cloud Rewards STRICTLY for THIS Restaurant Slug! (Seamless Cache + Cloud)
   async fetchRewardsByResto(restoName) {
-    if (this.isLiveSupabase && this.client && restoName) {
-      try {
-        const slug = this.getSlug(restoName);
-        const { data } = await this.client
-          .from('rewards')
-          .select('*')
-          .eq('description', slug)
-          .order('created_at', { ascending: true });
-          
-        return data || [];
-      } catch (err) {
-        console.error('Fetch Rewards Exception:', err);
+    if (!restoName) return [];
+    try {
+      const rewards = await this.getRestaurantRewards(restoName);
+      if (Array.isArray(rewards) && rewards.length > 0) {
+        return rewards
+          .filter(r => r.active !== false)
+          .map(r => ({
+            id: String(r.id),
+            title: r.title,
+            points_required: r.pts,
+            pts: r.pts,
+            description: r.desc,
+            desc: r.desc,
+            icon: r.icon || '🎁',
+            active: r.active !== false
+          }));
       }
+    } catch (err) {
+      console.warn('[REWARDS] fetchRewardsByResto fallback:', err);
     }
     return [];
   }
