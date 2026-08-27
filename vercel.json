@@ -16,7 +16,10 @@
     { "source": "/r5", "destination": "/resto-r5.html" },
     { "source": "/dashboard", "destination": "/resto-r5.html" },
     { "source": "/pitch", "destination": "/pitch.html" },
-    { "source": "/qr", "destination": "/qr-generator.html" }
+    { "source": "/qr", "destination": "/resto-r5.html" },
+    { "source": "/qrcode", "destination": "/resto-r5.html" },
+    { "source": "/qr-code", "destination": "/resto-r5.html" },
+    { "source": "/plv", "destination": "/qr-generator.html" }
   ],
   "headers": [
     {
@@ -29,6 +32,10 @@
         {
           "key": "Access-Control-Allow-Methods",
           "value": "GET, POST, OPTIONS"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
         }
       ]
     }

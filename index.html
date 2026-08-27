@@ -76,12 +76,16 @@
 
     <!-- Fast Actions -->
     <div class="demo-controls" style="display: flex; gap: 0.5rem;">
+      <a href="resto-r5.html" class="btn-demo-action" style="text-decoration: none; background: #E53935; color: white; border: 1px solid #E53935; font-weight: 800;">
+        <i data-lucide="qr-code"></i>
+        <span>Dashboard & QR Code (R10)</span>
+      </a>
       <a href="resto-welcome.html" target="_blank" class="btn-demo-action" style="text-decoration: none; background: rgba(229, 57, 53, 0.15); color: #E53935; border: 1px solid rgba(229, 57, 53, 0.4); font-weight: 700;">
         <i data-lucide="store"></i>
         <span>Bienvenue Resto (R1)</span>
       </a>
       <button class="btn-demo-action btn-pulse" id="btn-fast-scan">
-        <i data-lucide="qr-code"></i>
+        <i data-lucide="scan"></i>
         <span>Simuler Scan (+20 pts)</span>
       </button>
     </div>
@@ -522,8 +526,23 @@
             <div class="data-table-container" style="padding: 1.5rem;">
               <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 0.5rem;">🔗 Liens de Partage & Impression PLV</h3>
               <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-                Générez le nombre exact de chevalets de table souhaité (de 1 à 100+ tables) avec impression PDF.
+                Accédez à votre QR Code officiel de restaurant ou générez des chevalets de table pour l'impression.
               </p>
+
+              <!-- OFFICIAL RESTAURANT QR CODE STUDIO (ÉTAPE R10) -->
+              <div style="padding: 1.25rem; background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: white;">
+                <div>
+                  <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                    <span style="background: #E53935; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">Étape R10</span>
+                    <h4 style="font-size: 1.05rem; font-weight: 800; color: white; margin: 0;">Your Nexa QR Code (Système Officiel)</h4>
+                  </div>
+                  <p style="font-size: 0.82rem; color: #94A3B8; margin: 0;">Aperçu HD, téléchargement PNG, impression (Table, Comptoir, Affiche) et lien unique sécurisé.</p>
+                </div>
+                <a href="resto-r5.html" class="btn-primary" style="text-decoration: none; background: #E53935; color: white; font-weight: 800; border: none; padding: 0.65rem 1.2rem;">
+                  <i data-lucide="qr-code"></i>
+                  <span>Ouvrir l'Espace QR Code</span>
+                </a>
+              </div>
 
               <!-- PRINTABLE PLV TENTS GENERATOR LINK -->
               <div style="padding: 1rem; background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(42,29,21,0.05)); border: 1.5px solid var(--primary-gold); border-radius: 12px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
