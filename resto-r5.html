@@ -1338,6 +1338,8 @@
       <span>Go to Sign In (Se connecter)</span>
       <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
     </a>
+  </div>
+
   <!-- CLIENT DETAIL PANEL MODAL (ÉTAPE R6) -->
   <div class="r6-detail-modal" id="modal-r6-client-detail">
     <div class="r6-detail-card">
@@ -1472,7 +1474,7 @@
   </div>
 
   <!-- OFFER CREATION / EDITING MODAL (ÉTAPE R9) -->
-  <div class="r6-detail-modal" id="modal-r9-offer">
+  <div class="r6-detail-modal" id="modal-r9-offer" style="z-index: 99999;">
     <div class="r6-detail-card" style="max-width: 500px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
         <div>
@@ -2402,43 +2404,64 @@
       }).join('');
     }
 
-    // OPEN ADD / EDIT OFFER MODAL
-    function openR9OfferModal(offerId = null) {
+    // OPEN ADD / EDIT OFFER MODAL (ROBUST GLOBAL HANDLER)
+    window.openR9OfferModal = function(offerId = null) {
+      console.log('[R9] openR9OfferModal called with id:', offerId);
       const modal = document.getElementById('modal-r9-offer');
+      if (!modal) {
+        console.error('[R9] modal-r9-offer not found in DOM');
+        return;
+      }
+
       const errBanner = document.getElementById('r9-modal-alert-error');
       if (errBanner) errBanner.style.display = 'none';
 
       const todayStr = new Date().toISOString().split('T')[0];
       const nextWeekStr = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
 
-      if (offerId) {
+      const elTitle = document.getElementById('r9-offer-title');
+      const elDesc = document.getElementById('r9-offer-desc');
+      const elStart = document.getElementById('r9-offer-start-date');
+      const elEnd = document.getElementById('r9-offer-end-date');
+      const elActive = document.getElementById('r9-offer-active');
+      const elId = document.getElementById('r9-offer-id');
+      const elModalTitle = document.getElementById('r9-modal-title');
+
+      if (offerId && Array.isArray(rawR9OffersList)) {
         const offer = rawR9OffersList.find(o => o.id === offerId);
         if (offer) {
-          document.getElementById('r9-modal-title').textContent = 'Modifier l\'Offre';
-          document.getElementById('r9-offer-id').value = offer.id;
-          document.getElementById('r9-offer-title').value = offer.title;
-          document.getElementById('r9-offer-desc').value = offer.desc;
-          document.getElementById('r9-offer-start-date').value = offer.startDate;
-          document.getElementById('r9-offer-end-date').value = offer.endDate;
-          document.getElementById('r9-offer-active').checked = offer.active;
+          if (elModalTitle) elModalTitle.textContent = 'Modifier l\'Offre';
+          if (elId) elId.value = offer.id;
+          if (elTitle) elTitle.value = offer.title || '';
+          if (elDesc) elDesc.value = offer.desc || '';
+          if (elStart) elStart.value = offer.startDate || todayStr;
+          if (elEnd) elEnd.value = offer.endDate || nextWeekStr;
+          if (elActive) elActive.checked = offer.active !== false;
         }
       } else {
-        document.getElementById('r9-modal-title').textContent = 'Create offer';
-        document.getElementById('r9-offer-id').value = '';
-        document.getElementById('r9-offer-title').value = '';
-        document.getElementById('r9-offer-desc').value = '';
-        document.getElementById('r9-offer-start-date').value = todayStr;
-        document.getElementById('r9-offer-end-date').value = nextWeekStr;
-        document.getElementById('r9-offer-active').checked = true;
+        if (elModalTitle) elModalTitle.textContent = 'Create offer';
+        if (elId) elId.value = '';
+        if (elTitle) elTitle.value = '';
+        if (elDesc) elDesc.value = '';
+        if (elStart) elStart.value = todayStr;
+        if (elEnd) elEnd.value = nextWeekStr;
+        if (elActive) elActive.checked = true;
       }
 
-      if (modal) modal.classList.add('active');
-    }
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.visibility = 'visible';
+      modal.style.opacity = '1';
+      modal.style.zIndex = '99999';
+    };
 
-    function closeR9OfferModal() {
+    window.closeR9OfferModal = function() {
       const modal = document.getElementById('modal-r9-offer');
-      if (modal) modal.classList.remove('active');
-    }
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+    };
 
     // SAVE OFFER SUBMIT HANDLER (ROBUST & CALLABLE VIA ONCLICK & ONSUBMIT)
     window.handleR9OfferSubmit = async function(e) {
