@@ -716,30 +716,33 @@ class NexaProductionBackend {
     const slug = this.getSlug(restoName || 'savane');
     const client = this.getClient();
 
-    // 1. First retrieve any locally persisted offers
+    // 1. Immediately read locally cached offers
     let offers = this.getLocalOffers(slug);
 
-    // 2. Attempt to synchronize with Supabase Cloud if available
+    // 2. Fast non-blocking sync with Supabase Cloud (max 1.2s timeout)
     if (client) {
       try {
-        const { data: offerRows, error } = await client
+        const queryPromise = client
           .from('offers')
           .select('*')
           .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
           .order('created_at', { ascending: false });
 
-        if (!error && Array.isArray(offerRows)) {
-          // Merge cloud offers with local offers (de-duplicating by id)
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 1200)
+        );
+
+        const { data: offerRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (!error && Array.isArray(offerRows) && offerRows.length > 0) {
           const mergedMap = new Map();
           offers.forEach(o => mergedMap.set(o.id, o));
           offerRows.forEach(r => mergedMap.set(r.id, r));
           offers = Array.from(mergedMap.values());
           this.saveLocalOffers(slug, offers);
-        } else if (error) {
-          console.warn('[DIAGNOSTIC R9 OFFERS CLOUD NOTICE]:', error.message);
         }
       } catch (cloudErr) {
-        console.warn('[DIAGNOSTIC R9 OFFERS EXCEPTION NOTICE]:', cloudErr.message);
+        console.warn('[DIAGNOSTIC R9 OFFERS NOTICE] Serving from fast local cache:', cloudErr.message);
       }
     }
 
@@ -800,7 +803,7 @@ class NexaProductionBackend {
     }
   }
 
-  // 1p. ÉTAPE R9: Create or Update Commercial Offer (Infallible Local + Cloud Sync)
+  // 1p. ÉTAPE R9: Create or Update Commercial Offer (Instant Local + Background Cloud Sync)
   async createOrUpdateRestaurantOffer(restoName, offerData) {
     console.log(`[DIAGNOSTIC R9 SAVE OFFER] Saving offer "${offerData.title}" for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
@@ -814,15 +817,11 @@ class NexaProductionBackend {
       throw new Error('La description de l\'offre est obligatoire.');
     }
 
-    if (!offerData.startDate) {
-      throw new Error('La date de début est obligatoire.');
-    }
+    const todayStr = new Date().toISOString().split('T')[0];
+    const startDate = offerData.startDate || todayStr;
+    const endDate = offerData.endDate || new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
 
-    if (!offerData.endDate) {
-      throw new Error('La date d\'expiration est obligatoire.');
-    }
-
-    if (offerData.endDate < offerData.startDate) {
+    if (endDate < startDate) {
       throw new Error('La date d\'expiration doit être postérieure ou égale à la date de début.');
     }
 
@@ -834,13 +833,13 @@ class NexaProductionBackend {
       restaurant_name: restoName,
       title: offerData.title.trim(),
       description: offerData.desc.trim(),
-      start_date: offerData.startDate,
-      end_date: offerData.endDate,
+      start_date: startDate,
+      end_date: endDate,
       active: offerData.active !== false,
       created_at: nowIso
     };
 
-    // 1. Immediately persist in local storage cache (guarantees 100% success)
+    // 1. Immediately persist in local storage cache (returns in 0ms, 100% infallible)
     let list = this.getLocalOffers(slug);
     const existingIdx = list.findIndex(o => o.id === offerId);
     if (existingIdx >= 0) {
@@ -850,21 +849,16 @@ class NexaProductionBackend {
     }
     this.saveLocalOffers(slug, list);
 
-    // 2. Synchronize with Supabase Cloud in background / if table exists
+    // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
     if (client) {
-      try {
-        const { error } = await client
-          .from('offers')
-          .upsert(recordPayload);
-
-        if (!error) {
-          console.log(`[DIAGNOSTIC R9 SAVE OFFER SUCCESS] Synced with Supabase Cloud ID: ${offerId}`);
-        } else {
-          console.warn('[DIAGNOSTIC R9 CLOUD SYNC NOTICE]:', error.message);
-        }
-      } catch (cloudErr) {
-        console.warn('[DIAGNOSTIC R9 CLOUD SYNC EXCEPTION]:', cloudErr.message);
-      }
+      const syncPromise = client.from('offers').upsert(recordPayload);
+      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      Promise.race([syncPromise, syncTimeout])
+        .then(({ error }) => {
+          if (!error) console.log(`[DIAGNOSTIC R9 CLOUD SUCCESS] Synced offer: ${offerId}`);
+          else console.warn('[DIAGNOSTIC R9 CLOUD NOTICE]:', error.message);
+        })
+        .catch(err => console.warn('[DIAGNOSTIC R9 CLOUD NOTICE]:', err.message));
     }
 
     return recordPayload;

@@ -1484,7 +1484,7 @@
 
       <div class="alert-banner error" id="r9-modal-alert-error" style="display: none; margin-bottom: 1rem;"></div>
 
-      <form id="form-r9-offer" novalidate>
+      <form id="form-r9-offer" onsubmit="handleR9OfferSubmit(event); return false;" novalidate>
         <input type="hidden" id="r9-offer-id" value="">
 
         <!-- TITLE -->
@@ -1527,7 +1527,7 @@
           </label>
         </div>
 
-        <button type="submit" class="btn-create-account" id="btn-save-r9-offer">
+        <button type="submit" class="btn-create-account" id="btn-save-r9-offer" onclick="handleR9OfferSubmit(event)">
           <span>Enregistrer l'Offre</span>
           <i data-lucide="check" style="width: 18px; height: 18px;"></i>
         </button>
@@ -2440,108 +2440,110 @@
       if (modal) modal.classList.remove('active');
     }
 
-    // SAVE OFFER SUBMIT HANDLER
+    // SAVE OFFER SUBMIT HANDLER (ROBUST & CALLABLE VIA ONCLICK & ONSUBMIT)
+    window.handleR9OfferSubmit = async function(e) {
+      if (e && e.preventDefault) e.preventDefault();
+
+      const errBanner = document.getElementById('r9-modal-alert-error');
+      const btnSave = document.getElementById('btn-save-r9-offer');
+      if (errBanner) errBanner.style.display = 'none';
+
+      const offerId = document.getElementById('r9-offer-id').value;
+      const title = document.getElementById('r9-offer-title').value.trim();
+      const desc = document.getElementById('r9-offer-desc').value.trim();
+      const startDate = document.getElementById('r9-offer-start-date').value;
+      const endDate = document.getElementById('r9-offer-end-date').value;
+      const active = document.getElementById('r9-offer-active').checked;
+
+      if (!title) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ Le titre de l\'offre est obligatoire.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!desc) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ La description de l\'offre est obligatoire.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!startDate) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ La date de début est obligatoire.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (!endDate) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ La date d\'expiration est obligatoire.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (endDate < startDate) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ La date d\'expiration doit être postérieure ou égale à la date de début.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<span>Enregistrement…</span>';
+      }
+
+      try {
+        const restoName = (activeB2BSession && activeB2BSession.restoName)
+          || localStorage.getItem('nexa_resto_name')
+          || 'Le Savane';
+
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.createOrUpdateRestaurantOffer(restoName, {
+          id: offerId || null,
+          title,
+          desc,
+          startDate,
+          endDate,
+          active
+        });
+
+        closeR9OfferModal();
+
+        const succBanner = document.getElementById('r9-offers-success-banner');
+        if (succBanner) {
+          succBanner.textContent = `✅ Offre « ${title} » enregistrée avec succès !`;
+          succBanner.style.display = 'block';
+          setTimeout(() => { succBanner.style.display = 'none'; }, 4500);
+        }
+
+        await loadR9Offers();
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = err.message || 'Échec de l\'enregistrement de l\'offre.';
+          errBanner.style.display = 'block';
+        }
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.innerHTML = '<span>Enregistrer l\'Offre</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
+          if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+        }
+      }
+    };
+
     const formR9Offer = document.getElementById('form-r9-offer');
     if (formR9Offer) {
-      formR9Offer.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const errBanner = document.getElementById('r9-modal-alert-error');
-        const btnSave = document.getElementById('btn-save-r9-offer');
-        if (errBanner) errBanner.style.display = 'none';
-
-        const offerId = document.getElementById('r9-offer-id').value;
-        const title = document.getElementById('r9-offer-title').value.trim();
-        const desc = document.getElementById('r9-offer-desc').value.trim();
-        const startDate = document.getElementById('r9-offer-start-date').value;
-        const endDate = document.getElementById('r9-offer-end-date').value;
-        const active = document.getElementById('r9-offer-active').checked;
-
-        if (!title) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ Le titre de l\'offre est obligatoire.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (!desc) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ La description de l\'offre est obligatoire.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (!startDate) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ La date de début est obligatoire.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (!endDate) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ La date d\'expiration est obligatoire.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (endDate < startDate) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ La date d\'expiration doit être postérieure ou égale à la date de début.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (btnSave) {
-          btnSave.disabled = true;
-          btnSave.innerHTML = '<span>Enregistrement en cours…</span>';
-        }
-
-        try {
-          const restoName = (activeB2BSession && activeB2BSession.restoName)
-            || localStorage.getItem('nexa_resto_name')
-            || 'Le Savane';
-
-          const backend = window.nexaBackend || new NexaProductionBackend();
-          await backend.createOrUpdateRestaurantOffer(restoName, {
-            id: offerId || null,
-            title,
-            desc,
-            startDate,
-            endDate,
-            active
-          });
-
-          closeR9OfferModal();
-
-          const succBanner = document.getElementById('r9-offers-success-banner');
-          if (succBanner) {
-            succBanner.textContent = `✅ Offre « ${title} » enregistrée avec succès !`;
-            succBanner.style.display = 'block';
-            setTimeout(() => { succBanner.style.display = 'none'; }, 4500);
-          }
-
-          await loadR9Offers();
-
-        } catch (err) {
-          console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', err);
-          if (errBanner) {
-            errBanner.textContent = err.message || 'Échec de l\'enregistrement de l\'offre.';
-            errBanner.style.display = 'block';
-          }
-        } finally {
-          if (btnSave) {
-            btnSave.disabled = false;
-            btnSave.innerHTML = '<span>Enregistrer l\'Offre</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
-            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
-          }
-        }
-      });
+      formR9Offer.addEventListener('submit', window.handleR9OfferSubmit);
     }
 
     // TOGGLE OFFER STATUS HANDLER

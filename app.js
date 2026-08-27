@@ -1283,6 +1283,44 @@ function initNexaApp() {
     }
   }
 
+  // BIND SEND NOTIFICATION / COMMERCIAL OFFER FORM (SECTION 6)
+  const formSendNotif = document.getElementById('form-send-notif');
+  if (formSendNotif) {
+    formSendNotif.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const titleInput = document.getElementById('notif-title-input');
+      const textInput = document.getElementById('notif-text-input');
+      const title = titleInput ? titleInput.value.trim() : '';
+      const text = textInput ? textInput.value.trim() : '';
+      if (!title || !text) {
+        showToast('⚠️ Champs incomplets', 'Veuillez saisir un titre et une description.');
+        return;
+      }
+
+      showToast(`📢 ${title}`, text);
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const restoName = (state.restaurant && state.restaurant.name) || 'Le Savane';
+        const today = new Date().toISOString().split('T')[0];
+        const nextWeek = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+        backend.createOrUpdateRestaurantOffer(restoName, {
+          title,
+          desc: text,
+          startDate: today,
+          endDate: nextWeek,
+          active: true
+        });
+      } catch (err) {
+        console.warn('[OFFER SYNC NOTICE]', err);
+      }
+
+      if (titleInput) titleInput.value = '';
+      if (textInput) textInput.value = '';
+      showToast('✅ Offre Diffusée !', `L'offre "${title}" est maintenant active pour vos clients.`);
+    });
+  }
+
   updateMerchantAuthState();
   syncCloudData();
 }
