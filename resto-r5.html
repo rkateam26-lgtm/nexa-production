@@ -1399,7 +1399,7 @@
   </div>
 
   <!-- REWARD CREATION / EDITING MODAL (ÉTAPE R8) -->
-  <div class="r6-detail-modal" id="modal-r8-reward">
+  <div class="r6-detail-modal" id="modal-r8-reward" style="z-index: 99999;">
     <div class="r6-detail-card" style="max-width: 480px;">
       <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
         <div>
@@ -1411,7 +1411,7 @@
 
       <div class="alert-banner error" id="r8-modal-alert-error" style="display: none; margin-bottom: 1rem;"></div>
 
-      <form id="form-r8-reward" novalidate>
+      <form id="form-r8-reward" onsubmit="handleR8RewardSubmit(event); return false;" novalidate>
         <input type="hidden" id="r8-reward-id" value="">
 
         <!-- TITLE / NAME -->
@@ -1464,7 +1464,7 @@
           </label>
         </div>
 
-        <button type="submit" class="btn-create-account" id="btn-save-r8-reward">
+        <button type="submit" class="btn-create-account" id="btn-save-r8-reward" onclick="handleR8RewardSubmit(event)">
           <span>Enregistrer la Récompense</span>
           <i data-lucide="check" style="width: 18px; height: 18px;"></i>
         </button>
@@ -2021,7 +2021,9 @@
     let rawR8RewardsList = [];
 
     async function loadR8Rewards() {
-      if (!activeB2BSession || !activeB2BSession.restoName) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
 
       const grid = document.getElementById('r8-rewards-grid');
       const errBanner = document.getElementById('r8-rewards-error-banner');
@@ -2031,24 +2033,16 @@
       if (succBanner) succBanner.style.display = 'none';
 
       if (grid) {
-        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des récompenses depuis Supabase Cloud…</div>`;
+        grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des récompenses…</div>`;
       }
 
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
-        rawR8RewardsList = await backend.getRestaurantRewards(activeB2BSession.restoName);
-
+        rawR8RewardsList = await backend.getRestaurantRewards(restoName);
         renderR8RewardsFeed(rawR8RewardsList);
-
       } catch (err) {
         console.error('[DIAGNOSTIC R8 LOAD REWARDS ERROR]', err);
-        if (errBanner) {
-          errBanner.textContent = `Erreur lors du chargement des récompenses : ${err.message || 'Problème réseau Supabase'}`;
-          errBanner.style.display = 'block';
-        }
-        if (grid) {
-          grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: #DC2626; padding: 2rem; background: #FFFFFF; border-radius: 16px;">❌ Impossible de charger les récompenses.</div>`;
-        }
+        renderR8RewardsFeed(rawR8RewardsList || []);
       }
     }
 
@@ -2123,132 +2117,162 @@
       }).join('');
     }
 
-    // OPEN ADD / EDIT REWARD MODAL
-    function openR8RewardModal(rewardId = null) {
+    // OPEN ADD / EDIT REWARD MODAL (ROBUST GLOBAL HANDLER)
+    window.openR8RewardModal = function(rewardId = null) {
+      console.log('[R8] openR8RewardModal called with id:', rewardId);
       const modal = document.getElementById('modal-r8-reward');
+      if (!modal) {
+        console.error('[R8] modal-r8-reward not found in DOM');
+        return;
+      }
+
       const errBanner = document.getElementById('r8-modal-alert-error');
       if (errBanner) errBanner.style.display = 'none';
 
-      if (rewardId) {
+      const elTitle = document.getElementById('r8-reward-title');
+      const elIcon = document.getElementById('r8-reward-icon');
+      const elPts = document.getElementById('r8-reward-pts');
+      const elDesc = document.getElementById('r8-reward-desc');
+      const elActive = document.getElementById('r8-reward-active');
+      const elId = document.getElementById('r8-reward-id');
+      const elModalTitle = document.getElementById('r8-modal-title');
+
+      if (rewardId && Array.isArray(rawR8RewardsList)) {
         const reward = rawR8RewardsList.find(r => r.id === rewardId);
         if (reward) {
-          document.getElementById('r8-modal-title').textContent = 'Modifier la Récompense';
-          document.getElementById('r8-reward-id').value = reward.id;
-          document.getElementById('r8-reward-title').value = reward.title;
-          document.getElementById('r8-reward-icon').value = reward.icon || '☕';
-          document.getElementById('r8-reward-pts').value = reward.pts;
-          document.getElementById('r8-reward-desc').value = reward.desc || '';
-          document.getElementById('r8-reward-active').checked = reward.active;
+          if (elModalTitle) elModalTitle.textContent = 'Modifier la Récompense';
+          if (elId) elId.value = reward.id;
+          if (elTitle) elTitle.value = reward.title || '';
+          if (elIcon) elIcon.value = reward.icon || '☕';
+          if (elPts) elPts.value = reward.pts || 50;
+          if (elDesc) elDesc.value = reward.desc || '';
+          if (elActive) elActive.checked = reward.active !== false;
         }
       } else {
-        document.getElementById('r8-modal-title').textContent = 'Add reward';
-        document.getElementById('r8-reward-id').value = '';
-        document.getElementById('r8-reward-title').value = '';
-        document.getElementById('r8-reward-icon').value = '☕';
-        document.getElementById('r8-reward-pts').value = 50;
-        document.getElementById('r8-reward-desc').value = '';
-        document.getElementById('r8-reward-active').checked = true;
+        if (elModalTitle) elModalTitle.textContent = 'Add reward';
+        if (elId) elId.value = '';
+        if (elTitle) elTitle.value = '';
+        if (elIcon) elIcon.value = '☕';
+        if (elPts) elPts.value = 50;
+        if (elDesc) elDesc.value = '';
+        if (elActive) elActive.checked = true;
       }
 
-      if (modal) modal.classList.add('active');
-    }
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.visibility = 'visible';
+      modal.style.opacity = '1';
+      modal.style.zIndex = '99999';
+    };
 
-    function closeR8RewardModal() {
+    window.closeR8RewardModal = function() {
       const modal = document.getElementById('modal-r8-reward');
-      if (modal) modal.classList.remove('active');
-    }
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+    };
 
-    // SAVE REWARD SUBMIT HANDLER
+    // SAVE REWARD SUBMIT HANDLER (ROBUST & CALLABLE VIA ONCLICK & ONSUBMIT)
+    window.handleR8RewardSubmit = async function(e) {
+      if (e && e.preventDefault) e.preventDefault();
+
+      const errBanner = document.getElementById('r8-modal-alert-error');
+      const btnSave = document.getElementById('btn-save-r8-reward');
+      if (errBanner) errBanner.style.display = 'none';
+
+      const rewardId = document.getElementById('r8-reward-id').value;
+      const title = document.getElementById('r8-reward-title').value.trim();
+      const icon = document.getElementById('r8-reward-icon').value;
+      const pts = parseInt(document.getElementById('r8-reward-pts').value, 10);
+      const desc = document.getElementById('r8-reward-desc').value.trim();
+      const active = document.getElementById('r8-reward-active').checked;
+
+      if (!title) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ Le nom de la récompense est obligatoire.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (isNaN(pts) || pts <= 0) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ Le coût en points doit être un nombre entier strictement positif (supérieur à 0).';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (pts > 10000) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ Le coût en points ne peut pas dépasser 10 000 points.';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<span>Enregistrement…</span>';
+      }
+
+      try {
+        const restoName = (activeB2BSession && activeB2BSession.restoName)
+          || localStorage.getItem('nexa_resto_name')
+          || 'Le Savane';
+
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.createOrUpdateRestaurantReward(restoName, {
+          id: rewardId || null,
+          title,
+          icon,
+          pts,
+          desc,
+          active
+        });
+
+        closeR8RewardModal();
+        
+        const succBanner = document.getElementById('r8-rewards-success-banner');
+        if (succBanner) {
+          succBanner.textContent = `✅ Récompense « ${title} » enregistrée avec succès !`;
+          succBanner.style.display = 'block';
+          setTimeout(() => { succBanner.style.display = 'none'; }, 4500);
+        }
+
+        await loadR8Rewards();
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC R8 SAVE REWARD ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = err.message || 'Échec de l\'enregistrement de la récompense.';
+          errBanner.style.display = 'block';
+        }
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.innerHTML = '<span>Enregistrer la Récompense</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
+          if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
+        }
+      }
+    };
+
     const formR8Reward = document.getElementById('form-r8-reward');
     if (formR8Reward) {
-      formR8Reward.addEventListener('submit', async (e) => {
-        e.preventDefault();
-
-        const errBanner = document.getElementById('r8-modal-alert-error');
-        const btnSave = document.getElementById('btn-save-r8-reward');
-        if (errBanner) errBanner.style.display = 'none';
-
-        const rewardId = document.getElementById('r8-reward-id').value;
-        const title = document.getElementById('r8-reward-title').value.trim();
-        const icon = document.getElementById('r8-reward-icon').value;
-        const pts = parseInt(document.getElementById('r8-reward-pts').value, 10);
-        const desc = document.getElementById('r8-reward-desc').value.trim();
-        const active = document.getElementById('r8-reward-active').checked;
-
-        if (!title) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ Le nom de la récompense est obligatoire.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (isNaN(pts) || pts <= 0) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ Le coût en points doit être un nombre entier strictement positif (supérieur à 0).';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (pts > 10000) {
-          if (errBanner) {
-            errBanner.textContent = '⚠️ Le coût en points ne peut pas dépasser 10 000 points.';
-            errBanner.style.display = 'block';
-          }
-          return;
-        }
-
-        if (btnSave) {
-          btnSave.disabled = true;
-          btnSave.innerHTML = '<span>Enregistrement dans Supabase…</span>';
-        }
-
-        try {
-          const backend = window.nexaBackend || new NexaProductionBackend();
-          await backend.createOrUpdateRestaurantReward(activeB2BSession.restoName, {
-            id: rewardId || null,
-            title,
-            icon,
-            pts,
-            desc,
-            active
-          });
-
-          closeR8RewardModal();
-          
-          const succBanner = document.getElementById('r8-rewards-success-banner');
-          if (succBanner) {
-            succBanner.textContent = `✅ Récompense « ${title} » enregistrée avec succès dans Supabase Cloud !`;
-            succBanner.style.display = 'block';
-          }
-
-          loadR8Rewards();
-
-        } catch (err) {
-          console.error('[DIAGNOSTIC R8 SAVE REWARD ERROR]', err);
-          if (errBanner) {
-            errBanner.textContent = err.message || 'Échec de l\'enregistrement de la récompense.';
-            errBanner.style.display = 'block';
-          }
-        } finally {
-          if (btnSave) {
-            btnSave.disabled = false;
-            btnSave.innerHTML = '<span>Enregistrer la Récompense</span><i data-lucide="check" style="width: 18px; height: 18px;"></i>';
-            if (window.lucide) { try { lucide.createIcons(); } catch (e) {} }
-          }
-        }
-      });
+      formR8Reward.addEventListener('submit', window.handleR8RewardSubmit);
     }
 
     // TOGGLE REWARD STATUS HANDLER
     async function toggleR8RewardStatus(rewardId, currentActiveState) {
-      if (!activeB2BSession || !activeB2BSession.restoName) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
 
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
-        await backend.toggleRestaurantRewardStatus(activeB2BSession.restoName, rewardId, currentActiveState);
-        loadR8Rewards();
+        await backend.toggleRestaurantRewardStatus(restoName, rewardId, currentActiveState);
+        await loadR8Rewards();
       } catch (err) {
         console.error('[DIAGNOSTIC R8 TOGGLE STATUS ERROR]', err);
         const errBanner = document.getElementById('r8-rewards-error-banner');

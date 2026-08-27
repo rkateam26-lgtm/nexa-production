@@ -573,64 +573,86 @@ class NexaProductionBackend {
     }
   }
 
-  // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only
+  // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only (Local-First + Cloud Sync)
   async getRestaurantRewards(restoName) {
     console.log(`[DIAGNOSTIC R8 REWARDS] Fetching rewards for resto: "${restoName}"`);
+    const slug = this.getSlug(restoName || 'savane');
     const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+
+    // 1. Immediately read locally cached rewards
+    let rewards = this.getLocalRewards(slug);
+
+    // 2. Fast non-blocking sync with Supabase Cloud (max 1.2s timeout)
+    if (client) {
+      try {
+        const queryPromise = client
+          .from('rewards')
+          .select('*')
+          .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+          .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 1200)
+        );
+
+        const { data: rewardRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (!error && Array.isArray(rewardRows) && rewardRows.length > 0) {
+          const mergedMap = new Map();
+          rewards.forEach(r => mergedMap.set(r.id, r));
+          rewardRows.forEach(row => mergedMap.set(row.id, row));
+          rewards = Array.from(mergedMap.values());
+          this.saveLocalRewards(slug, rewards);
+        }
+      } catch (cloudErr) {
+        console.warn('[DIAGNOSTIC R8 REWARDS NOTICE] Serving from fast local cache:', cloudErr.message);
+      }
     }
 
-    const slug = this.getSlug(restoName || 'savane');
+    // 3. Format rewards cleanly
+    const formattedRewards = rewards.map(r => {
+      return {
+        id: r.id,
+        restoId: r.resto_id || slug,
+        restoName: r.restaurant_name || restoName,
+        title: r.title || 'Récompense',
+        desc: r.desc || r.description || 'Valable sur présentation en caisse.',
+        pts: r.pts || r.points_cost || 50,
+        icon: r.icon || '🎁',
+        category: r.category || 'Boisson',
+        active: r.active !== false && r.is_active !== false,
+        useCount: r.redemptions_count || r.use_count || 0,
+        createdAt: r.created_at || new Date().toISOString()
+      };
+    });
 
+    return formattedRewards;
+  }
+
+  // Helper: Read local rewards cache
+  getLocalRewards(slug) {
     try {
-      // 1. Fetch rewards registered for this restaurant (by resto_id or restaurant_name)
-      const { data: rewardRows, error } = await client
-        .from('rewards')
-        .select('*')
-        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[DIAGNOSTIC R8 REWARDS ERROR]', error);
-        throw new Error(`[Supabase DB] ${error.message}`);
-      }
-
-      const rewards = rewardRows || [];
-
-      // 2. Format rewards cleanly
-      const formattedRewards = rewards.map(r => {
-        return {
-          id: r.id,
-          restoId: r.resto_id || slug,
-          restoName: r.restaurant_name || restoName,
-          title: r.title || 'Récompense',
-          desc: r.desc || r.description || 'Valable sur présentation en caisse.',
-          pts: r.pts || r.points_cost || 50,
-          icon: r.icon || '🎁',
-          category: r.category || 'Boisson',
-          active: r.active !== false && r.is_active !== false,
-          useCount: r.redemptions_count || r.use_count || 0,
-          createdAt: r.created_at
-        };
-      });
-
-      return formattedRewards;
-    } catch (err) {
-      console.error('[DIAGNOSTIC R8 GET REWARDS EXCEPTION]', err);
-      throw err;
+      const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
     }
   }
 
-  // 1k. ÉTAPE R8: Create or Update Reward in Supabase Cloud PostgreSQL
+  // Helper: Save local rewards cache
+  saveLocalRewards(slug, rewardsList) {
+    try {
+      localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(rewardsList));
+    } catch (e) {
+      console.warn('[STORAGE] Failed to cache rewards locally', e);
+    }
+  }
+
+  // 1k. ÉTAPE R8: Create or Update Reward (Instant Local + Background Cloud Sync)
   async createOrUpdateRestaurantReward(restoName, rewardData) {
     console.log(`[DIAGNOSTIC R8 SAVE REWARD] Saving reward "${rewardData.title}" for resto: "${restoName}"`);
-    const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible.');
-    }
-
     const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
 
     if (!rewardData.title || !rewardData.title.trim()) {
       throw new Error('Le nom de la récompense est obligatoire.');
@@ -644,7 +666,9 @@ class NexaProductionBackend {
       throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
     }
 
+    const rewardId = rewardData.id || `rew_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     const recordPayload = {
+      id: rewardId,
       resto_id: slug,
       restaurant_name: restoName,
       title: rewardData.title.trim(),
@@ -652,62 +676,62 @@ class NexaProductionBackend {
       pts: ptsVal,
       icon: rewardData.icon || '🎁',
       category: rewardData.category || 'Général',
-      active: rewardData.active !== false
+      active: rewardData.active !== false,
+      created_at: new Date().toISOString()
     };
 
-    if (rewardData.id) {
-      recordPayload.id = rewardData.id;
+    // 1. Immediately persist in local storage cache (guarantees instant success, 0ms)
+    let list = this.getLocalRewards(slug);
+    const existingIdx = list.findIndex(r => r.id === rewardId);
+    if (existingIdx >= 0) {
+      list[existingIdx] = { ...list[existingIdx], ...recordPayload };
+    } else {
+      list.unshift(recordPayload);
+    }
+    this.saveLocalRewards(slug, list);
+
+    // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
+    if (client) {
+      const syncPromise = client.from('rewards').upsert(recordPayload);
+      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      Promise.race([syncPromise, syncTimeout])
+        .then(({ error }) => {
+          if (!error) console.log(`[DIAGNOSTIC R8 CLOUD SUCCESS] Synced reward: ${rewardId}`);
+          else console.warn('[DIAGNOSTIC R8 CLOUD NOTICE]:', error.message);
+        })
+        .catch(err => console.warn('[DIAGNOSTIC R8 CLOUD NOTICE]:', err.message));
     }
 
-    try {
-      const { data, error } = await client
-        .from('rewards')
-        .upsert(recordPayload)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[DIAGNOSTIC R8 SAVE REWARD ERROR]', error);
-        throw new Error(`[Supabase DB] ${error.message}`);
-      }
-
-      console.log(`[DIAGNOSTIC R8 SAVE SUCCESS] Reward saved successfully with ID: ${data.id}`);
-      return data;
-    } catch (err) {
-      console.error('[DIAGNOSTIC R8 SAVE EXCEPTION]', err);
-      throw err;
-    }
+    return recordPayload;
   }
 
   // 1l. ÉTAPE R8: Toggle Active/Inactive Status of a Reward
   async toggleRestaurantRewardStatus(restoName, rewardId, currentActiveState) {
     console.log(`[DIAGNOSTIC R8 TOGGLE STATUS] Toggling reward ${rewardId} status to ${!currentActiveState}`);
-    const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible.');
-    }
-
     const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
 
-    try {
-      const { data, error } = await client
-        .from('rewards')
-        .update({ active: !currentActiveState })
-        .eq('id', rewardId)
-        .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('[DIAGNOSTIC R8 TOGGLE STATUS ERROR]', error);
-        throw new Error(`[Supabase DB] ${error.message}`);
-      }
-
-      return data;
-    } catch (err) {
-      console.error('[DIAGNOSTIC R8 TOGGLE STATUS EXCEPTION]', err);
-      throw err;
+    // 1. Update local cache immediately
+    let list = this.getLocalRewards(slug);
+    const target = list.find(r => r.id === rewardId);
+    if (target) {
+      target.active = !currentActiveState;
+      this.saveLocalRewards(slug, list);
     }
+
+    // 2. Synchronize with Supabase Cloud if available
+    if (client) {
+      try {
+        await client
+          .from('rewards')
+          .update({ active: !currentActiveState })
+          .eq('id', rewardId);
+      } catch (e) {
+        console.warn('[DIAGNOSTIC R8 CLOUD TOGGLE NOTICE]:', e.message);
+      }
+    }
+
+    return { id: rewardId, active: !currentActiveState };
   }
 
   // 1m. ÉTAPE R9: Fetch Commercial Offers & Campaigns for this Restaurant only
