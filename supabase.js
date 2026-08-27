@@ -51,7 +51,7 @@ class NexaProductionBackend {
 
   getSlug(name) {
     if (!name) return 'savane';
-    return name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+    return name.toLowerCase().trim().replace(/^nx[_-]/, '').replace(/[^a-z0-9]/g, '-');
   }
 
   // 1. Register or Login Merchant Profile
@@ -887,12 +887,23 @@ class NexaProductionBackend {
   async getRestaurantByName(name) {
     if (this.isLiveSupabase && this.client && name) {
       try {
-        const { data } = await this.client
+        const cleanSearch = name.replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+        let { data } = await this.client
           .from('restaurants')
           .select('*')
-          .ilike('name', `%${name}%`)
+          .ilike('name', `%${cleanSearch}%`)
           .limit(1)
           .maybeSingle();
+
+        if (!data) {
+          const fallback = await this.client
+            .from('restaurants')
+            .select('*')
+            .ilike('name', `%${name}%`)
+            .limit(1)
+            .maybeSingle();
+          data = fallback.data;
+        }
 
         if (data) {
           let parsedType = data.city || '★ 4.9 • Bistro & Grillades';
@@ -918,6 +929,87 @@ class NexaProductionBackend {
         console.log('Fetch resto info:', err);
       }
     }
+    return null;
+  }
+
+  // 2b. ÉTAPE R10: Get Secure Public Identifier for a Restaurant
+  getRestaurantPublicId(name) {
+    if (!name) return 'nx_unknown';
+    const slug = this.getSlug(name);
+    return `nx_${slug}`;
+  }
+
+  // 2c. ÉTAPE R10: Resolve Restaurant by Secure Public Identifier (Strict Verification)
+  async getRestaurantByPublicId(publicId) {
+    if (!publicId) return null;
+    
+    // Normalize public identifier (e.g. nx_le-savane -> le-savane or direct name)
+    const cleanSlug = publicId.toLowerCase().trim().replace(/^nx_/, '').replace(/[^a-z0-9]/g, '-');
+    
+    const client = this.getClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('restaurants')
+          .select('*');
+
+        if (!error && data && data.length > 0) {
+          const matched = data.find(r => {
+            const rSlug = this.getSlug(r.name);
+            return rSlug === cleanSlug || r.name.toLowerCase() === cleanSlug || r.name.toLowerCase() === publicId.toLowerCase();
+          });
+
+          if (matched) {
+            let parsedType = '★ 4.9 • Bistro & Grillades';
+            let parsedScanPts = 20;
+            try {
+              if (matched.city && matched.city.startsWith('{')) {
+                const meta = JSON.parse(matched.city);
+                parsedType = meta.type || parsedType;
+                parsedScanPts = parseInt(meta.scanPts || '20', 10);
+              } else if (matched.city) {
+                parsedType = matched.city;
+              }
+            } catch (e) {}
+
+            return {
+              id: matched.id,
+              publicId: `nx_${this.getSlug(matched.name)}`,
+              name: matched.name,
+              type: parsedType,
+              pointsPerScan: parsedScanPts,
+              whatsappContact: matched.whatsapp_contact || '',
+              currency: matched.currency || 'FCFA'
+            };
+          }
+        }
+      } catch (err) {
+        console.error('[DIAGNOSTIC R10] Resolve restaurant by publicId exception:', err);
+      }
+    }
+
+    // Fallback: If offline or local test session matches
+    try {
+      const b2bSession = localStorage.getItem('nexa_merchant_b2b_session');
+      if (b2bSession) {
+        const parsed = JSON.parse(b2bSession);
+        if (parsed && parsed.restoName) {
+          const sessionSlug = this.getSlug(parsed.restoName);
+          if (sessionSlug === cleanSlug) {
+            return {
+              id: parsed.authUserId || sessionSlug,
+              publicId: `nx_${sessionSlug}`,
+              name: parsed.restoName,
+              type: '★ 4.9 • Bistro & Grillades',
+              pointsPerScan: 20,
+              currency: 'FCFA'
+            };
+          }
+        }
+      }
+    } catch(e) {}
+
+    // STRICT: Return null if not found or invalid! NEVER fallback to default restaurant!
     return null;
   }
 
