@@ -88,10 +88,15 @@ function initNexaApp() {
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
-        // 1. ALWAYS FETCH REWARDS CATALOGUE FOR CLIENT & MERCHANT!
-        const cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
+        // 1. ALWAYS FETCH REWARDS CATALOGUE FOR CLIENT & MERCHANT (LOCAL-FIRST & CLOUD)!
+        let cloudRewards = [];
+        if (window.nexaBackend && window.nexaBackend.getRestaurantRewards) {
+          cloudRewards = await window.nexaBackend.getRestaurantRewards(state.restaurant.name);
+        } else if (window.nexaBackend && window.nexaBackend.fetchRewardsByResto) {
+          cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
+        }
         if (cloudRewards && cloudRewards.length > 0) {
-          state.rewards = cloudRewards.map(r => ({
+          state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
             id: String(r.id),
             title: r.title,
             pts: r.pts || r.points_required || 50,
@@ -532,11 +537,45 @@ function initNexaApp() {
 
       console.log(`[DIAGNOSTIC FRONTEND] Connexion client -> Phone: "${phone}", Name: "${name}"`);
 
-      // 1. SAVE SESSION LOCALLY & CLOSE MODAL INSTANTLY (PREVENTS ANY STUCK MODAL LOOP)
+      // 1. SAVE CLIENT SESSION LOCALLY & CLOSE MODAL INSTANTLY (0ms)
       state.clientSession.whatsapp = phone;
       state.clientSession.name = name;
       localStorage.setItem('nexa_client_whatsapp', phone);
       localStorage.setItem('nexa_client_name', name);
+
+      // Save client in restaurant's local CRM list immediately (0ms)
+      const targetResto = (hasRestaurantContext && state.restaurant.name !== 'Aucun Restaurant') 
+        ? state.restaurant.name 
+        : (localStorage.getItem('nexa_resto_name') || 'Le Savane');
+      const targetSlug = targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      const compositeKey = `${phone}_${targetSlug}`;
+
+      try {
+        let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || localStorage.getItem(`nexa_clients_cache_${targetSlug}`) || '[]');
+        const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === phone);
+        const clientEntry = {
+          rawKey: compositeKey,
+          whatsapp_phone: compositeKey,
+          phone: phone,
+          name: name,
+          full_name: name,
+          points: state.clientSession.points || 0,
+          points_balance: state.clientSession.points || 0,
+          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
+          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
+          lastVisit: 'À l\'instant',
+          last_scan_at: new Date().toISOString()
+        };
+        if (existIdx >= 0) {
+          currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
+        } else {
+          currentCrmClients.unshift(clientEntry);
+        }
+        localStorage.setItem(`nexa_clients_${targetSlug}`, JSON.stringify(currentCrmClients));
+        localStorage.setItem(`nexa_clients_cache_${targetSlug}`, JSON.stringify(currentCrmClients));
+      } catch (crmSaveErr) {
+        console.warn('[CRM SAVE WARN]', crmSaveErr);
+      }
 
       closeClientAuthModal();
       renderClientUI();
@@ -545,7 +584,6 @@ function initNexaApp() {
       // 2. ASYNCHRONOUS BACKGROUND SUPABASE SYNC (NON-BLOCKING)
       if (window.nexaBackend) {
         try {
-          const targetResto = hasRestaurantContext ? state.restaurant.name : 'Chitir Chicken';
           console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
           
           const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
@@ -640,6 +678,38 @@ function initNexaApp() {
     state.clientSession.points += scanEarned;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem(lastScanStorageKey, now.toString());
+
+    // Update CRM clients locally on scan (instant 0ms visibility in resto-r5)
+    const scanTargetResto = (hasRestaurantContext && state.restaurant.name !== 'Aucun Restaurant') 
+      ? state.restaurant.name 
+      : (localStorage.getItem('nexa_resto_name') || 'Le Savane');
+    const scanTargetSlug = scanTargetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+    const scanCompositeKey = `${state.clientSession.whatsapp}_${scanTargetSlug}`;
+    try {
+      let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${scanTargetSlug}`) || localStorage.getItem(`nexa_clients_cache_${scanTargetSlug}`) || '[]');
+      const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === scanCompositeKey || c.phone === state.clientSession.whatsapp);
+      const updatedVisits = existIdx >= 0 ? ((currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) + 1) : 1;
+      const clientEntry = {
+        rawKey: scanCompositeKey,
+        whatsapp_phone: scanCompositeKey,
+        phone: state.clientSession.whatsapp,
+        name: state.clientSession.name || 'Client Nexa',
+        full_name: state.clientSession.name || 'Client Nexa',
+        points: state.clientSession.points,
+        points_balance: state.clientSession.points,
+        visits: updatedVisits,
+        visits_count: updatedVisits,
+        lastVisit: 'À l\'instant',
+        last_scan_at: new Date().toISOString()
+      };
+      if (existIdx >= 0) {
+        currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
+      } else {
+        currentCrmClients.unshift(clientEntry);
+      }
+      localStorage.setItem(`nexa_clients_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
+      localStorage.setItem(`nexa_clients_cache_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
+    } catch (e) {}
 
     // Record Single scan event on Cloud PostgreSQL
     if (window.nexaBackend) {

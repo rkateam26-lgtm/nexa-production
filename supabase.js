@@ -255,19 +255,28 @@ class NexaProductionBackend {
 
     try {
       // 1. Query clients associated with this restaurant (composite key: phone_slug)
-      const { data: clientRows, error: clientErr } = await client
-        .from('clients')
-        .select('*')
-        .ilike('whatsapp_phone', `%_${slug}`);
-
-      if (clientErr) {
-        console.error('[DIAGNOSTIC R5 CLIENTS ERR]', clientErr);
+      let clientRows = [];
+      try {
+        const res = await client
+          .from('clients')
+          .select('*')
+          .ilike('whatsapp_phone', `%_${slug}`);
+        if (res.data) clientRows = res.data;
+      } catch (clientErr) {
+        console.warn('[DIAGNOSTIC R5 CLIENTS NOTICE]', clientErr.message);
       }
 
-      const clients = clientRows || [];
-      const totalClientsCount = clients.length;
-      const totalScansCount = clients.reduce((sum, c) => sum + (c.visits_count || 1), 0);
-      const totalPointsDistributed = clients.reduce((sum, c) => sum + (c.points_balance || 0), 0);
+      // Merge with local clients list for instant resilient metrics
+      let localClients = this.getLocalClients(slug);
+      let mergedClientsMap = new Map();
+      localClients.forEach(c => mergedClientsMap.set(c.rawKey || c.whatsapp_phone || c.phone, c));
+      if (Array.isArray(clientRows)) {
+        clientRows.forEach(c => mergedClientsMap.set(c.whatsapp_phone || c.phone, c));
+      }
+      const allClients = Array.from(mergedClientsMap.values());
+      const totalClientsCount = allClients.length;
+      const totalScansCount = allClients.reduce((sum, c) => sum + (c.visits_count || c.visits || 1), 0);
+      const totalPointsDistributed = allClients.reduce((sum, c) => sum + (c.points_balance || c.points || 0), 0);
 
       // 2. Query active rewards / offers & redemptions count for this restaurant
       let activeOffersCount = 0;
@@ -1260,23 +1269,48 @@ class NexaProductionBackend {
   async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
     console.log(`[DIAGNOSTIC] registerClientIdentity start. Resto: "${restoName}", Phone: "${whatsappPhone}", Name: "${clientName}"`);
     
-    const client = this.getClient();
-    if (!client) {
-      console.error('[DIAGNOSTIC ERROR] Supabase client is NOT available!');
-      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
+    const slug = this.getSlug(restoName || 'savane');
+    const compositeKey = `${whatsappPhone}_${slug}`;
+
+    // 1. Immediately cache in Local CRM storage (0ms guaranteed)
+    try {
+      let localClients = this.getLocalClients(slug);
+      const existingIndex = localClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      const clientObj = {
+        rawKey: compositeKey,
+        whatsapp_phone: compositeKey,
+        phone: whatsappPhone,
+        full_name: clientName,
+        name: clientName,
+        points_balance: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
+        points: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
+        visits_count: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 1) : 1,
+        visits: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 1) : 1,
+        lastVisit: 'À l\'instant',
+        last_scan_at: new Date().toISOString()
+      };
+      if (existingIndex >= 0) {
+        localClients[existingIndex] = { ...localClients[existingIndex], ...clientObj };
+      } else {
+        localClients.unshift(clientObj);
+      }
+      this.saveLocalClients(slug, localClients);
+    } catch (e) {
+      console.warn('[STORAGE WARN] registerClientIdentity local cache:', e);
     }
 
-    const slug = this.getSlug(restoName || 'demo');
-    const compositeKey = `${whatsappPhone}_${slug}`;
+    const client = this.getClient();
+    if (!client) {
+      console.warn('[DIAGNOSTIC WARN] Supabase client offline, local registration preserved.');
+      return { whatsapp_phone: compositeKey, full_name: clientName };
+    }
+
     const payload = { 
       whatsapp_phone: compositeKey, 
       full_name: clientName,
       points_balance: 0,
-      visits_count: 0
+      visits_count: 1
     };
-
-    console.log('[DIAGNOSTIC] Payload préparé pour table "clients":', JSON.stringify(payload));
-    console.log(`[DIAGNOSTIC] Envoi requête Supabase upsert vers table "clients" pour compositeKey "${compositeKey}"...`);
 
     try {
       const queryPromise = client
@@ -1284,25 +1318,17 @@ class NexaProductionBackend {
         .upsert(payload, { onConflict: 'whatsapp_phone' })
         .select();
 
-      const response = await withTimeout(queryPromise, 8000, 'Enregistrement Supabase Client');
-
-      console.log('[DIAGNOSTIC] Réponse Supabase reçue:', {
-        data: response.data,
-        error: response.error,
-        status: response.status,
-        statusText: response.statusText
-      });
+      const response = await withTimeout(queryPromise, 6000, 'Enregistrement Supabase Client');
 
       if (response.error) {
-        console.error('[DIAGNOSTIC ERROR] Supabase error detail:', response.error);
-        throw new Error(`[Supabase ${response.error.code || response.status}] ${response.error.message || response.error.details}`);
+        console.warn('[DIAGNOSTIC NOTICE] Supabase cloud notice:', response.error.message);
+      } else {
+        console.log('[DIAGNOSTIC] Profil client inséré avec succès dans Supabase Cloud !');
       }
-
-      console.log('[DIAGNOSTIC] Profil client inséré avec succès dans Supabase Cloud !');
-      return response.data;
+      return response.data || payload;
     } catch (e) {
-      console.error('[DIAGNOSTIC ERROR] Exception lors de registerClientIdentity:', e);
-      throw e;
+      console.warn('[DIAGNOSTIC NOTICE] Client cloud sync deferred:', e.message);
+      return payload;
     }
   }
 
@@ -1384,11 +1410,49 @@ class NexaProductionBackend {
 
   // 11. Record Single Scan & Save Client in CRM
   async recordScanCloud(restoName, tableNumber, whatsappPhone, clientName = 'Client Nexa', pointsEarned = 20) {
+    const slug = this.getSlug(restoName || 'savane');
+    const compositeKey = `${whatsappPhone}_${slug}`;
+
+    // 1. Immediately update Local CRM Cache (0ms)
+    let currentVisits = 1;
+    let currentPoints = pointsEarned;
+    try {
+      let localList = this.getLocalClients(slug);
+      const existingIdx = localList.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      const prevPoints = existingIdx >= 0 ? (localList[existingIdx].points_balance || localList[existingIdx].points || 0) : 0;
+      const prevVisits = existingIdx >= 0 ? (localList[existingIdx].visits_count || localList[existingIdx].visits || 0) : 0;
+      currentPoints = prevPoints + pointsEarned;
+      currentVisits = prevVisits + 1;
+      const displayName = clientName && clientName !== 'Client Nexa' 
+        ? clientName 
+        : (existingIdx >= 0 ? (localList[existingIdx].name || localList[existingIdx].full_name) : 'Client Nexa');
+
+      const clientObj = {
+        rawKey: compositeKey,
+        whatsapp_phone: compositeKey,
+        phone: whatsappPhone,
+        full_name: displayName,
+        name: displayName,
+        points_balance: currentPoints,
+        points: currentPoints,
+        visits_count: currentVisits,
+        visits: currentVisits,
+        lastVisit: 'À l\'instant',
+        last_scan_at: new Date().toISOString()
+      };
+
+      if (existingIdx >= 0) {
+        localList[existingIdx] = { ...localList[existingIdx], ...clientObj };
+      } else {
+        localList.unshift(clientObj);
+      }
+      this.saveLocalClients(slug, localList);
+    } catch (localErr) {
+      console.warn('[CRM SCAN LOCAL CACHE WARN]', localErr);
+    }
+
     if (this.isLiveSupabase && this.client) {
       try {
-        const slug = this.getSlug(restoName);
-        const compositeKey = `${whatsappPhone}_${slug}`;
-
         // Step A: Check existing client by composite key
         const { data: existingClient } = await this.client
           .from('clients')
@@ -1396,8 +1460,8 @@ class NexaProductionBackend {
           .eq('whatsapp_phone', compositeKey)
           .maybeSingle();
 
-        const currentVisits = existingClient ? (existingClient.visits_count || 0) + 1 : 1;
-        const currentPoints = existingClient ? (existingClient.points_balance || 0) + pointsEarned : pointsEarned;
+        const cloudVisits = existingClient ? (existingClient.visits_count || 0) + 1 : currentVisits;
+        const cloudPoints = existingClient ? (existingClient.points_balance || 0) + pointsEarned : currentPoints;
         const displayName = clientName && clientName !== 'Client Nexa' ? clientName : (existingClient ? existingClient.full_name : 'Client Nexa');
 
         // Step B: Robust Insert or Update in Supabase clients table
@@ -1406,8 +1470,8 @@ class NexaProductionBackend {
             .from('clients')
             .update({
               full_name: displayName,
-              points_balance: currentPoints,
-              visits_count: currentVisits,
+              points_balance: cloudPoints,
+              visits_count: cloudVisits,
               last_scan_at: new Date().toISOString()
             })
             .eq('whatsapp_phone', compositeKey);
@@ -1417,33 +1481,48 @@ class NexaProductionBackend {
             .insert({
               whatsapp_phone: compositeKey,
               full_name: displayName,
-              points_balance: currentPoints,
-              visits_count: currentVisits,
+              points_balance: cloudPoints,
+              visits_count: cloudVisits,
               last_scan_at: new Date().toISOString()
             });
         }
 
-        // Step C: Insert Scan record
+        // Step C: Insert Scan record with full details
         await this.client.from('scans').insert({
-          table_number: slug.length,
+          restaurant_name: restoName,
+          client_phone: compositeKey,
+          table_number: parseInt(tableNumber, 10) || 1,
           points_earned: pointsEarned
         });
 
-        return { currentPoints, currentVisits };
+        return { currentPoints: cloudPoints, currentVisits: cloudVisits };
       } catch (err) {
-        console.error('Record Scan Exception:', err);
+        console.error('Record Scan Cloud Exception:', err);
       }
     }
-    return null;
+    return { currentPoints, currentVisits };
   }
 
   // 12. Deduct Points on Reward Redemption
   async deductPointsCloud(restoName, whatsappPhone, pointsDeducted) {
+    const slug = this.getSlug(restoName || 'savane');
+    const compositeKey = `${whatsappPhone}_${slug}`;
+
+    // Update Local CRM cache immediately (0ms)
+    try {
+      let localList = this.getLocalClients(slug);
+      const existingIdx = localList.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      if (existingIdx >= 0) {
+        const prevPts = localList[existingIdx].points_balance || localList[existingIdx].points || 0;
+        const newBal = Math.max(0, prevPts - pointsDeducted);
+        localList[existingIdx].points = newBal;
+        localList[existingIdx].points_balance = newBal;
+        this.saveLocalClients(slug, localList);
+      }
+    } catch (e) {}
+
     if (this.isLiveSupabase && this.client && whatsappPhone) {
       try {
-        const slug = this.getSlug(restoName);
-        const compositeKey = `${whatsappPhone}_${slug}`;
-
         const { data: existingClient } = await this.client
           .from('clients')
           .select('*')

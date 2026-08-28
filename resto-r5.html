@@ -919,7 +919,7 @@
         <div style="margin-top: 1.5rem; background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); color: white; border-radius: 16px; padding: 1.5rem 1.75rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1.5rem; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
           <div style="display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap;">
             <!-- Instant QR Preview Thumbnail -->
-            <div id="r10-overview-qr-box" style="background: white; padding: 6px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; width: 92px; height: 92px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer;" onclick="switchR5Tab('qr', document.querySelectorAll('.nav-item')[5])" title="Cliquer pour agrandir le QR Code">
+            <div id="r10-overview-qr-box" style="background: white; padding: 6px; border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; width: 92px; height: 92px; box-shadow: 0 4px 12px rgba(0,0,0,0.25); cursor: pointer;" onclick="switchR5Tab('qr')" title="Cliquer pour agrandir le QR Code">
               <!-- Rendered automatically -->
             </div>
             <div>
@@ -934,7 +934,7 @@
             </div>
           </div>
           <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
-            <button class="btn-create-account" style="width: auto; padding: 0.65rem 1.4rem; font-size: 0.88rem;" onclick="switchR5Tab('qr', document.querySelectorAll('.nav-item')[5])">
+            <button class="btn-create-account" style="width: auto; padding: 0.65rem 1.4rem; font-size: 0.88rem;" onclick="switchR5Tab('qr')">
               <i data-lucide="qr-code" style="width: 16px; height: 16px;"></i>
               <span>Ouvrir la section QR Code</span>
             </button>
@@ -1024,7 +1024,7 @@
               <span class="metric-label">⏱️ Délai Anti-Abus</span>
               <div class="metric-icon-badge blue">⏱️</div>
             </div>
-            <p class="metric-val" style="font-size: 1.5rem;">3 Heures</p>
+            <p class="metric-val" style="font-size: 1.5rem;">2 Heures</p>
             <p class="metric-subtext">Règle de sécurité système</p>
           </div>
 
@@ -1075,15 +1075,15 @@
               </p>
             </div>
 
-            <!-- CARTE RÈGLE SYSTÈME ANTI-FRAUDE (3 HEURES) -->
+            <!-- CARTE RÈGLE SYSTÈME ANTI-FRAUDE (2 HEURES) -->
             <div style="background: #F8F9FA; border: 1px dashed #CBD5E1; border-radius: 12px; padding: 1rem; margin-bottom: 1.5rem;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.3rem;">
                 <span style="font-size: 1rem;">🛡️</span>
-                <strong style="font-size: 0.85rem; color: var(--text-dark);">Protection Anti-Abus Système (3 Heures)</strong>
+                <strong style="font-size: 0.85rem; color: var(--text-dark);">Protection Anti-Abus Système (2 Heures)</strong>
                 <span style="font-size: 0.7rem; font-weight: 800; background: #E2E8F0; color: var(--text-dark); padding: 2px 8px; border-radius: 10px; margin-left: auto;">Protégé</span>
               </div>
               <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0; line-height: 1.4;">
-                Un délai de <strong>3 heures</strong> est automatiquement appliqué entre deux attributions de points pour un même client. Cette règle protège votre restaurant contre les scans répétitifs tout en garantissant un programme équitable.
+                Un délai de <strong>2 heures</strong> est automatiquement appliqué entre deux attributions de points pour un même client. Cette règle protège votre restaurant contre les scans répétitifs tout en garantissant un programme équitable.
               </p>
             </div>
 
@@ -1584,6 +1584,12 @@
         // Fetch Real Supabase Metrics
         await loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
 
+        // Support direct linking to tabs via URL search param (?tab=...) or hash (#...)
+        const urlTab = new URLSearchParams(window.location.search).get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+        if (urlTab) {
+          switchR5Tab(urlTab);
+        }
+
       } catch (err) {
         console.error('[DIAGNOSTIC R5 INIT ERROR]', err);
         // Ensure QR is loaded even on metric error
@@ -1647,6 +1653,14 @@
     // TAB SWITCHER HANDLER
     function switchR5Tab(tabName, clickedEl) {
       document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => el.classList.remove('active'));
+      
+      // Auto-activate corresponding links on sidebar and mobile dock
+      document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => {
+        const onclickAttr = el.getAttribute('onclick') || '';
+        if (onclickAttr.includes(`'${tabName}'`)) {
+          el.classList.add('active');
+        }
+      });
       if (clickedEl) clickedEl.classList.add('active');
 
       const dashTab = document.getElementById('tab-r5-dashboard');
