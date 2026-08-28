@@ -359,124 +359,152 @@ class NexaProductionBackend {
     }
   }
 
-  // 1f. ÉTAPE R6: Fetch Real Clients associated with this Restaurant only
-  async getRestaurantClients(restoName) {
-    console.log(`[DIAGNOSTIC R6 CLIENTS] Fetching clients for resto: "${restoName}"`);
-    const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
-    }
-
-    const slug = this.getSlug(restoName || 'savane');
-
+  // Helper: Read local clients cache
+  getLocalClients(slug) {
     try {
-      const { data: clientRows, error } = await client
-        .from('clients')
-        .select('*')
-        .ilike('whatsapp_phone', `%_${slug}`)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('[DIAGNOSTIC R6 CLIENTS ERROR]', error);
-        throw new Error(`[Supabase DB] ${error.message}`);
-      }
-
-      const formattedClients = (clientRows || []).map(c => {
-        const cleanPhone = c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : 'N/A';
-        const lastVisitDate = c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR', {
-          year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-        }) : 'Aucune récente';
-
-        return {
-          rawKey: c.whatsapp_phone,
-          phone: cleanPhone,
-          name: c.full_name || 'Client Nexa',
-          points: c.points_balance || 0,
-          visits: c.visits_count || 1,
-          lastVisit: lastVisitDate,
-          createdAt: c.created_at
-        };
-      });
-
-      return formattedClients;
-    } catch (err) {
-      console.error('[DIAGNOSTIC R6 GET CLIENTS EXCEPTION]', err);
-      throw err;
+      const raw = localStorage.getItem(`nexa_clients_cache_${slug}`) || localStorage.getItem(`nexa_clients_${slug}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
     }
   }
 
-  // 1g. ÉTAPE R6: Fetch Specific Client Activity Details for this Restaurant
-  async getRestaurantClientDetails(restoName, rawCompositeKey) {
+  // Helper: Save local clients cache
+  saveLocalClients(slug, clientsList) {
+    try {
+      localStorage.setItem(`nexa_clients_cache_${slug}`, JSON.stringify(clientsList));
+      localStorage.setItem(`nexa_clients_${slug}`, JSON.stringify(clientsList));
+    } catch (e) {
+      console.warn('[STORAGE] Failed to cache clients locally', e);
+    }
+  }
+
+  // 1f. ÉTAPE R6: Fetch Real Clients associated with this Restaurant only (Local-First + Cloud Sync)
+  async getRestaurantClients(restoName) {
+    console.log(`[DIAGNOSTIC R6 CLIENTS] Fetching clients for resto: "${restoName}"`);
+    const slug = this.getSlug(restoName || 'savane');
     const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible.');
+
+    // 1. Immediately read locally cached clients
+    let clients = this.getLocalClients(slug);
+
+    // 2. Fast non-blocking sync with Supabase Cloud (max 1.5s timeout)
+    if (client) {
+      try {
+        const queryPromise = client
+          .from('clients')
+          .select('*')
+          .ilike('whatsapp_phone', `%_${slug}`)
+          .order('created_at', { ascending: false });
+
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 1500)
+        );
+
+        const { data: clientRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+
+        if (!error && Array.isArray(clientRows) && clientRows.length > 0) {
+          const mergedMap = new Map();
+          clients.forEach(c => mergedMap.set(c.rawKey || c.whatsapp_phone || c.id, c));
+          clientRows.forEach(row => mergedMap.set(row.whatsapp_phone || row.id, row));
+          clients = Array.from(mergedMap.values());
+          this.saveLocalClients(slug, clients);
+        }
+      } catch (cloudErr) {
+        console.warn('[DIAGNOSTIC R6 CLIENTS NOTICE] Serving from fast local cache:', cloudErr.message);
+      }
     }
 
-    const slug = this.getSlug(restoName || 'savane');
-
-    try {
-      // 1. Fetch main client profile
-      const { data: profile } = await client
-        .from('clients')
-        .select('*')
-        .eq('whatsapp_phone', rawCompositeKey)
-        .maybeSingle();
-
-      const cleanPhone = rawCompositeKey ? rawCompositeKey.split('_')[0] : 'N/A';
-
-      // 2. Fetch scan history for this client & restaurant
-      let scanHistory = [];
-      try {
-        const { data: scans } = await client
-          .from('scans')
-          .select('*')
-          .or(`restaurant_name.eq.${restoName},restaurant_name.eq.${slug}`)
-          .eq('client_phone', cleanPhone)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (scans) scanHistory = scans;
-      } catch (e) {
-        console.warn('Scans fetch warn:', e);
-      }
-
-      // 3. Fetch redeemed rewards history for this client & restaurant
-      let redeemedRewards = [];
-      try {
-        const { data: rewards } = await client
-          .from('rewards')
-          .select('*')
-          .or(`restaurant_name.eq.${restoName},resto_id.eq.${slug}`)
-          .eq('client_phone', cleanPhone)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (rewards) redeemedRewards = rewards;
-      } catch (e) {
-        console.warn('Rewards fetch warn:', e);
-      }
+    // 3. Format clients cleanly
+    const formattedClients = clients.map(c => {
+      const rawKey = c.rawKey || c.whatsapp_phone || `${c.phone || ''}_${slug}`;
+      const cleanPhone = c.phone || (rawKey ? rawKey.split('_')[0] : 'N/A');
+      const lastVisitDate = c.lastVisit || (c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR', {
+        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+      }) : 'Récemment');
 
       return {
-        profile: profile ? {
-          name: profile.full_name || 'Client Nexa',
-          phone: cleanPhone,
-          points: profile.points_balance || 0,
-          visits: profile.visits_count || 1,
-          lastScanAt: profile.last_scan_at ? new Date(profile.last_scan_at).toLocaleString('fr-FR') : 'N/A'
-        } : {
-          name: 'Client Nexa',
-          phone: cleanPhone,
-          points: 0,
-          visits: 1,
-          lastScanAt: 'N/A'
-        },
-        scans: scanHistory,
-        rewards: redeemedRewards
+        rawKey: rawKey,
+        phone: cleanPhone,
+        name: c.name || c.full_name || 'Client Nexa',
+        points: typeof c.points === 'number' ? c.points : (c.points_balance || 0),
+        visits: typeof c.visits === 'number' ? c.visits : (c.visits_count || 1),
+        lastVisit: lastVisitDate,
+        createdAt: c.createdAt || c.created_at || new Date().toISOString()
       };
-    } catch (err) {
-      console.error('[DIAGNOSTIC R6 CLIENT DETAILS ERROR]', err);
-      throw err;
+    });
+
+    return formattedClients;
+  }
+
+  // 1g. ÉTAPE R6: Fetch Specific Client Activity Details for this Restaurant (Non-blocking & Protected)
+  async getRestaurantClientDetails(restoName, rawCompositeKey) {
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+    const cleanPhone = rawCompositeKey ? rawCompositeKey.split('_')[0] : 'N/A';
+
+    let profile = null;
+    let scanHistory = [];
+    let redeemedRewards = [];
+
+    // Check local clients list first
+    const localClients = this.getLocalClients(slug);
+    const matchedLocal = localClients.find(c => (c.rawKey === rawCompositeKey || c.whatsapp_phone === rawCompositeKey || c.phone === cleanPhone));
+
+    if (client) {
+      try {
+        const fetchPromise = Promise.all([
+          client.from('clients').select('*').eq('whatsapp_phone', rawCompositeKey).maybeSingle(),
+          client.from('scans').select('*').or(`restaurant_name.eq.${restoName},restaurant_name.eq.${slug}`).eq('client_phone', cleanPhone).order('created_at', { ascending: false }).limit(10),
+          client.from('rewards').select('*').or(`restaurant_name.eq.${restoName},resto_id.eq.${slug}`).eq('client_phone', cleanPhone).order('created_at', { ascending: false }).limit(10)
+        ]);
+
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+        const [resClient, resScans, resRewards] = await Promise.race([fetchPromise, timeoutPromise]);
+
+        if (resClient && resClient.data) profile = resClient.data;
+        if (resScans && resScans.data) scanHistory = resScans.data;
+        if (resRewards && resRewards.data) redeemedRewards = resRewards.data;
+      } catch (e) {
+        console.warn('[R6 DETAIL NOTICE] Local fallback for client details:', e.message);
+      }
     }
+
+    // Local proofs fallback for redeemed rewards
+    try {
+      const localProofs = localStorage.getItem(`nexa_validated_proofs_${slug}`);
+      if (localProofs) {
+        const proofs = JSON.parse(localProofs);
+        if (Array.isArray(proofs)) {
+          const clientProofs = proofs.filter(p => p.clientPhone === cleanPhone || p.clientPhone === rawCompositeKey);
+          if (clientProofs.length > 0 && redeemedRewards.length === 0) {
+            redeemedRewards = clientProofs.map(p => ({
+              id: p.id,
+              title: p.rewardTitle,
+              pts: p.pts,
+              created_at: p.date + ' ' + p.time
+            }));
+          }
+        }
+      }
+    } catch (e) {}
+
+    const finalName = (profile && profile.full_name) || (matchedLocal && (matchedLocal.name || matchedLocal.full_name)) || 'Client Nexa';
+    const finalPoints = (profile && profile.points_balance) || (matchedLocal && (matchedLocal.points || matchedLocal.points_balance)) || 0;
+    const finalVisits = (profile && profile.visits_count) || (matchedLocal && (matchedLocal.visits || matchedLocal.visits_count)) || 1;
+    const finalLastVisit = (profile && profile.last_scan_at ? new Date(profile.last_scan_at).toLocaleDateString('fr-FR') : (matchedLocal && matchedLocal.lastVisit) || 'Récemment');
+
+    return {
+      profile: {
+        name: finalName,
+        phone: cleanPhone,
+        points: finalPoints,
+        visits: finalVisits,
+        lastVisit: finalLastVisit
+      },
+      scans: scanHistory,
+      rewards: redeemedRewards
+    };
   }
 
   // 1h. ÉTAPE R7: Fetch Loyalty Program Rules & Configuration for this Restaurant

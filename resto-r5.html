@@ -1742,7 +1742,8 @@
     let rawR6ClientsList = [];
 
     async function loadR6Clients() {
-      if (!activeB2BSession || !activeB2BSession.restoName) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
+      const slug = restoName.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
 
       const tableBody = document.getElementById('r6-clients-table-body');
       const mobileFeed = document.getElementById('r6-clients-cards-feed');
@@ -1750,30 +1751,46 @@
 
       if (errorBanner) errorBanner.style.display = 'none';
 
-      if (tableBody) {
-        tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2.5rem;">⏳ Chargement des clients depuis Supabase Cloud…</td></tr>`;
-      }
-      if (mobileFeed) {
-        mobileFeed.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:2rem; background:white; border-radius:12px;">⏳ Chargement des clients…</div>`;
+      // 1. Instant render from local cache (0ms)
+      try {
+        const cachedRaw = localStorage.getItem(`nexa_clients_cache_${slug}`) || localStorage.getItem(`nexa_clients_${slug}`);
+        if (cachedRaw) {
+          const parsed = JSON.parse(cachedRaw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawR6ClientsList = parsed;
+            const countBadge = document.getElementById('r6-clients-count-badge');
+            if (countBadge) countBadge.textContent = `${rawR6ClientsList.length} Client(s)`;
+            renderR6ClientsList(rawR6ClientsList);
+          }
+        }
+      } catch (e) {}
+
+      // Show loader only if cache was totally empty
+      if (!rawR6ClientsList || rawR6ClientsList.length === 0) {
+        if (tableBody) {
+          tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:2.5rem;">⏳ Chargement des clients…</td></tr>`;
+        }
+        if (mobileFeed) {
+          mobileFeed.innerHTML = `<div style="text-align:center; color:var(--text-muted); padding:2rem; background:white; border-radius:12px;">⏳ Chargement des clients…</div>`;
+        }
       }
 
+      // 2. Fetch and sync with Supabase Cloud
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
-        rawR6ClientsList = await backend.getRestaurantClients(activeB2BSession.restoName);
+        const clients = await backend.getRestaurantClients(restoName);
 
-        const countBadge = document.getElementById('r6-clients-count-badge');
-        if (countBadge) countBadge.textContent = `${rawR6ClientsList.length} Client(s)`;
-
-        renderR6ClientsList(rawR6ClientsList);
-
-      } catch (err) {
-        console.error('[DIAGNOSTIC R6 LOAD CLIENTS ERROR]', err);
-        if (errorBanner) {
-          errorBanner.textContent = `Erreur de récupération des clients : ${err.message || 'Problème réseau Supabase'}`;
-          errorBanner.style.display = 'block';
+        if (Array.isArray(clients)) {
+          rawR6ClientsList = clients;
+          const countBadge = document.getElementById('r6-clients-count-badge');
+          if (countBadge) countBadge.textContent = `${rawR6ClientsList.length} Client(s)`;
+          renderR6ClientsList(rawR6ClientsList);
         }
-        if (tableBody) {
-          tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#DC2626; padding:2rem;">❌ Impossible de charger la liste des clients. Réessayez.</td></tr>`;
+      } catch (err) {
+        console.warn('[DIAGNOSTIC R6 LOAD CLIENTS NOTICE]', err);
+        // If we already have clients from cache, preserve them without red error banner
+        if (!rawR6ClientsList || rawR6ClientsList.length === 0) {
+          renderR6ClientsList([]);
         }
       }
     }
