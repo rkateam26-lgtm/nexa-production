@@ -1457,6 +1457,7 @@ function initNexaApp() {
     });
   }
 
+  renderClientUI();
   updateMerchantAuthState();
   syncCloudData();
 }
