@@ -581,30 +581,32 @@ function initNexaApp() {
       renderClientUI();
       showToast('✅ Connecté !', `Bienvenue ${name} !`);
 
-      // 2. ASYNCHRONOUS BACKGROUND SUPABASE SYNC (NON-BLOCKING)
-      if (window.nexaBackend) {
-        try {
-          console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
-          
-          const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
-          if (profile) {
-            console.log('[DIAGNOSTIC FRONTEND] Profil Supabase existant trouvé:', profile);
-            state.clientSession.points = profile.points || 0;
-            state.clientSession.name = profile.name || name;
-            localStorage.setItem('nexa_client_points', state.clientSession.points);
-            localStorage.setItem('nexa_client_name', state.clientSession.name);
-            renderClientUI();
-          } else {
-            console.log('[DIAGNOSTIC FRONTEND] Création nouveau profil dans Supabase...');
-            await window.nexaBackend.registerClientIdentity(targetResto, phone, name);
-          }
-        } catch (err) {
-          console.warn('[DIAGNOSTIC FRONTEND WARN] Échec de synchronisation arrière-plan Supabase:', err);
-        }
+      // 2. IMMEDIATELY TRIGGER TABLE SCAN IF DIRECT QR SCAN (0ms)
+      if (isDirectTableScan) {
+        triggerQRScanSuccess(`Table #${tableParam}`);
       }
 
-      if (isDirectTableScan) {
-        await triggerQRScanSuccess(`Table #${tableParam}`);
+      // 3. ASYNCHRONOUS BACKGROUND SUPABASE SYNC (TRULY NON-BLOCKING)
+      if (window.nexaBackend) {
+        (async () => {
+          try {
+            console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
+            const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
+            if (profile) {
+              console.log('[DIAGNOSTIC FRONTEND] Profil Supabase existant trouvé:', profile);
+              state.clientSession.points = Math.max(state.clientSession.points, profile.points || 0);
+              state.clientSession.name = profile.name || name;
+              localStorage.setItem('nexa_client_points', state.clientSession.points);
+              localStorage.setItem('nexa_client_name', state.clientSession.name);
+              renderClientUI();
+            } else {
+              console.log('[DIAGNOSTIC FRONTEND] Création nouveau profil dans Supabase...');
+              await window.nexaBackend.registerClientIdentity(targetResto, phone, name);
+            }
+          } catch (err) {
+            console.warn('[DIAGNOSTIC FRONTEND WARN] Échec de synchronisation arrière-plan Supabase:', err);
+          }
+        })();
       }
     });
   }
