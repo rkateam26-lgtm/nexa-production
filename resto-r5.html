@@ -1581,14 +1581,14 @@
         // Pre-generate QR Code immediately on startup
         loadR10QRCodeStudio();
 
-        // Fetch Real Supabase Metrics
-        await loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
-
-        // Support direct linking to tabs via URL search param (?tab=...) or hash (#...)
+        // Support direct linking to tabs via URL search param (?tab=...) or hash (#...) IMMEDIATELY (0ms)
         const urlTab = new URLSearchParams(window.location.search).get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
         if (urlTab) {
           switchR5Tab(urlTab);
         }
+
+        // Fetch Real Supabase Metrics in background (non-blocking)
+        loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
 
       } catch (err) {
         console.error('[DIAGNOSTIC R5 INIT ERROR]', err);

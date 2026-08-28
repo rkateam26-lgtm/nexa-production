@@ -741,6 +741,7 @@ function initNexaApp() {
     }
 
     await syncCloudData();
+    renderClientUI();
     showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}). Solde: ${state.clientSession.points} pts.`);
   }
 
