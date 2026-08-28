@@ -127,19 +127,27 @@ function initNexaApp() {
           }
         }
 
-        // 3. FETCH MERCHANT DASHBOARD DATA ONLY IF MERCHANT LOGGED IN
-        if (state.isMerchantLoggedIn) {
-          const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
-          if (cloudResto) {
-            state.restaurant.type = cloudResto.type;
-            const localPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
-            if (localPts) {
-              state.restaurant.pointsPerScan = parseInt(localPts, 10);
-            } else if (cloudResto.pointsPerScan) {
-              state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+        // 3. FETCH RESTAURANT PROFILE & CUSTOM POINTS PER SCAN FOR ALL USERS (CLIENT & MERCHANT)
+        try {
+          if (window.nexaBackend && window.nexaBackend.getRestaurantByName) {
+            const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
+            if (cloudResto) {
+              if (cloudResto.type) state.restaurant.type = cloudResto.type;
+              const localPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
+              if (localPts) {
+                state.restaurant.pointsPerScan = parseInt(localPts, 10);
+              } else if (cloudResto.pointsPerScan) {
+                state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+              }
+              if (cloudResto.currency) state.restaurant.currency = cloudResto.currency;
             }
-            state.restaurant.currency = cloudResto.currency;
           }
+        } catch (restoFetchErr) {
+          console.warn('[RESTO PROFILE FETCH WARN]', restoFetchErr);
+        }
+
+        // 4. FETCH MERCHANT DASHBOARD DATA ONLY IF MERCHANT LOGGED IN
+        if (state.isMerchantLoggedIn) {
 
           // Fetch Cloud Clients for Merchant CRM
           const cloudClients = await window.nexaBackend.fetchClientsByResto(state.restaurant.name);

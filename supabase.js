@@ -557,23 +557,31 @@ class NexaProductionBackend {
       console.warn('Resto loyalty fetch warn:', err);
     }
 
-    // 2. Fetch total points distributed & participating clients count
+    // 2. Fetch total points distributed & participating clients count (Local + Cloud merged)
     let totalPointsDistributed = 0;
     let totalClientsCount = 0;
 
+    let clientRows = [];
     try {
-      const { data: clientRows } = await client
+      const res = await client
         .from('clients')
         .select('*')
         .ilike('whatsapp_phone', `%_${slug}`);
-
-      if (clientRows) {
-        totalClientsCount = clientRows.length;
-        totalPointsDistributed = clientRows.reduce((sum, c) => sum + (c.points_balance || 0), 0);
-      }
+      if (res.data) clientRows = res.data;
     } catch (err) {
-      console.warn('Clients stats warn:', err);
+      console.warn('Clients stats warn:', err.message);
     }
+
+    // Merge with local clients list for instant resilient metrics
+    let localClients = this.getLocalClients(slug);
+    let mergedClientsMap = new Map();
+    localClients.forEach(c => mergedClientsMap.set(c.rawKey || c.whatsapp_phone || c.phone, c));
+    if (Array.isArray(clientRows)) {
+      clientRows.forEach(c => mergedClientsMap.set(c.whatsapp_phone || c.phone, c));
+    }
+    const allClients = Array.from(mergedClientsMap.values());
+    totalClientsCount = allClients.length;
+    totalPointsDistributed = allClients.reduce((sum, c) => sum + (c.points_balance || c.points || 0), 0);
 
     return {
       pointsPerScan,

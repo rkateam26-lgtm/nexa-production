@@ -1663,12 +1663,13 @@
 
     // TAB SWITCHER HANDLER
     function switchR5Tab(tabName, clickedEl) {
+      if (tabName === 'loyalty') tabName = 'points';
       document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => el.classList.remove('active'));
       
       // Auto-activate corresponding links on sidebar and mobile dock
       document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => {
         const onclickAttr = el.getAttribute('onclick') || '';
-        if (onclickAttr.includes(`'${tabName}'`)) {
+        if (onclickAttr.includes(`'${tabName}'`) || (tabName === 'points' && onclickAttr.includes("'loyalty'"))) {
           el.classList.add('active');
         }
       });
@@ -1995,24 +1996,36 @@
       if (alertErr) alertErr.style.display = 'none';
       if (alertSucc) alertSucc.style.display = 'none';
 
+      const slug = (activeB2BSession.restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      const localPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active') || '20';
+      const localClients = JSON.parse(localStorage.getItem(`nexa_clients_cache_${slug}`) || localStorage.getItem(`nexa_clients_${slug}`) || '[]');
+      
+      const ptsValEl = document.getElementById('r7-metric-pts-val');
+      const totalPtsEl = document.getElementById('r7-metric-total-pts');
+      const totalClientsEl = document.getElementById('r7-metric-total-clients');
+      const pointsInput = document.getElementById('r7-points-input');
+
+      // 1. Instant 0ms render from local cache
+      if (ptsValEl) ptsValEl.textContent = `${localPts} PTS`;
+      if (pointsInput) pointsInput.value = localPts;
+      if (Array.isArray(localClients)) {
+        if (totalClientsEl) totalClientsEl.textContent = localClients.length;
+        if (totalPtsEl) totalPtsEl.textContent = `${localClients.reduce((s, c) => s + (c.points_balance || c.points || 0), 0)} pts`;
+      }
+
+      // 2. Fetch verified Cloud metrics & config
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
         const config = await backend.getRestaurantLoyaltyConfig(activeB2BSession.restoName, activeB2BSession.email);
 
         if (config) {
-          document.getElementById('r7-metric-pts-val').textContent = `${config.pointsPerScan} PTS`;
-          document.getElementById('r7-metric-total-pts').textContent = `${config.totalPointsDistributed} pts`;
-          document.getElementById('r7-metric-total-clients').textContent = config.totalClientsCount;
-
-          const pointsInput = document.getElementById('r7-points-input');
+          if (ptsValEl) ptsValEl.textContent = `${config.pointsPerScan} PTS`;
+          if (totalPtsEl) totalPtsEl.textContent = `${config.totalPointsDistributed} pts`;
+          if (totalClientsEl) totalClientsEl.textContent = config.totalClientsCount;
           if (pointsInput) pointsInput.value = config.pointsPerScan;
         }
       } catch (err) {
-        console.error('[DIAGNOSTIC R7 LOAD CONFIG ERROR]', err);
-        if (alertErr) {
-          alertErr.textContent = `Erreur de chargement des règles de fidélité : ${err.message}`;
-          alertErr.style.display = 'block';
-        }
+        console.warn('[DIAGNOSTIC R7 LOAD CONFIG NOTICE]', err);
       }
     }
 
@@ -2061,6 +2074,9 @@
           document.getElementById('r7-metric-pts-val').textContent = `${result.pointsPerScan} PTS`;
           localStorage.setItem(`nexa_pts_${backend.getSlug(activeB2BSession.restoName)}`, result.pointsPerScan);
           localStorage.setItem('nexa_pts_active', result.pointsPerScan);
+
+          // Keep dashboard overview synchronized in background
+          loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
 
           if (alertSucc) {
             alertSucc.textContent = `✅ Configuration enregistrée avec succès ! Vos futurs scans créditeront ${result.pointsPerScan} points.`;
