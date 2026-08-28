@@ -746,6 +746,7 @@ class NexaProductionBackend {
       throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
     }
 
+    const rewardId = rewardData.id || `rew_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
     let list = this.getLocalRewards(slug);
     const existingIdx = list.findIndex(r => r.id === rewardId);
 
