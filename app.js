@@ -63,8 +63,8 @@ function initNexaApp() {
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
       history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
-    rewards: JSON.parse(localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
-    offers: [],
+    rewards: JSON.parse(localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
+    offers: JSON.parse(localStorage.getItem(`nexa_offers_cache_${slug}`) || localStorage.getItem(`nexa_offers_${slug}`) || '[]'),
     notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
     validatedProofs: JSON.parse(localStorage.getItem(`nexa_validated_proofs_${slug}`) || '[]'),
     pendingClaims: JSON.parse(localStorage.getItem(`nexa_pending_claims_${slug}`) || '[]'),
@@ -943,6 +943,29 @@ function initNexaApp() {
             </div>
           `;
         }).join('');
+      }
+    }
+
+    // Render Prominent Active Offers on Home Screen
+    const homeOffersContainer = document.getElementById('client-offers-highlight-container');
+    const homeOffersList = document.getElementById('client-offers-list');
+    if (homeOffersContainer && homeOffersList) {
+      if (state.offers && state.offers.length > 0) {
+        homeOffersList.innerHTML = state.offers.map(o => `
+          <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 2px 6px rgba(220,38,38,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+              <strong style="font-size: 0.95rem; font-weight: 800; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
+              <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">En cours</span>
+            </div>
+            <p style="font-size: 0.82rem; color: #4B5563; margin: 0 0 0.4rem 0; line-height: 1.35;">${escapeHtml(o.desc || 'Offre spéciale disponible en restaurant.')}</p>
+            <div style="font-size: 0.72rem; color: #9CA3AF; font-weight: 600;">
+              <span>📅 Du ${o.startDate} au ${o.endDate}</span>
+            </div>
+          </div>
+        `).join('');
+        homeOffersContainer.style.display = 'block';
+      } else {
+        homeOffersContainer.style.display = 'none';
       }
     }
 
