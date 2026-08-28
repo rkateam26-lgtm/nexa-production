@@ -1284,10 +1284,10 @@ class NexaProductionBackend {
         name: clientName,
         points_balance: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
         points: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
-        visits_count: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 1) : 1,
-        visits: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 1) : 1,
-        lastVisit: 'À l\'instant',
-        last_scan_at: new Date().toISOString()
+        visits_count: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 0) : 0,
+        visits: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 0) : 0,
+        lastVisit: existingIndex >= 0 ? (localClients[existingIndex].lastVisit || 'Nouveau client') : 'Nouveau client',
+        last_scan_at: existingIndex >= 0 ? localClients[existingIndex].last_scan_at : null
       };
       if (existingIndex >= 0) {
         localClients[existingIndex] = { ...localClients[existingIndex], ...clientObj };
@@ -1309,7 +1309,8 @@ class NexaProductionBackend {
       whatsapp_phone: compositeKey, 
       full_name: clientName,
       points_balance: 0,
-      visits_count: 1
+      visits_count: 0,
+      last_scan_at: null
     };
 
     try {

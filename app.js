@@ -560,11 +560,10 @@ function initNexaApp() {
           name: name,
           full_name: name,
           points: state.clientSession.points || 0,
-          points_balance: state.clientSession.points || 0,
-          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
-          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
-          lastVisit: 'À l\'instant',
-          last_scan_at: new Date().toISOString()
+          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 0) : 0,
+          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 0) : 0,
+          lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Nouveau client') : 'Nouveau client',
+          last_scan_at: existIdx >= 0 ? currentCrmClients[existIdx].last_scan_at : null
         };
         if (existIdx >= 0) {
           currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
