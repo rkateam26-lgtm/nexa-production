@@ -806,16 +806,16 @@ class NexaProductionBackend {
       this.saveLocalRewards(slug, list);
     }
 
-    // 2. Synchronize with Supabase Cloud if available
+    // 2. Non-blocking background cloud sync
     if (client) {
-      try {
-        await client
-          .from('rewards')
-          .update({ active: !currentActiveState })
-          .eq('id', rewardId);
-      } catch (e) {
-        console.warn('[DIAGNOSTIC R8 CLOUD TOGGLE NOTICE]:', e.message);
-      }
+      const togglePromise = client
+        .from('rewards')
+        .update({ active: !currentActiveState, is_active: !currentActiveState })
+        .eq('id', rewardId);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      Promise.race([togglePromise, timeoutPromise])
+        .then(() => console.log(`[DIAGNOSTIC R8 CLOUD TOGGLE SUCCESS]: ${rewardId}`))
+        .catch(e => console.warn('[DIAGNOSTIC R8 CLOUD TOGGLE NOTICE]:', e.message));
     }
 
     return { id: rewardId, active: !currentActiveState };
@@ -832,11 +832,11 @@ class NexaProductionBackend {
     this.saveLocalRewards(slug, list);
 
     if (client) {
-      try {
-        await client.from('rewards').delete().eq('id', rewardId);
-      } catch (e) {
-        console.warn('[R8 DELETE CLOUD NOTICE]:', e.message);
-      }
+      const delPromise = client.from('rewards').delete().eq('id', rewardId);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      Promise.race([delPromise, timeoutPromise])
+        .then(() => console.log(`[DIAGNOSTIC R8 CLOUD DELETE SUCCESS]: ${rewardId}`))
+        .catch(e => console.warn('[R8 DELETE CLOUD NOTICE]:', e.message));
     }
     return true;
   }
