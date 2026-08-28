@@ -2370,7 +2370,7 @@
     };
 
     // TOGGLE REWARD STATUS HANDLER
-    async function toggleR8RewardStatus(rewardId, currentActiveState) {
+    window.toggleR8RewardStatus = async function(rewardId, currentActiveState) {
       const restoName = (activeB2BSession && activeB2BSession.restoName)
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
