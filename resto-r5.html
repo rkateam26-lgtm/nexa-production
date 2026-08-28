@@ -1228,6 +1228,12 @@
               <i data-lucide="copy" style="width: 18px; height: 18px;"></i>
               <span>Copy link</span>
             </button>
+
+            <!-- 4. TEST CLIENT SCAN EXPERIENCE -->
+            <a href="index.html?resto=nx_le-savane&table=1" target="_blank" class="btn-create-account" id="btn-test-scan" style="width: auto; padding: 0.75rem 1.4rem; font-size: 0.88rem; background: #10B981; border-color: #10B981; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; color: #FFFFFF;" title="Ouvrir l'expérience client à table">
+              <i data-lucide="smartphone" style="width: 18px; height: 18px;"></i>
+              <span>📱 Ouvrir Expérience Client (Table #1)</span>
+            </a>
           </div>
 
         </div>
@@ -2803,6 +2809,11 @@
       if (nameEl) nameEl.textContent = restoName;
       if (idEl) idEl.textContent = publicId;
       if (urlEl) urlEl.textContent = targetUrl;
+
+      const testScanBtn = document.getElementById('btn-test-scan');
+      if (testScanBtn) {
+        testScanBtn.href = `${origin}/index.html?resto=${encodeURIComponent(publicId)}&table=1`;
+      }
 
       // 2. Render Main Dedicated QR Code Preview (Tab R10)
       const qrBox = document.getElementById('r10-qr-preview-box');
