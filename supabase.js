@@ -519,6 +519,12 @@ class NexaProductionBackend {
     let pointsPerScan = 20; // Default: 20 points
     const cooldownHours = 2; // Fixed 2 hours anti-cheat rule (aligned with client app)
 
+    // Check local storage setting first (instant 0ms)
+    const localSavedPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
+    if (localSavedPts) {
+      pointsPerScan = parseInt(localSavedPts, 10) || 20;
+    }
+
     // 1. Fetch current pointsPerScan setting from `restaurants` table
     try {
       const { data: restoData } = await client
@@ -532,6 +538,7 @@ class NexaProductionBackend {
           const metaObj = typeof restoData.city === 'string' ? JSON.parse(restoData.city) : restoData.city;
           if (metaObj && metaObj.scanPts) {
             pointsPerScan = parseInt(metaObj.scanPts, 10) || 20;
+            localStorage.setItem(`nexa_pts_${slug}`, pointsPerScan.toString());
           }
         } catch (e) {
           console.warn('City JSON parse warn:', e);
@@ -567,14 +574,9 @@ class NexaProductionBackend {
     };
   }
 
-  // 1i. ÉTAPE R7: Update Points Granted Per Scan in Supabase Cloud PostgreSQL
+  // 1i. ÉTAPE R7: Update Points Granted Per Scan (Local-First + Resilient Cloud Sync)
   async updateRestaurantPointsConfig(restoName, userEmail, newPoints) {
     console.log(`[DIAGNOSTIC R7 UPDATE] Updating points config to ${newPoints} pts for resto: "${restoName}"`);
-    const client = this.getClient();
-    if (!client) {
-      throw new Error('Supabase client indisponible. Veuillez vérifier votre connexion.');
-    }
-
     const val = parseInt(newPoints, 10);
     if (isNaN(val) || val <= 0) {
       throw new Error('Le nombre de points doit être un nombre entier strictement positif (supérieur à 0).');
@@ -583,56 +585,54 @@ class NexaProductionBackend {
       throw new Error('Le nombre de points ne peut pas dépasser la limite maximale autorisée de 500 points par scan.');
     }
 
-    try {
-      // 1. Fetch current restaurant record
-      const { data: restoData, error: fetchErr } = await client
-        .from('restaurants')
-        .select('*')
-        .or(`email.eq.${userEmail},name.eq.${restoName}`)
-        .maybeSingle();
+    const slug = this.getSlug(restoName || 'savane');
 
-      if (fetchErr) {
-        console.error('[DIAGNOSTIC R7 FETCH RESTO ERR]', fetchErr);
-        throw new Error(`[Supabase DB] ${fetchErr.message}`);
-      }
+    // 1. Immediately save to LocalStorage (guaranteed success in 0ms)
+    localStorage.setItem(`nexa_pts_${slug}`, val.toString());
+    localStorage.setItem('nexa_pts_active', val.toString());
 
-      let metaObj = {};
-      if (restoData && restoData.city) {
+    // 2. Fire non-blocking Cloud sync to Supabase
+    const client = this.getClient();
+    if (client) {
+      (async () => {
         try {
-          metaObj = typeof restoData.city === 'string' ? JSON.parse(restoData.city) : restoData.city;
-        } catch (e) {
-          metaObj = { type: 'Bistro & Grillades' };
+          const { data: restoData } = await client
+            .from('restaurants')
+            .select('*')
+            .or(`email.eq.${userEmail},name.eq.${restoName}`)
+            .maybeSingle();
+
+          let metaObj = {};
+          if (restoData && restoData.city) {
+            try {
+              metaObj = typeof restoData.city === 'string' ? JSON.parse(restoData.city) : restoData.city;
+            } catch (e) {
+              metaObj = { type: 'Bistro & Grillades' };
+            }
+          }
+
+          metaObj.scanPts = val;
+          const updatedMetaJson = JSON.stringify(metaObj);
+
+          await client
+            .from('restaurants')
+            .upsert({
+              name: restoName,
+              email: userEmail,
+              city: updatedMetaJson
+            }, { onConflict: 'email' });
+
+          console.log('[R7 CLOUD SYNC SUCCESS] Points updated to ' + val);
+        } catch (cloudErr) {
+          console.warn('[R7 CLOUD SYNC NOTICE] Local save OK, cloud sync deferred:', cloudErr.message);
         }
-      }
-
-      metaObj.scanPts = val;
-      const updatedMetaJson = JSON.stringify(metaObj);
-
-      // 2. Update metadata in `restaurants` table
-      const { data: updatedResto, error: updateErr } = await client
-        .from('restaurants')
-        .upsert({
-          name: restoName,
-          email: userEmail,
-          city: updatedMetaJson
-        }, { onConflict: 'email' })
-        .select()
-        .single();
-
-      if (updateErr) {
-        console.error('[DIAGNOSTIC R7 UPDATE RESTO ERR]', updateErr);
-        throw new Error(`[Supabase DB] ${updateErr.message}`);
-      }
-
-      console.log(`[DIAGNOSTIC R7 UPDATE SUCCESS] Points updated to ${val} pts in Supabase Cloud!`);
-      return {
-        pointsPerScan: val,
-        restoName
-      };
-    } catch (err) {
-      console.error('[DIAGNOSTIC R7 UPDATE EXCEPTION]', err);
-      throw err;
+      })();
     }
+
+    return {
+      pointsPerScan: val,
+      restoName
+    };
   }
 
   // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only (Local-First + Cloud Sync)
@@ -794,6 +794,26 @@ class NexaProductionBackend {
     }
 
     return { id: rewardId, active: !currentActiveState };
+  }
+
+  // Delete a Reward (Local-First + Background Cloud Sync)
+  async deleteRestaurantReward(restoName, rewardId) {
+    console.log(`[DIAGNOSTIC R8 DELETE] Deleting reward ${rewardId} for resto: "${restoName}"`);
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+
+    let list = this.getLocalRewards(slug);
+    list = list.filter(r => String(r.id) !== String(rewardId));
+    this.saveLocalRewards(slug, list);
+
+    if (client) {
+      try {
+        await client.from('rewards').delete().eq('id', rewardId);
+      } catch (e) {
+        console.warn('[R8 DELETE CLOUD NOTICE]:', e.message);
+      }
+    }
+    return true;
   }
 
   // 1m. ÉTAPE R9: Fetch Commercial Offers & Campaigns for this Restaurant only
@@ -977,6 +997,26 @@ class NexaProductionBackend {
     }
 
     return { id: offerId, active: !currentActiveState };
+  }
+
+  // Delete an Offer (Local-First + Background Cloud Sync)
+  async deleteRestaurantOffer(restoName, offerId) {
+    console.log(`[DIAGNOSTIC R9 DELETE] Deleting offer ${offerId} for resto: "${restoName}"`);
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+
+    let list = this.getLocalOffers(slug);
+    list = list.filter(o => String(o.id) !== String(offerId));
+    this.saveLocalOffers(slug, list);
+
+    if (client) {
+      try {
+        await client.from('offers').delete().eq('id', offerId);
+      } catch (e) {
+        console.warn('[R9 DELETE CLOUD NOTICE]:', e.message);
+      }
+    }
+    return true;
   }
 
   // 2. Fetch Restaurant Profile Details

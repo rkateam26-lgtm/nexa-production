@@ -2035,16 +2035,17 @@
           // Update local UI metrics & localStorage
           document.getElementById('r7-metric-pts-val').textContent = `${result.pointsPerScan} PTS`;
           localStorage.setItem(`nexa_pts_${backend.getSlug(activeB2BSession.restoName)}`, result.pointsPerScan);
+          localStorage.setItem('nexa_pts_active', result.pointsPerScan);
 
           if (alertSucc) {
-            alertSucc.textContent = `✅ Configuration enregistrée avec succès dans Supabase ! Vos futurs scans créditeront ${result.pointsPerScan} points.`;
+            alertSucc.textContent = `✅ Configuration enregistrée avec succès ! Vos futurs scans créditeront ${result.pointsPerScan} points.`;
             alertSucc.style.display = 'block';
           }
 
         } catch (err) {
           console.error('[DIAGNOSTIC R7 SAVE CONFIG ERROR]', err);
           if (alertErr) {
-            alertErr.textContent = err.message || 'Échec de l\'enregistrement dans Supabase Cloud.';
+            alertErr.textContent = err.message || 'Échec de l\'enregistrement.';
             alertErr.style.display = 'block';
           }
         } finally {
@@ -2145,12 +2146,15 @@
                 <span>${usageText}</span>
               </div>
 
-              <div style="display: flex; gap: 0.5rem;">
-                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center;" onclick="openR8RewardModal('${r.id}')">
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center; font-size: 0.75rem; padding: 0.4rem 0.3rem;" onclick="openR8RewardModal('${r.id}')">
                   ✏️ Modifier
                 </button>
-                <button class="btn-logout" style="flex: 1; font-size: 0.78rem; padding: 0.4rem 0.5rem; justify-content: center; color: ${r.active ? '#DC2626' : '#10B981'}; border-color: ${r.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR8RewardStatus('${r.id}', ${r.active})">
+                <button class="btn-logout" style="flex: 1; font-size: 0.75rem; padding: 0.4rem 0.3rem; justify-content: center; color: ${r.active ? '#DC2626' : '#10B981'}; border-color: ${r.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR8RewardStatus('${r.id}', ${r.active})">
                   ${r.active ? 'Désactiver' : 'Activer'}
+                </button>
+                <button class="btn-logout" style="font-size: 0.75rem; padding: 0.4rem 0.6rem; justify-content: center; color: #64748B; border-color: #CBD5E1;" onclick="deleteR8Reward('${r.id}')" title="Supprimer cette récompense">
+                  🗑️
                 </button>
               </div>
             </div>
@@ -2325,6 +2329,22 @@
       }
     }
 
+    // DELETE REWARD HANDLER
+    window.deleteR8Reward = async function(rewardId) {
+      if (!confirm('Voulez-vous vraiment supprimer cette récompense du catalogue ?')) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.deleteRestaurantReward(restoName, rewardId);
+        await loadR8Rewards();
+      } catch (err) {
+        console.error('[DIAGNOSTIC R8 DELETE REWARD ERROR]', err);
+      }
+    };
+
     // ==========================================================================
     // ÉTAPE R9: COMMERCIAL OFFERS ENGINE (STATUS FILTERS, CREATE, EDIT, RENDER)
     // ==========================================================================
@@ -2456,12 +2476,15 @@
                 📅 <strong>Du ${o.startDate} au ${o.endDate}</strong>
               </div>
 
-              <div style="display: flex; gap: 0.5rem;">
-                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center;" onclick="openR9OfferModal('${o.id}')">
+              <div style="display: flex; gap: 0.4rem;">
+                <button class="r6-btn-detail" style="flex: 1; text-align: center; justify-content: center; font-size: 0.75rem; padding: 0.4rem 0.3rem;" onclick="openR9OfferModal('${o.id}')">
                   ✏️ Modifier
                 </button>
-                <button class="btn-logout" style="flex: 1; font-size: 0.78rem; padding: 0.4rem 0.5rem; justify-content: center; color: ${o.active ? '#DC2626' : '#10B981'}; border-color: ${o.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR9OfferStatus('${o.id}', ${o.active})">
+                <button class="btn-logout" style="flex: 1; font-size: 0.75rem; padding: 0.4rem 0.3rem; justify-content: center; color: ${o.active ? '#DC2626' : '#10B981'}; border-color: ${o.active ? '#FECACA' : '#A7F3D0'};" onclick="toggleR9OfferStatus('${o.id}', ${o.active})">
                   ${o.active ? 'Désactiver' : 'Activer'}
+                </button>
+                <button class="btn-logout" style="font-size: 0.75rem; padding: 0.4rem 0.6rem; justify-content: center; color: #64748B; border-color: #CBD5E1;" onclick="deleteR9Offer('${o.id}')" title="Supprimer cette offre">
+                  🗑️
                 </button>
               </div>
             </div>
@@ -2654,6 +2677,22 @@
         }
       }
     }
+
+    // DELETE OFFER HANDLER
+    window.deleteR9Offer = async function(offerId) {
+      if (!confirm('Voulez-vous vraiment supprimer cette offre ?')) return;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.deleteRestaurantOffer(restoName, offerId);
+        await loadR9Offers();
+      } catch (err) {
+        console.error('[DIAGNOSTIC R9 DELETE OFFER ERROR]', err);
+      }
+    };
 
     // ==========================================================================
     // ÉTAPE R10: OFFICIAL RESTAURANT QR CODE ENGINE (RENDER, DOWNLOAD, PRINT, COPY)
