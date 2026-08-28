@@ -632,15 +632,17 @@ function initNexaApp() {
 
     let lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
 
-    // FETCH VERIFIED LAST SCAN TIMESTAMP FROM CLOUD SUPABASE POSTGRESQL!
+    // FETCH VERIFIED LAST SCAN TIMESTAMP FROM CLOUD SUPABASE POSTGRESQL (FAST 1S TIMEOUT)!
     if (window.nexaBackend) {
       try {
-        const cloudLastScan = await window.nexaBackend.checkClientCooldownCloud(state.restaurant.name, state.clientSession.whatsapp);
+        const checkPromise = window.nexaBackend.checkClientCooldownCloud(state.restaurant.name, state.clientSession.whatsapp);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000));
+        const cloudLastScan = await Promise.race([checkPromise, timeoutPromise]);
         if (cloudLastScan > 0) {
           lastScanTime = Math.max(lastScanTime, cloudLastScan);
         }
       } catch (err) {
-        console.log('Cloud cooldown check info:', err);
+        // Fast fallback to local anti-cheat
       }
     }
 
@@ -674,11 +676,12 @@ function initNexaApp() {
 
     // REACHED ONLY IF > 2 HOURS!
     const localConfiguredPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
-    const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 10);
+    const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 20);
 
     state.clientSession.points += scanEarned;
     localStorage.setItem('nexa_client_points', state.clientSession.points);
     localStorage.setItem(lastScanStorageKey, now.toString());
+    renderClientUI();
 
     // Update CRM clients locally on scan (instant 0ms visibility in resto-r5)
     const scanTargetResto = (hasRestaurantContext && state.restaurant.name !== 'Aucun Restaurant') 

@@ -1605,11 +1605,22 @@
     async function loadDashboardMetrics(restoName, userEmail) {
       const slug = (restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
       
-      // Instant render from local cache if available (0ms)
+      // Instant render from local cache or local clients list (0ms)
       try {
         const cached = localStorage.getItem(`nexa_metrics_cache_${slug}`);
         if (cached) {
           applyMetricsToDashboard(JSON.parse(cached));
+        } else {
+          const localClients = JSON.parse(localStorage.getItem(`nexa_clients_cache_${slug}`) || localStorage.getItem(`nexa_clients_${slug}`) || '[]');
+          if (Array.isArray(localClients) && localClients.length > 0) {
+            applyMetricsToDashboard({
+              totalClients: localClients.length,
+              totalScans: localClients.reduce((s, c) => s + (c.visits_count || c.visits || 0), 0),
+              totalPoints: localClients.reduce((s, c) => s + (c.points_balance || c.points || 0), 0),
+              rewardsRedeemed: 0,
+              activeOffers: 0
+            });
+          }
         }
       } catch (e) {}
 
