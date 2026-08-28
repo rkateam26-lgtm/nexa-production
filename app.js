@@ -54,7 +54,7 @@ function initNexaApp() {
       id: slug,
       name: currentRestoName,
       type: localStorage.getItem(`nexa_type_${slug}`) || '★ 4.9 • Bistro & Grillades',
-      pointsPerScan: parseInt(localStorage.getItem(`nexa_pts_${slug}`) || '20', 10),
+      pointsPerScan: parseInt(localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active') || '20', 10),
       currency: localStorage.getItem(`nexa_curr_${slug}`) || 'FCFA'
     },
     clientSession: {
@@ -174,6 +174,8 @@ function initNexaApp() {
           state.clientsList = [];
           state.stats = { totalClients: 0, qrScansMonth: 0, pointsGiven: 0, rewardsRedeemed: 0 };
         }
+
+        renderClientUI();
       } catch (err) {
         console.log('Cloud sync info:', err);
       }
