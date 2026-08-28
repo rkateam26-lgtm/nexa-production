@@ -722,6 +722,7 @@ class NexaProductionBackend {
   saveLocalRewards(slug, rewardsList) {
     try {
       localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(rewardsList));
+      localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(rewardsList));
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }
@@ -745,23 +746,29 @@ class NexaProductionBackend {
       throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
     }
 
-    const rewardId = rewardData.id || `rew_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    let list = this.getLocalRewards(slug);
+    const existingIdx = list.findIndex(r => r.id === rewardId);
+
     const recordPayload = {
       id: rewardId,
       resto_id: slug,
       restaurant_name: restoName,
       title: rewardData.title.trim(),
       desc: (rewardData.desc || '').trim(),
+      description: (rewardData.desc || '').trim(),
       pts: ptsVal,
+      points_required: ptsVal,
+      points_cost: ptsVal,
       icon: rewardData.icon || '🎁',
       category: rewardData.category || 'Général',
       active: rewardData.active !== false,
-      created_at: new Date().toISOString()
+      is_active: rewardData.active !== false,
+      use_count: existingIdx >= 0 ? (list[existingIdx].use_count || list[existingIdx].useCount || 0) : 0,
+      redemptions_count: existingIdx >= 0 ? (list[existingIdx].redemptions_count || list[existingIdx].useCount || 0) : 0,
+      created_at: existingIdx >= 0 ? (list[existingIdx].created_at || list[existingIdx].createdAt) : new Date().toISOString()
     };
 
     // 1. Immediately persist in local storage cache (guarantees instant success, 0ms)
-    let list = this.getLocalRewards(slug);
-    const existingIdx = list.findIndex(r => r.id === rewardId);
     if (existingIdx >= 0) {
       list[existingIdx] = { ...list[existingIdx], ...recordPayload };
     } else {

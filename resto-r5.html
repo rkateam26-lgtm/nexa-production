@@ -2116,7 +2116,20 @@
       if (errBanner) errBanner.style.display = 'none';
       if (succBanner) succBanner.style.display = 'none';
 
-      if (grid) {
+      // 1. Instant 0ms render from local cache
+      const slug = (restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      try {
+        const cached = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            rawR8RewardsList = parsed;
+            renderR8RewardsFeed(rawR8RewardsList);
+          }
+        }
+      } catch (e) {}
+
+      if ((!rawR8RewardsList || rawR8RewardsList.length === 0) && grid) {
         grid.innerHTML = `<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">⏳ Chargement des récompenses…</div>`;
       }
 
@@ -2310,10 +2323,21 @@
           || 'Le Savane';
 
         const backend = window.nexaBackend || new NexaProductionBackend();
+        const categoryMap = {
+          '☕': 'Boisson Chaude',
+          '🥤': 'Boisson Fraîche',
+          '🍔': 'Plat Signature',
+          '🍕': 'Pizza / Entrée',
+          '🍰': 'Dessert',
+          '🎁': 'Privilège'
+        };
+        const category = categoryMap[icon] || 'Général';
+
         await backend.createOrUpdateRestaurantReward(restoName, {
           id: rewardId || null,
           title,
           icon,
+          category,
           pts,
           desc,
           active
@@ -2345,11 +2369,6 @@
       }
     };
 
-    const formR8Reward = document.getElementById('form-r8-reward');
-    if (formR8Reward) {
-      formR8Reward.addEventListener('submit', window.handleR8RewardSubmit);
-    }
-
     // TOGGLE REWARD STATUS HANDLER
     async function toggleR8RewardStatus(rewardId, currentActiveState) {
       const restoName = (activeB2BSession && activeB2BSession.restoName)
@@ -2371,8 +2390,8 @@
     }
 
     // DELETE REWARD HANDLER
-    window.deleteR8Reward = async function(rewardId) {
-      if (!confirm('Voulez-vous vraiment supprimer cette récompense du catalogue ?')) return;
+    window.deleteR8Reward = async function(rewardId, skipConfirm = false) {
+      if (!skipConfirm && typeof confirm === 'function' && !confirm('Voulez-vous vraiment supprimer cette récompense du catalogue ?')) return;
       const restoName = (activeB2BSession && activeB2BSession.restoName)
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
