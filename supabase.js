@@ -269,21 +269,55 @@ class NexaProductionBackend {
       const totalScansCount = clients.reduce((sum, c) => sum + (c.visits_count || 1), 0);
       const totalPointsDistributed = clients.reduce((sum, c) => sum + (c.points_balance || 0), 0);
 
-      // 2. Query active rewards / offers for this restaurant
+      // 2. Query active rewards / offers & redemptions count for this restaurant
       let activeOffersCount = 0;
       let rewardsRedeemedCount = 0;
+
+      // A. Check local validated proofs first (immediate & accurate for active restaurant)
+      try {
+        const localProofs = localStorage.getItem(`nexa_validated_proofs_${slug}`);
+        if (localProofs) {
+          const parsed = JSON.parse(localProofs);
+          if (Array.isArray(parsed)) {
+            rewardsRedeemedCount = parsed.length;
+          }
+        }
+      } catch (e) {}
+
+      // B. Check local rewards cache for accumulated redemptions count
+      try {
+        const localRewards = this.getLocalRewards(slug);
+        if (Array.isArray(localRewards)) {
+          const sumLocal = localRewards.reduce((sum, r) => sum + (parseInt(r.useCount || r.use_count || r.redemptions_count || 0, 10)), 0);
+          rewardsRedeemedCount = Math.max(rewardsRedeemedCount, sumLocal);
+        }
+      } catch (e) {}
+
+      // C. Query Supabase Cloud rewards table
       try {
         const { data: rewardsRows } = await client
           .from('rewards')
           .select('*')
           .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`);
 
-        if (rewardsRows) {
-          activeOffersCount = rewardsRows.length;
+        if (Array.isArray(rewardsRows)) {
+          const activeRewards = rewardsRows.filter(r => r.active !== false);
+          activeOffersCount += activeRewards.length;
+          const sumCloud = rewardsRows.reduce((sum, r) => sum + (parseInt(r.use_count || r.redemptions_count || 0, 10)), 0);
+          rewardsRedeemedCount = Math.max(rewardsRedeemedCount, sumCloud);
         }
       } catch (err) {
         console.warn('[DIAGNOSTIC R5 REWARDS WARN]', err);
       }
+
+      // D. Check commercial offers count
+      try {
+        const localOffers = this.getLocalOffers(slug);
+        if (Array.isArray(localOffers)) {
+          const activeCommercialOffers = localOffers.filter(o => o.active !== false && o.computedStatus === 'ACTIVE');
+          activeOffersCount += activeCommercialOffers.length;
+        }
+      } catch (e) {}
 
       // 3. Query restaurant record for subscription status & creation date
       let subscriptionStatus = 'Actif - Période d\'Essai';

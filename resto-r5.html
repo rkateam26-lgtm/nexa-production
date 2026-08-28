@@ -1597,25 +1597,50 @@
     }
 
     async function loadDashboardMetrics(restoName, userEmail) {
+      const slug = (restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      
+      // Instant render from local cache if available (0ms)
+      try {
+        const cached = localStorage.getItem(`nexa_metrics_cache_${slug}`);
+        if (cached) {
+          applyMetricsToDashboard(JSON.parse(cached));
+        }
+      } catch (e) {}
+
       try {
         const backend = window.nexaBackend || new NexaProductionBackend();
         const metrics = await backend.getRestaurantDashboardMetrics(restoName, userEmail);
 
         if (metrics) {
-          document.getElementById('metric-clients-count').textContent = metrics.totalClients || 0;
-          document.getElementById('metric-scans-count').textContent = metrics.totalScans || 0;
-          document.getElementById('metric-points-count').textContent = `${metrics.totalPoints || 0} pts`;
-          document.getElementById('metric-rewards-count').textContent = metrics.rewardsRedeemed || 0;
-          document.getElementById('metric-offers-count').textContent = metrics.activeOffers || 0;
-
-          if (metrics.subscription) {
-            document.getElementById('sub-status-text').textContent = metrics.subscription.status;
-            document.getElementById('sub-start-date').textContent = metrics.subscription.startDate;
-            document.getElementById('sub-expire-date').textContent = metrics.subscription.expireDate;
-          }
+          applyMetricsToDashboard(metrics);
+          localStorage.setItem(`nexa_metrics_cache_${slug}`, JSON.stringify(metrics));
         }
       } catch (err) {
         console.error('[DIAGNOSTIC R5 FETCH METRICS ERROR]', err);
+      }
+    }
+
+    function applyMetricsToDashboard(metrics) {
+      if (!metrics) return;
+      const elClients = document.getElementById('metric-clients-count');
+      const elScans = document.getElementById('metric-scans-count');
+      const elPoints = document.getElementById('metric-points-count');
+      const elRewards = document.getElementById('metric-rewards-count');
+      const elOffers = document.getElementById('metric-offers-count');
+
+      if (elClients) elClients.textContent = metrics.totalClients || 0;
+      if (elScans) elScans.textContent = metrics.totalScans || 0;
+      if (elPoints) elPoints.textContent = `${metrics.totalPoints || 0} pts`;
+      if (elRewards) elRewards.textContent = metrics.rewardsRedeemed || 0;
+      if (elOffers) elOffers.textContent = metrics.activeOffers || 0;
+
+      if (metrics.subscription) {
+        const elSubStatus = document.getElementById('sub-status-text');
+        const elSubStart = document.getElementById('sub-start-date');
+        const elSubExpire = document.getElementById('sub-expire-date');
+        if (elSubStatus) elSubStatus.textContent = metrics.subscription.status;
+        if (elSubStart) elSubStart.textContent = metrics.subscription.startDate;
+        if (elSubExpire) elSubExpire.textContent = metrics.subscription.expireDate;
       }
     }
 
