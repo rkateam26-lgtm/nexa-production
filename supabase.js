@@ -56,12 +56,13 @@ class NexaProductionBackend {
 
   // 1. Register or Login Merchant Profile
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
-    if (this.isLiveSupabase && this.client) {
+    const client = this.getClient();
+    if (client) {
       try {
         const slug = this.getSlug(name);
         const metaObj = JSON.stringify({ type: type, scanPts: pointsPerScan });
 
-        const { data: resto } = await this.client
+        const { data: resto } = await client
           .from('restaurants')
           .upsert({
             name: name,
@@ -667,7 +668,7 @@ class NexaProductionBackend {
         const queryPromise = client
           .from('rewards')
           .select('*')
-          .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`)
+          .or(`description.ilike.%${slug}%,description.ilike.%${restoName}%`)
           .order('created_at', { ascending: false });
 
         const timeoutPromise = new Promise((_, reject) => 
@@ -690,15 +691,16 @@ class NexaProductionBackend {
 
     // 3. Format rewards cleanly
     const formattedRewards = rewards.map(r => {
+      const isLegacyDescResto = r.description === slug || r.description === restoName;
       return {
         id: r.id,
         restoId: r.resto_id || slug,
         restoName: r.restaurant_name || restoName,
         title: r.title || 'Récompense',
-        desc: r.desc || r.description || 'Valable sur présentation en caisse.',
-        pts: r.pts || r.points_cost || 50,
+        desc: (r.desc && r.desc !== slug) ? r.desc : (isLegacyDescResto ? 'Valable sur présentation en caisse.' : (r.description || 'Valable sur présentation en caisse.')),
+        pts: r.points_required || r.pts || r.points_cost || 20,
         icon: r.icon || '🎁',
-        category: r.category || 'Boisson',
+        category: r.category || 'Général',
         active: r.active !== false && r.is_active !== false,
         useCount: r.redemptions_count || r.use_count || 0,
         createdAt: r.created_at || new Date().toISOString()
@@ -779,7 +781,19 @@ class NexaProductionBackend {
 
     // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
     if (client) {
-      const syncPromise = client.from('rewards').upsert(recordPayload);
+      const dbPayload = {
+        title: rewardData.title.trim(),
+        description: slug,
+        points_required: ptsVal,
+        icon: rewardData.icon || '🎁'
+      };
+
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rewardId);
+      if (isUUID) {
+        dbPayload.id = rewardId;
+      }
+
+      const syncPromise = client.from('rewards').upsert(dbPayload);
       const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
       Promise.race([syncPromise, syncTimeout])
         .then(({ error }) => {
@@ -1078,10 +1092,12 @@ class NexaProductionBackend {
 
   // 2. Fetch Restaurant Profile Details
   async getRestaurantByName(name) {
-    if (this.isLiveSupabase && this.client && name) {
+    const client = this.getClient();
+    if (client && name) {
       try {
         const cleanSearch = name.replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
-        let { data } = await this.client
+        const slug = this.getSlug(name);
+        let { data } = await client
           .from('restaurants')
           .select('*')
           .ilike('name', `%${cleanSearch}%`)
@@ -1089,17 +1105,14 @@ class NexaProductionBackend {
           .maybeSingle();
 
         if (!data) {
-          const fallback = await this.client
-            .from('restaurants')
-            .select('*')
-            .ilike('name', `%${name}%`)
-            .limit(1)
-            .maybeSingle();
-          data = fallback.data;
+          const { data: allRestos } = await client.from('restaurants').select('*');
+          if (allRestos && allRestos.length > 0) {
+            data = allRestos.find(r => this.getSlug(r.name) === slug || r.name.toLowerCase() === name.toLowerCase() || this.getSlug(r.name) === cleanSearch.toLowerCase());
+          }
         }
 
         if (data) {
-          let parsedType = data.city || '★ 4.9 • Bistro & Grillades';
+          let parsedType = '★ 4.9 • Bistro & Grillades';
           let parsedScanPts = 20;
 
           try {
@@ -1107,11 +1120,15 @@ class NexaProductionBackend {
               const meta = JSON.parse(data.city);
               parsedType = meta.type || parsedType;
               parsedScanPts = parseInt(meta.scanPts || '20', 10);
+            } else if (data.city) {
+              parsedType = data.city;
             }
           } catch (e) {}
 
           return {
+            id: data.id,
             name: data.name,
+            email: data.email,
             type: parsedType,
             pointsPerScan: parsedScanPts,
             whatsappContact: data.whatsapp_contact || '',
@@ -1123,6 +1140,38 @@ class NexaProductionBackend {
       }
     }
     return null;
+  }
+
+  // 2b. Fetch All Registered Restaurants from Cloud
+  async getAllRestaurants() {
+    const client = this.getClient();
+    if (client) {
+      try {
+        const { data, error } = await client
+          .from('restaurants')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return data.map(r => ({
+            id: r.id,
+            name: r.name,
+            slug: this.getSlug(r.name),
+            email: r.email,
+            phone: r.whatsapp_contact,
+            plan: r.plan || 'pro'
+          }));
+        }
+      } catch (err) {
+        console.warn('Fetch all restaurants error:', err);
+      }
+    }
+    return [
+      { name: 'Le Savane', slug: 'le-savane', email: 'contact@lesavane.bf' },
+      { name: 'noli', slug: 'noli', email: 'gerarddf7@gmail.com' },
+      { name: 'malvoo', slug: 'malvoo', email: 'gerarddf27@gmail.com' },
+      { name: 'Parisien', slug: 'parisien', email: 'gerarddf17@gmail.com' }
+    ];
   }
 
   // 2b. ÉTAPE R10: Get Secure Public Identifier for a Restaurant
@@ -1233,10 +1282,11 @@ class NexaProductionBackend {
 
   // 4. Create Cloud Reward Tagged with Restaurant Slug
   async createCloudReward(restoName, title, pts, desc, icon, category) {
-    if (this.isLiveSupabase && this.client && restoName) {
+    const client = this.getClient();
+    if (client && restoName) {
       try {
         const slug = this.getSlug(restoName);
-        const { data } = await this.client
+        const { data } = await client
           .from('rewards')
           .insert({
             title: title,
@@ -1257,13 +1307,14 @@ class NexaProductionBackend {
 
   // 5. Delete Reward from Cloud Supabase
   async deleteCloudReward(rewardId, title) {
-    if (this.isLiveSupabase && this.client) {
+    const client = this.getClient();
+    if (client) {
       try {
         if (rewardId && typeof rewardId === 'number' && rewardId < 2000000000) {
-          await this.client.from('rewards').delete().eq('id', rewardId);
+          await client.from('rewards').delete().eq('id', rewardId);
         }
         if (title) {
-          await this.client.from('rewards').delete().eq('title', title);
+          await client.from('rewards').delete().eq('title', title);
         }
       } catch (e) {
         console.error('Delete reward cloud error:', e);
@@ -1581,9 +1632,10 @@ class NexaProductionBackend {
       }
     } catch (e) {}
 
-    if (this.isLiveSupabase && this.client && whatsappPhone) {
+    const client = this.getClient();
+    if (client && whatsappPhone) {
       try {
-        const { data: existingClient } = await this.client
+        const { data: existingClient } = await client
           .from('clients')
           .select('*')
           .eq('whatsapp_phone', compositeKey)
@@ -1591,7 +1643,7 @@ class NexaProductionBackend {
 
         if (existingClient) {
           const newBalance = Math.max(0, (existingClient.points_balance || 0) - pointsDeducted);
-          await this.client
+          await client
             .from('clients')
             .update({ points_balance: newBalance })
             .eq('whatsapp_phone', compositeKey);

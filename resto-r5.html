@@ -771,10 +771,15 @@
         <div class="badge">N</div>
         <span>Nexa<span style="color: var(--nexa-red);">.</span></span>
       </a>
-      <span class="resto-tag-badge" id="header-resto-name">
-        <i data-lucide="store" style="width: 14px; height: 14px;"></i>
-        <span id="txt-resto-name">Chargement…</span>
-      </span>
+      <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: #FFFFFF; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 4px 10px; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
+        <i data-lucide="store" style="width: 15px; height: 15px; color: var(--nexa-red);"></i>
+        <select id="select-active-resto" style="background: transparent; border: none; font-family: var(--font-body); font-weight: 800; font-size: 0.88rem; color: var(--text-dark); cursor: pointer; outline: none;" onchange="switchActiveRestaurant(this.value)" title="Changer de restaurant">
+          <option value="Le Savane">Le Savane</option>
+          <option value="noli">noli</option>
+          <option value="malvoo">malvoo</option>
+          <option value="Parisien">Parisien</option>
+        </select>
+      </div>
     </div>
 
     <div class="user-menu-group">
@@ -1552,55 +1557,126 @@
 
     let activeB2BSession = null;
 
+    // RESTAURANT SWITCHER HANDLER
+    window.switchActiveRestaurant = async function(newRestoName) {
+      if (!newRestoName) return;
+      console.log('⚡ Switching active restaurant to:', newRestoName);
+      
+      const backend = window.nexaBackend || new NexaProductionBackend();
+      const restoObj = await backend.getRestaurantByName(newRestoName);
+      const effectiveName = (restoObj && restoObj.name) || newRestoName;
+      const effectiveEmail = (restoObj && restoObj.email) || `${backend.getSlug(effectiveName)}@restaurant.com`;
+
+      activeB2BSession = {
+        email: effectiveEmail,
+        restoName: effectiveName,
+        authUserId: (restoObj && restoObj.id) || 'user_b2b_' + backend.getSlug(effectiveName),
+        loginTime: Date.now()
+      };
+
+      localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
+      localStorage.setItem('nexa_resto_name', effectiveName);
+
+      const txtEmail = document.getElementById('txt-user-email');
+      if (txtEmail) txtEmail.textContent = effectiveEmail;
+
+      const sel = document.getElementById('select-active-resto');
+      if (sel) {
+        for (let opt of sel.options) {
+          if (opt.value.toLowerCase() === effectiveName.toLowerCase() || backend.getSlug(opt.value) === backend.getSlug(effectiveName)) {
+            sel.value = opt.value;
+            break;
+          }
+        }
+      }
+
+      // Update URL query param without full page reload
+      try {
+        const newUrl = new URL(window.location);
+        newUrl.searchParams.set('resto', backend.getSlug(effectiveName));
+        window.history.replaceState({}, '', newUrl);
+      } catch (e) {}
+
+      // Re-generate QR Code and reload metrics & modules for the newly selected restaurant
+      loadR10QRCodeStudio();
+      loadDashboardMetrics(effectiveName, effectiveEmail);
+      loadR6Clients();
+      loadR7LoyaltyConfig();
+      loadR8Rewards();
+      loadR9Offers();
+    };
+
     // PAGE LOAD: CHECK AUTHENTICATED SESSION & FETCH SUPABASE METRICS
     window.addEventListener('DOMContentLoaded', async () => {
-      let storedSession = localStorage.getItem('nexa_merchant_b2b_session');
-      if (!storedSession) {
-        // Fail-safe default test session so dashboard and QR code are always accessible
-        const defaultResto = localStorage.getItem('nexa_resto_name') || 'Le Savane';
-        storedSession = JSON.stringify({
-          email: 'contact@lesavane.bf',
-          restoName: defaultResto,
-          authUserId: 'user_b2b_test',
-          loginTime: Date.now()
-        });
-        localStorage.setItem('nexa_merchant_b2b_session', storedSession);
-      }
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlResto = urlParams.get('resto') || urlParams.get('r') || urlParams.get('restaurant');
 
+      const backend = window.nexaBackend || new NexaProductionBackend();
+
+      // 1. Fetch all restaurants from Supabase to populate the dropdown
       try {
-        activeB2BSession = JSON.parse(storedSession);
-        if (!activeB2BSession || !activeB2BSession.email || !activeB2BSession.restoName) {
-          activeB2BSession = {
-            email: 'contact@lesavane.bf',
-            restoName: 'Le Savane',
-            authUserId: 'user_b2b_test',
-            loginTime: Date.now()
-          };
+        const allRestos = await backend.getAllRestaurants();
+        const sel = document.getElementById('select-active-resto');
+        if (sel && Array.isArray(allRestos) && allRestos.length > 0) {
+          sel.innerHTML = allRestos.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}</option>`).join('');
         }
-
-        // Display Header Resto Name & User Email
-        const txtResto = document.getElementById('txt-resto-name');
-        const txtEmail = document.getElementById('txt-user-email');
-        if (txtResto) txtResto.textContent = activeB2BSession.restoName;
-        if (txtEmail) txtEmail.textContent = activeB2BSession.email;
-
-        // Pre-generate QR Code immediately on startup
-        loadR10QRCodeStudio();
-
-        // Support direct linking to tabs via URL search param (?tab=...) or hash (#...) IMMEDIATELY (0ms)
-        const urlTab = new URLSearchParams(window.location.search).get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
-        if (urlTab) {
-          switchR5Tab(urlTab);
-        }
-
-        // Fetch Real Supabase Metrics in background (non-blocking)
-        loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
-
-      } catch (err) {
-        console.error('[DIAGNOSTIC R5 INIT ERROR]', err);
-        // Ensure QR is loaded even on metric error
-        loadR10QRCodeStudio();
+      } catch (e) {
+        console.warn('Failed to load restaurants dropdown:', e);
       }
+
+      let storedSession = localStorage.getItem('nexa_merchant_b2b_session');
+      let targetRestoName = 'Le Savane';
+
+      if (urlResto) {
+        // If specified in URL (e.g. ?resto=noli or ?resto=malvoo or ?resto=Parisien)
+        const resolved = await backend.getRestaurantByName(urlResto);
+        targetRestoName = (resolved && resolved.name) || urlResto;
+      } else if (storedSession) {
+        try {
+          const parsed = JSON.parse(storedSession);
+          if (parsed && parsed.restoName) targetRestoName = parsed.restoName;
+        } catch(e) {}
+      } else {
+        targetRestoName = localStorage.getItem('nexa_resto_name') || 'Le Savane';
+      }
+
+      const restoObj = await backend.getRestaurantByName(targetRestoName);
+      const effectiveName = (restoObj && restoObj.name) || targetRestoName;
+      const effectiveEmail = (restoObj && restoObj.email) || `${backend.getSlug(effectiveName)}@restaurant.com`;
+
+      activeB2BSession = {
+        email: effectiveEmail,
+        restoName: effectiveName,
+        authUserId: (restoObj && restoObj.id) || 'user_b2b_' + backend.getSlug(effectiveName),
+        loginTime: Date.now()
+      };
+      localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
+      localStorage.setItem('nexa_resto_name', effectiveName);
+
+      const sel = document.getElementById('select-active-resto');
+      if (sel) {
+        for (let opt of sel.options) {
+          if (opt.value.toLowerCase() === effectiveName.toLowerCase() || backend.getSlug(opt.value) === backend.getSlug(effectiveName)) {
+            sel.value = opt.value;
+            break;
+          }
+        }
+      }
+
+      const txtEmail = document.getElementById('txt-user-email');
+      if (txtEmail) txtEmail.textContent = activeB2BSession.email;
+
+      // Pre-generate QR Code immediately on startup
+      loadR10QRCodeStudio();
+
+      // Support direct linking to tabs via URL search param (?tab=...) or hash (#...) IMMEDIATELY (0ms)
+      const urlTab = urlParams.get('tab') || (window.location.hash ? window.location.hash.replace('#', '') : null);
+      if (urlTab) {
+        switchR5Tab(urlTab);
+      }
+
+      // Fetch Real Supabase Metrics in background (non-blocking)
+      loadDashboardMetrics(activeB2BSession.restoName, activeB2BSession.email);
     });
 
     function showR5AuthError() {
