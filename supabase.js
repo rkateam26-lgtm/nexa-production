@@ -183,27 +183,32 @@ class NexaProductionBackend {
   async loginRestaurantB2B(email, password) {
     console.log('[DIAGNOSTIC B2B LOGIN START]', email);
     const client = this.getClient();
-    const parts = email ? email.split('@') : ['resto'];
+    const cleanInput = (email || '').trim();
+    const parts = cleanInput.includes('@') ? cleanInput.split('@') : [cleanInput, ''];
     const derivedRestoName = parts[0] ? (parts[0].charAt(0).toUpperCase() + parts[0].slice(1)) : 'Mon Restaurant';
 
-    let authUser = { id: 'user_b2b_login_' + Date.now(), email: email };
-    let restoData = { name: derivedRestoName, email: email };
+    let authUser = { id: 'user_b2b_login_' + Date.now(), email: cleanInput };
+    let restoData = { name: derivedRestoName, email: cleanInput };
 
     if (client) {
       try {
-        const { data: authData } = await client.auth.signInWithPassword({
-          email: email,
-          password: password
-        });
+        if (cleanInput.includes('@')) {
+          const { data: authData } = await client.auth.signInWithPassword({
+            email: cleanInput,
+            password: password
+          });
 
-        if (authData && authData.user) {
-          authUser = authData.user;
+          if (authData && authData.user) {
+            authUser = authData.user;
+          }
         }
 
-        const { data: fetchedResto } = await client
+        const slug = this.getSlug(parts[0]);
+        let { data: fetchedResto } = await client
           .from('restaurants')
           .select('*')
-          .eq('email', email)
+          .or(`email.ilike.%${cleanInput}%,name.ilike.%${cleanInput}%,name.ilike.%${slug}%`)
+          .limit(1)
           .maybeSingle();
 
         if (fetchedResto) {
@@ -859,6 +864,7 @@ class NexaProductionBackend {
   async getRestaurantOffers(restoName) {
     console.log(`[DIAGNOSTIC R9 OFFERS] Fetching offers for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
     const client = this.getClient();
 
     // 1. Immediately read locally cached offers
@@ -889,12 +895,13 @@ class NexaProductionBackend {
           // Cloud fallback: Read from restaurants table (logo_url column)
           const { data: restoRows } = await client
             .from('restaurants')
-            .select('logo_url')
-            .ilike('name', `%${restoName}%`);
+            .select('logo_url, name')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
           if (restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
             try {
-              const cloudOffers = JSON.parse(restoRows[0].logo_url);
-              if (Array.isArray(cloudOffers) && cloudOffers.length > 0) {
+              const raw = JSON.parse(restoRows[0].logo_url);
+              const cloudOffers = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+              if (cloudOffers.length > 0) {
                 const mergedMap = new Map();
                 offers.forEach(o => mergedMap.set(o.id, o));
                 cloudOffers.forEach(r => mergedMap.set(r.id, r));
@@ -909,11 +916,12 @@ class NexaProductionBackend {
         try {
           const { data: restoRows } = await client
             .from('restaurants')
-            .select('logo_url')
-            .ilike('name', `%${restoName}%`);
+            .select('logo_url, name')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
           if (restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
-            const cloudOffers = JSON.parse(restoRows[0].logo_url);
-            if (Array.isArray(cloudOffers) && cloudOffers.length > 0) {
+            const raw = JSON.parse(restoRows[0].logo_url);
+            const cloudOffers = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+            if (cloudOffers.length > 0) {
               const mergedMap = new Map();
               offers.forEach(o => mergedMap.set(o.id, o));
               cloudOffers.forEach(r => mergedMap.set(r.id, r));
@@ -928,14 +936,14 @@ class NexaProductionBackend {
     // 3. Compute dynamic time-aware status for each offer
     const now = new Date();
     const formattedOffers = offers.map(o => {
-      const startDateStr = o.start_date ? o.start_date.split('T')[0] : new Date().toISOString().split('T')[0];
-      const endDateStr = o.end_date ? o.end_date.split('T')[0] : new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+      const startDateStr = o.startDate || (o.start_date ? o.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+      const endDateStr = o.endDate || (o.end_date ? o.end_date.split('T')[0] : new Date(Date.now() + 30*86400000).toISOString().split('T')[0]);
 
-      const start = new Date(o.start_date || startDateStr);
-      const end = new Date(o.end_date || endDateStr);
+      const start = new Date(startDateStr);
+      const end = new Date(endDateStr);
       end.setHours(23, 59, 59, 999);
 
-      let computedStatus = 'ACTIVE';
+      let computedStatus = o.computedStatus || 'ACTIVE';
       if (o.active === false || o.is_active === false) {
         computedStatus = 'DISABLED';
       } else if (now > end) {
@@ -948,15 +956,15 @@ class NexaProductionBackend {
 
       return {
         id: o.id,
-        restoId: o.resto_id || slug,
-        restoName: o.restaurant_name || restoName,
+        restoId: o.restoId || o.resto_id || slug,
+        restoName: o.restoName || o.restaurant_name || restoName,
         title: o.title || 'Offre Spéciale',
-        desc: o.description || o.desc || 'Offre privilège pour les clients Nexa.',
+        desc: o.desc || o.description || 'Offre privilège pour les clients Nexa.',
         startDate: startDateStr,
         endDate: endDateStr,
         active: o.active !== false && o.is_active !== false,
         computedStatus: computedStatus,
-        createdAt: o.created_at || new Date().toISOString()
+        createdAt: o.createdAt || o.created_at || new Date().toISOString()
       };
     });
 
