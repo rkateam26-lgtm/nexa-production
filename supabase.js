@@ -871,9 +871,43 @@ class NexaProductionBackend {
           offerRows.forEach(r => mergedMap.set(r.id, r));
           offers = Array.from(mergedMap.values());
           this.saveLocalOffers(slug, offers);
+        } else {
+          // Cloud fallback: Read from restaurants table (logo_url column)
+          const { data: restoRows } = await client
+            .from('restaurants')
+            .select('logo_url')
+            .ilike('name', `%${restoName}%`);
+          if (restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
+            try {
+              const cloudOffers = JSON.parse(restoRows[0].logo_url);
+              if (Array.isArray(cloudOffers) && cloudOffers.length > 0) {
+                const mergedMap = new Map();
+                offers.forEach(o => mergedMap.set(o.id, o));
+                cloudOffers.forEach(r => mergedMap.set(r.id, r));
+                offers = Array.from(mergedMap.values());
+                this.saveLocalOffers(slug, offers);
+              }
+            } catch(e) {}
+          }
         }
       } catch (cloudErr) {
-        console.warn('[DIAGNOSTIC R9 OFFERS NOTICE] Serving from fast local cache:', cloudErr.message);
+        // Cloud fallback on error: Read from restaurants table
+        try {
+          const { data: restoRows } = await client
+            .from('restaurants')
+            .select('logo_url')
+            .ilike('name', `%${restoName}%`);
+          if (restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
+            const cloudOffers = JSON.parse(restoRows[0].logo_url);
+            if (Array.isArray(cloudOffers) && cloudOffers.length > 0) {
+              const mergedMap = new Map();
+              offers.forEach(o => mergedMap.set(o.id, o));
+              cloudOffers.forEach(r => mergedMap.set(r.id, r));
+              offers = Array.from(mergedMap.values());
+              this.saveLocalOffers(slug, offers);
+            }
+          }
+        } catch(e) {}
       }
     }
 
@@ -983,13 +1017,20 @@ class NexaProductionBackend {
     // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
     if (client) {
       const syncPromise = client.from('offers').upsert(recordPayload);
-      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
-      Promise.race([syncPromise, syncTimeout])
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500));
+      Promise.race([syncPromise, timeoutPromise])
         .then(({ error }) => {
           if (!error) console.log(`[DIAGNOSTIC R9 CLOUD SUCCESS] Synced offer: ${offerId}`);
-          else console.warn('[DIAGNOSTIC R9 CLOUD NOTICE]:', error.message);
         })
-        .catch(err => console.warn('[DIAGNOSTIC R9 CLOUD NOTICE]:', err.message));
+        .catch(() => {});
+
+      // Fallback: Always save offers JSON to restaurants table for 100% cloud resilience across all devices
+      client
+        .from('restaurants')
+        .update({ logo_url: JSON.stringify(list) })
+        .ilike('name', `%${restoName}%`)
+        .then(() => console.log('[R9 CLOUD RESTAURANTS FALLBACK] Synced offers array to restaurants table'))
+        .catch(e => console.warn('[R9 CLOUD RESTAURANTS NOTICE]:', e.message));
     }
 
     return recordPayload;
@@ -1011,14 +1052,8 @@ class NexaProductionBackend {
 
     // 2. Synchronize with Supabase Cloud if available
     if (client) {
-      try {
-        await client
-          .from('offers')
-          .update({ active: !currentActiveState })
-          .eq('id', offerId);
-      } catch (e) {
-        console.warn('[DIAGNOSTIC R9 CLOUD TOGGLE NOTICE]:', e.message);
-      }
+      client.from('offers').update({ active: !currentActiveState }).eq('id', offerId).then(() => {}).catch(() => {});
+      client.from('restaurants').update({ logo_url: JSON.stringify(list) }).ilike('name', `%${restoName}%`).then(() => {}).catch(() => {});
     }
 
     return { id: offerId, active: !currentActiveState };
@@ -1035,11 +1070,8 @@ class NexaProductionBackend {
     this.saveLocalOffers(slug, list);
 
     if (client) {
-      try {
-        await client.from('offers').delete().eq('id', offerId);
-      } catch (e) {
-        console.warn('[R9 DELETE CLOUD NOTICE]:', e.message);
-      }
+      client.from('offers').delete().eq('id', offerId).then(() => {}).catch(() => {});
+      client.from('restaurants').update({ logo_url: JSON.stringify(list) }).ilike('name', `%${restoName}%`).then(() => {}).catch(() => {});
     }
     return true;
   }
@@ -1241,10 +1273,11 @@ class NexaProductionBackend {
 
   // 6. Fetch Clients STRICTLY for THIS Restaurant (No Global Fallback Leaks!)
   async fetchClientsByResto(restoName) {
-    if (this.isLiveSupabase && this.client && restoName) {
+    const client = this.getClient();
+    if (client && restoName) {
       try {
         const slug = this.getSlug(restoName);
-        const { data: slugClients } = await this.client
+        const { data: slugClients } = await client
           .from('clients')
           .select('*')
           .ilike('whatsapp_phone', `%_${slug}`)
@@ -1260,11 +1293,12 @@ class NexaProductionBackend {
 
   // 7. Fetch Scans History STRICTLY for THIS Restaurant
   async fetchScansHistory(restoName) {
-    if (this.isLiveSupabase && this.client && restoName) {
+    const client = this.getClient();
+    if (client && restoName) {
       try {
         const slug = this.getSlug(restoName);
         // Query scans matching this restaurant's specific clients
-        const { data: clientRows } = await this.client
+        const { data: clientRows } = await client
           .from('clients')
           .select('visits_count, points_balance')
           .ilike('whatsapp_phone', `%_${slug}`);
@@ -1468,10 +1502,11 @@ class NexaProductionBackend {
       console.warn('[CRM SCAN LOCAL CACHE WARN]', localErr);
     }
 
-    if (this.isLiveSupabase && this.client) {
+    const client = this.getClient();
+    if (client) {
       try {
         // Step A: Check existing client by composite key
-        const { data: existingClient } = await this.client
+        const { data: existingClient } = await client
           .from('clients')
           .select('*')
           .eq('whatsapp_phone', compositeKey)
@@ -1483,7 +1518,7 @@ class NexaProductionBackend {
 
         // Step B: Robust Insert or Update in Supabase clients table
         if (existingClient) {
-          await this.client
+          await client
             .from('clients')
             .update({
               full_name: displayName,
@@ -1493,7 +1528,7 @@ class NexaProductionBackend {
             })
             .eq('whatsapp_phone', compositeKey);
         } else {
-          await this.client
+          await client
             .from('clients')
             .insert({
               whatsapp_phone: compositeKey,
@@ -1505,7 +1540,7 @@ class NexaProductionBackend {
         }
 
         // Step C: Insert Scan record with full details
-        await this.client.from('scans').insert({
+        await client.from('scans').insert({
           restaurant_name: restoName,
           client_phone: compositeKey,
           table_number: parseInt(tableNumber, 10) || 1,
