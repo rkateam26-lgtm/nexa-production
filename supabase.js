@@ -1516,6 +1516,8 @@ class NexaProductionBackend {
         const cloudPoints = existingClient ? (existingClient.points_balance || 0) + pointsEarned : currentPoints;
         const displayName = clientName && clientName !== 'Client Nexa' ? clientName : (existingClient ? existingClient.full_name : 'Client Nexa');
 
+        let clientId = existingClient ? existingClient.id : null;
+
         // Step B: Robust Insert or Update in Supabase clients table
         if (existingClient) {
           await client
@@ -1528,24 +1530,30 @@ class NexaProductionBackend {
             })
             .eq('whatsapp_phone', compositeKey);
         } else {
-          await client
-            .from('clients')
-            .insert({
-              whatsapp_phone: compositeKey,
-              full_name: displayName,
-              points_balance: cloudPoints,
-              visits_count: cloudVisits,
-              last_scan_at: new Date().toISOString()
-            });
+          try {
+            const { data: newClient } = await client
+              .from('clients')
+              .insert({
+                whatsapp_phone: compositeKey,
+                full_name: displayName,
+                points_balance: cloudPoints,
+                visits_count: cloudVisits,
+                last_scan_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+            if (newClient) clientId = newClient.id;
+          } catch(e) {}
         }
 
-        // Step C: Insert Scan record with full details
-        await client.from('scans').insert({
-          restaurant_name: restoName,
-          client_phone: compositeKey,
+        // Step C: Insert Scan record matching exact PostgreSQL schema
+        const scanPayload = {
           table_number: parseInt(tableNumber, 10) || 1,
           points_earned: pointsEarned
-        });
+        };
+        if (clientId) scanPayload.client_id = clientId;
+
+        await client.from('scans').insert(scanPayload);
 
         return { currentPoints: cloudPoints, currentVisits: cloudVisits };
       } catch (err) {
