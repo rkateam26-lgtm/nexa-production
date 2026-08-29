@@ -78,7 +78,7 @@ function initNexaApp() {
     }
   };
 
-  state.stats.totalClients = state.clientsList.length;
+  state.stats.totalClients = state.clientsList.length;  window.__nexaState = state;
 
   if (window.lucide) {
     try { lucide.createIcons(); } catch (e) {}
@@ -111,7 +111,8 @@ function initNexaApp() {
           if (window.nexaBackend && window.nexaBackend.getRestaurantOffers) {
             const cloudOffers = await window.nexaBackend.getRestaurantOffers(state.restaurant.name);
             if (cloudOffers && Array.isArray(cloudOffers)) {
-              state.offers = cloudOffers.filter(o => o.active !== false && o.computedStatus === 'ACTIVE');
+              state.offers = cloudOffers.filter(o => o.active !== false && (o.computedStatus === 'ACTIVE' || !o.computedStatus));
+              localStorage.setItem(`nexa_offers_cache_${slug}`, JSON.stringify(state.offers));
             }
           }
         } catch (offErr) {
