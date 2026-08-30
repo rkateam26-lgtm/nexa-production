@@ -238,11 +238,25 @@ function initNexaApp() {
 
   // Update Links
   const baseHost = window.location.origin + window.location.pathname;
-  document.getElementById('link-url-client').textContent = `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`;
+  const clientTargetUrl = `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`;
+  document.getElementById('link-url-client').textContent = clientTargetUrl;
   document.getElementById('link-url-merchant').textContent = `${baseHost}?role=merchant`;
 
+  // Render Dashboard Official QR Code
+  const dashQrBox = document.getElementById('dash-official-qr-box');
+  if (dashQrBox && typeof qrcode !== 'undefined') {
+    try {
+      const qr = qrcode(0, 'M');
+      qr.addData(clientTargetUrl);
+      qr.make();
+      dashQrBox.innerHTML = qr.createImgTag(4, 0);
+    } catch (e) {
+      console.warn('QR render warning:', e);
+    }
+  }
+
   window.copyRoleLink = function(role) {
-    const targetUrl = role === 'client' ? `${baseHost}?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}` : `${baseHost}?role=${role}`;
+    const targetUrl = role === 'client' ? clientTargetUrl : `${baseHost}?role=${role}`;
     navigator.clipboard.writeText(targetUrl).then(() => showToast('📋 Lien Copié !', `URL [${role.toUpperCase()}] copiée.`));
   };
 

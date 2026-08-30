@@ -4676,7 +4676,7 @@
 
       const backend = window.nexaBackend || new NexaProductionBackend();
       const publicId = backend.getRestaurantPublicId(restoName);
-      const origin = window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') ? window.location.origin : 'https://rkateam26-lgtm-nexa-production.vercel.app';
+      const origin = window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') ? window.location.origin : 'https://nexa-production.vercel.app';
       const targetUrl = `${origin}/index.html?resto=${encodeURIComponent(publicId)}`;
 
       r10CurrentPublicUrl = targetUrl;

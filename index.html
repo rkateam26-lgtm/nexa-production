@@ -595,18 +595,28 @@
               </p>
 
               <!-- OFFICIAL RESTAURANT QR CODE STUDIO (ÉTAPE R10) -->
-              <div style="padding: 1.25rem; background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; color: white;">
+              <div style="padding: 1.25rem; background: linear-gradient(135deg, #1E293B, #0F172A); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; margin-bottom: 1.25rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem; color: white;">
                 <div>
                   <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
-                    <span style="background: #E53935; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">Étape R10</span>
-                    <h4 style="font-size: 1.05rem; font-weight: 800; color: white; margin: 0;">Your Nexa QR Code (Système Officiel)</h4>
+                    <span style="background: #DC2626; color: white; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 6px;">Nouveau Design</span>
+                    <h4 style="font-size: 1.05rem; font-weight: 800; color: white; margin: 0;">Votre QR Code Officiel Restaurant</h4>
                   </div>
-                  <p style="font-size: 0.82rem; color: #94A3B8; margin: 0;">Aperçu HD, téléchargement PNG, impression (Table, Comptoir, Affiche) et lien unique sécurisé.</p>
+                  <p style="font-size: 0.82rem; color: #94A3B8; margin: 0 0 0.75rem 0;">Flashez ce QR Code directement avec l'appareil photo de votre smartphone pour voir la nouvelle interface.</p>
+                  
+                  <div style="display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+                    <a href="https://nexa-production.vercel.app/index.html?role=client&resto=Chitir%20Chicken&table=4" target="_blank" class="btn-primary" style="text-decoration: none; background: #DC2626; color: white; font-weight: 800; border: none; padding: 0.55rem 1rem; font-size: 0.82rem; border-radius: 8px;">
+                      🔗 Ouvrir le Lien Client Mobile Direct
+                    </a>
+                    <a href="resto-r5.html" class="btn-secondary" style="text-decoration: none; color: white; border-color: rgba(255,255,255,0.2); font-weight: 700; padding: 0.55rem 1rem; font-size: 0.82rem; border-radius: 8px;">
+                      ⚙️ Ouvrir l'Espace Resto R10
+                    </a>
+                  </div>
                 </div>
-                <a href="resto-r5.html" class="btn-primary" style="text-decoration: none; background: #E53935; color: white; font-weight: 800; border: none; padding: 0.65rem 1.2rem;">
-                  <i data-lucide="qr-code"></i>
-                  <span>Ouvrir l'Espace QR Code</span>
-                </a>
+
+                <!-- Instant Live QR Code for Scanning -->
+                <div style="background: white; padding: 10px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);" id="dash-official-qr-box">
+                  <!-- Dynamically rendered by app.js -->
+                </div>
               </div>
 
               <!-- PRINTABLE PLV TENTS GENERATOR LINK -->
