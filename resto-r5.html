@@ -2049,15 +2049,21 @@
           if (!details.scans || details.scans.length === 0) {
             scansFeed.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:1rem; background:#F8F9FA; border-radius:8px;">Aucun historique de scan enregistré chez ce restaurant.</div>';
           } else {
-            scansFeed.innerHTML = details.scans.map(s => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#F8F9FA; border-radius:8px; margin-bottom:0.4rem;">
-                <div>
-                  <strong style="color:var(--text-dark);">Scan ${escapeHtml(s.table_number || 'Table')}</strong>
-                  <span style="font-size:0.75rem; color:var(--text-muted); display:block;">${new Date(s.created_at).toLocaleString('fr-FR')}</span>
+            scansFeed.innerHTML = details.scans.map(s => {
+              const scanDate = s.scanned_at || s.created_at;
+              const dateFormatted = scanDate ? new Date(scanDate).toLocaleString('fr-FR') : 'Récemment';
+              const pts = s.points_earned || 20;
+              const tbl = s.table_number || 'Table';
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.85rem; background:#F8F9FA; border:1px solid #E2E8F0; border-radius:8px; margin-bottom:0.45rem;">
+                  <div>
+                    <strong style="color:var(--text-dark); font-size:0.85rem;">📷 Scan ${escapeHtml(tbl)}</strong>
+                    <span style="font-size:0.72rem; color:var(--text-muted); display:block;">${dateFormatted}</span>
+                  </div>
+                  <span style="color:#10B981; font-weight:800; font-size:0.85rem;">+${pts} PTS</span>
                 </div>
-                <span style="color:#10B981; font-weight:800;">+20 PTS</span>
-              </div>
-            `).join('');
+              `;
+            }).join('');
           }
         }
 
@@ -2067,15 +2073,19 @@
           if (!details.rewards || details.rewards.length === 0) {
             rewardsFeed.innerHTML = '<div style="text-align:center; color:var(--text-muted); padding:1rem; background:#F8F9FA; border-radius:8px;">Aucune récompense réclamée dans ce restaurant.</div>';
           } else {
-            rewardsFeed.innerHTML = details.rewards.map(r => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.75rem; background:#F8F9FA; border-radius:8px; margin-bottom:0.4rem;">
-                <div>
-                  <strong style="color:var(--text-dark);">${escapeHtml(r.title || 'Privilège')}</strong>
-                  <span style="font-size:0.75rem; color:var(--text-muted); display:block;">Validé le ${new Date(r.created_at).toLocaleString('fr-FR')}</span>
+            rewardsFeed.innerHTML = details.rewards.map(r => {
+              const rewDate = r.created_at || r.date || 'Récemment';
+              const dateFormatted = rewDate && rewDate !== 'Récemment' ? new Date(rewDate).toLocaleString('fr-FR') : 'Récemment';
+              return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 0.85rem; background:#F8F9FA; border:1px solid #E2E8F0; border-radius:8px; margin-bottom:0.45rem;">
+                  <div>
+                    <strong style="color:var(--text-dark); font-size:0.85rem;">🎁 ${escapeHtml(r.title || 'Privilège')}</strong>
+                    <span style="font-size:0.72rem; color:var(--text-muted); display:block;">Validé : ${dateFormatted}</span>
+                  </div>
+                  <span style="color:#10B981; font-weight:800; font-size:0.75rem; background:#D1FAE5; padding:2px 8px; border-radius:10px;">✅ Validé</span>
                 </div>
-                <span style="color:#10B981; font-weight:800; font-size:0.75rem; background:#D1FAE5; padding:2px 8px; border-radius:10px;">✅ Validé</span>
-              </div>
-            `).join('');
+              `;
+            }).join('');
           }
         }
 

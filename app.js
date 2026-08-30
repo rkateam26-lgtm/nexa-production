@@ -103,7 +103,8 @@ function initNexaApp() {
             desc: r.desc || r.description || 'Valable sur présentation en caisse.',
             icon: r.icon || '🎁'
           }));
-          localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
+          localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(state.rewards));
+          localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(state.rewards));
         }
 
         // 1b. ALWAYS FETCH ACTIVE COMMERCIAL OFFERS (ÉTAPE R9) FOR CLIENT!
@@ -113,6 +114,7 @@ function initNexaApp() {
             if (cloudOffers && Array.isArray(cloudOffers)) {
               state.offers = cloudOffers.filter(o => o.active !== false && (o.computedStatus === 'ACTIVE' || !o.computedStatus));
               localStorage.setItem(`nexa_offers_cache_${slug}`, JSON.stringify(state.offers));
+              localStorage.setItem(`nexa_offers_${slug}`, JSON.stringify(state.offers));
             }
           }
         } catch (offErr) {
@@ -950,18 +952,23 @@ function initNexaApp() {
     const homeOffersList = document.getElementById('client-offers-list');
     if (homeOffersContainer && homeOffersList) {
       if (state.offers && state.offers.length > 0) {
-        homeOffersList.innerHTML = state.offers.map(o => `
-          <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 2px 6px rgba(220,38,38,0.06);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
-              <strong style="font-size: 0.95rem; font-weight: 800; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
-              <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">En cours</span>
+        homeOffersList.innerHTML = state.offers.map(o => {
+          const offerDesc = o.desc || o.description || 'Offre spéciale disponible en restaurant.';
+          const offerStart = o.startDate || o.start_date || 'Aujourd\'hui';
+          const offerEnd = o.endDate || o.end_date || 'Bientôt';
+          return `
+            <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 2px 6px rgba(220,38,38,0.06);">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <strong style="font-size: 0.95rem; font-weight: 800; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
+                <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">En cours</span>
+              </div>
+              <p style="font-size: 0.82rem; color: #4B5563; margin: 0 0 0.4rem 0; line-height: 1.35;">${escapeHtml(offerDesc)}</p>
+              <div style="font-size: 0.72rem; color: #9CA3AF; font-weight: 600;">
+                <span>📅 Du ${offerStart} au ${offerEnd}</span>
+              </div>
             </div>
-            <p style="font-size: 0.82rem; color: #4B5563; margin: 0 0 0.4rem 0; line-height: 1.35;">${escapeHtml(o.desc || 'Offre spéciale disponible en restaurant.')}</p>
-            <div style="font-size: 0.72rem; color: #9CA3AF; font-weight: 600;">
-              <span>📅 Du ${o.startDate} au ${o.endDate}</span>
-            </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
         homeOffersContainer.style.display = 'block';
       } else {
         homeOffersContainer.style.display = 'none';
@@ -978,18 +985,23 @@ function initNexaApp() {
             <span style="font-size: 0.75rem; font-weight: 800; color: #DC2626; text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 0.5rem;">
               📢 Offres Spéciales en Cours
             </span>
-            ${state.offers.map(o => `
-              <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 12px; padding: 0.9rem; margin-bottom: 0.65rem; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
-                  <strong style="font-size: 0.92rem; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
-                  <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 8px;">Actif</span>
+            ${state.offers.map(o => {
+              const offerDesc = o.desc || o.description || 'Offre spéciale valable en restaurant.';
+              const offerStart = o.startDate || o.start_date || 'Aujourd\'hui';
+              const offerEnd = o.endDate || o.end_date || 'Bientôt';
+              return `
+                <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 12px; padding: 0.9rem; margin-bottom: 0.65rem; box-shadow: 0 2px 4px rgba(0,0,0,0.03);">
+                  <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.3rem;">
+                    <strong style="font-size: 0.92rem; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
+                    <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 7px; border-radius: 8px;">Actif</span>
+                  </div>
+                  <p style="font-size: 0.8rem; color: #4B5563; margin: 0 0 0.4rem 0;">${escapeHtml(offerDesc)}</p>
+                  <div style="font-size: 0.72rem; color: #6B7280;">
+                    <span>📅 Du ${offerStart} au ${offerEnd}</span>
+                  </div>
                 </div>
-                <p style="font-size: 0.8rem; color: #4B5563; margin: 0 0 0.4rem 0;">${escapeHtml(o.desc || 'Offre spéciale valable en restaurant.')}</p>
-                <div style="font-size: 0.72rem; color: #6B7280;">
-                  <span>📅 Du ${o.startDate} au ${o.endDate}</span>
-                </div>
-              </div>
-            `).join('')}
+              `;
+            }).join('')}
           </div>
         `;
       }
