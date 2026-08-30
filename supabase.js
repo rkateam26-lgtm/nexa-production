@@ -797,8 +797,18 @@ class NexaProductionBackend {
 
         if (!error && Array.isArray(rewardRows) && rewardRows.length > 0) {
           const mergedMap = new Map();
+          // Index existing local rewards
           rewards.forEach(r => mergedMap.set(r.id, r));
-          rewardRows.forEach(row => mergedMap.set(row.id, row));
+          // Merge incoming cloud rows, retaining existing image if cloud row doesn't have it
+          rewardRows.forEach(row => {
+            const existing = mergedMap.get(row.id);
+            mergedMap.set(row.id, {
+              ...row,
+              image: (existing && existing.image) || row.image || '',
+              category: (existing && existing.category) || row.category || 'Général',
+              active: row.active !== undefined ? row.active : (existing ? existing.active : true)
+            });
+          });
           rewards = Array.from(mergedMap.values());
           this.saveLocalRewards(slug, rewards);
         }
@@ -2343,9 +2353,17 @@ class NexaProductionBackend {
 
     try {
       localStorage.setItem(`nexa_settings_cache_${slug}`, JSON.stringify(updatedSettings));
+      if (updatedMeta.logo) {
+        localStorage.setItem(`nexa_resto_logo_${slug}`, updatedMeta.logo);
+      } else {
+        localStorage.removeItem(`nexa_resto_logo_${slug}`);
+      }
       const newSlug = this.getSlug(newName);
       if (newSlug !== slug) {
         localStorage.setItem(`nexa_settings_cache_${newSlug}`, JSON.stringify(updatedSettings));
+        if (updatedMeta.logo) {
+          localStorage.setItem(`nexa_resto_logo_${newSlug}`, updatedMeta.logo);
+        }
       }
     } catch (e) {}
 
@@ -2398,10 +2416,10 @@ class NexaProductionBackend {
     const slug = this.getSlug(restoName || 'savane');
     const pts = parseInt(rewardData.pts || rewardData.points_required || 0, 10);
 
-    // 1. Deduct points from client in Supabase Cloud
-    await this.deductPointsCloud(restoName, clientPhone, pts);
+    // NOTE: Points are NO LONGER deducted at creation!
+    // They will ONLY be debited once the restaurant validates the voucher code or scans the QR.
 
-    // 2. Generate unique alphanumeric voucher code: NX-XXXX (e.g. NX-8429, NX-7A3B)
+    // Generate unique alphanumeric voucher code: NX-XXXX (e.g. NX-8429, NX-7A3B)
     const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
     const code = `NX-${randomChars}`;
     const voucherId = `vch_${Date.now()}_${randomChars.toLowerCase()}`;
@@ -2424,7 +2442,7 @@ class NexaProductionBackend {
       usedAt: null
     };
 
-    // 3. Persist voucher in restaurant storage and client storage
+    // Persist voucher in restaurant storage and pending claims
     try {
       let list = [];
       const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
@@ -2432,12 +2450,15 @@ class NexaProductionBackend {
       list.unshift(voucher);
       localStorage.setItem(`nexa_vouchers_${slug}`, JSON.stringify(list));
 
-      // Also persist in global pending claims
+      // Global pending claims per resto
       let pendingClaims = [];
       const rawClaims = localStorage.getItem(`nexa_pending_claims_${slug}`);
       if (rawClaims) pendingClaims = JSON.parse(rawClaims);
       pendingClaims.unshift(voucher);
       localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(pendingClaims));
+
+      // Also track client's active voucher pass directly
+      localStorage.setItem(`nexa_active_client_voucher_${slug}`, JSON.stringify(voucher));
     } catch (e) {}
 
     return voucher;
@@ -2446,10 +2467,15 @@ class NexaProductionBackend {
   // 16b. Server scans QR or enters alphanumeric code to verify & redeem
   async verifyAndRedeemVoucher(restoName, codeOrId) {
     const slug = this.getSlug(restoName || 'savane');
-    const search = (codeOrId || '').trim().toUpperCase();
+    let search = (codeOrId || '').trim().toUpperCase();
 
     if (!search) {
-      return { success: false, error: 'Veuillez saisir un code de récompense.' };
+      return { success: false, error: 'Veuillez scanner un QR code ou saisir un code de récompense.' };
+    }
+
+    // Normalization: allow entering "8429" or "NX-8429" or raw QR JSON/URL
+    if (search.startsWith('NX-') === false && /^[A-Z0-9]{4}$/.test(search)) {
+      search = `NX-${search}`;
     }
 
     let vouchers = [];
@@ -2458,12 +2484,48 @@ class NexaProductionBackend {
       if (raw) vouchers = JSON.parse(raw);
     } catch (e) {}
 
-    // Find voucher by code (e.g. NX-8429) or id (e.g. vch_...)
-    const voucherIdx = vouchers.findIndex(v => 
+    // Fallback: If not found in current slug, also check pending claims or other resto vouchers
+    let voucherIdx = vouchers.findIndex(v => 
       (v.code && v.code.toUpperCase() === search) || 
       (v.voucherId && v.voucherId.toUpperCase() === search) ||
       (v.id && String(v.id).toUpperCase() === search)
     );
+
+    if (voucherIdx < 0) {
+      // Check pending claims
+      try {
+        const rawClaims = localStorage.getItem(`nexa_pending_claims_${slug}`);
+        if (rawClaims) {
+          const claims = JSON.parse(rawClaims);
+          const claimIdx = claims.findIndex(c => 
+            (c.code && c.code.toUpperCase() === search) ||
+            (c.voucherId && c.voucherId.toUpperCase() === search)
+          );
+          if (claimIdx >= 0) {
+            vouchers.unshift(claims[claimIdx]);
+            voucherIdx = 0;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Cross-resto fallback for demo flexibility
+    if (voucherIdx < 0) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('nexa_vouchers_')) {
+          try {
+            const list = JSON.parse(localStorage.getItem(k));
+            const foundIdx = list.findIndex(v => (v.code && v.code.toUpperCase() === search));
+            if (foundIdx >= 0) {
+              vouchers = list;
+              voucherIdx = foundIdx;
+              break;
+            }
+          } catch (e) {}
+        }
+      }
+    }
 
     if (voucherIdx < 0) {
       return { 
@@ -2485,35 +2547,52 @@ class NexaProductionBackend {
       };
     }
 
+    // POINT DEDUCTION: Now deduct points strictly upon restaurant validation!
+    const ptsToDeduct = parseInt(voucher.pts || 0, 10);
+    if (ptsToDeduct > 0 && voucher.clientPhone) {
+      await this.deductPointsCloud(restoName || voucher.restoName, voucher.clientPhone, ptsToDeduct);
+    }
+
     // Mark as Used ✅
     voucher.status = 'used';
     voucher.usedAt = new Date().toISOString();
     vouchers[voucherIdx] = voucher;
 
     try {
-      localStorage.setItem(`nexa_vouchers_${slug}`, JSON.stringify(vouchers));
+      const targetSlug = voucher.restoSlug || slug;
+      localStorage.setItem(`nexa_vouchers_${targetSlug}`, JSON.stringify(vouchers));
 
       // Record in proofs feed for KPIs and analytics
       let proofs = [];
-      const rawProofs = localStorage.getItem(`nexa_validated_proofs_${slug}`);
+      const rawProofs = localStorage.getItem(`nexa_validated_proofs_${targetSlug}`);
       if (rawProofs) proofs = JSON.parse(rawProofs);
       proofs.unshift({
         id: Date.now(),
         voucherCode: voucher.code,
         rewardTitle: voucher.rewardTitle,
+        rewardImage: voucher.rewardImage || '',
         pts: voucher.pts,
         clientName: voucher.clientName,
         clientPhone: voucher.clientPhone,
         date: new Date().toLocaleDateString('fr-FR'),
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       });
-      localStorage.setItem(`nexa_validated_proofs_${slug}`, JSON.stringify(proofs));
+      localStorage.setItem(`nexa_validated_proofs_${targetSlug}`, JSON.stringify(proofs));
+
+      // Update active client voucher status and notify client tab
+      localStorage.setItem(`nexa_active_client_voucher_${targetSlug}`, JSON.stringify(voucher));
+      localStorage.setItem('nexa_last_redeemed_voucher', JSON.stringify({
+        code: voucher.code,
+        clientPhone: voucher.clientPhone,
+        pts: voucher.pts,
+        timestamp: Date.now()
+      }));
     } catch (e) {}
 
     return {
       success: true,
       voucher,
-      message: `🎉 Récompense validée avec succès : « ${voucher.rewardTitle} » pour ${voucher.clientName} (-${voucher.pts} pts).`
+      message: `🎉 Récompense validée avec succès : « ${voucher.rewardTitle} » pour ${voucher.clientName} (-${voucher.pts} pts déduits).`
     };
   }
 

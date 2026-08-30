@@ -23,6 +23,10 @@
   <!-- Chart.js Library (Step R11 Analytics) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- HTML5 Real Camera QR Code Scanner Engine -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+
   <style>
     :root {
       --bg-canvas: #FAF9F6;
@@ -2689,8 +2693,8 @@
 
   <!-- MODAL VALIDATION CADEAU PAR LE SERVEUR (CYCLE DE CONVERSION) -->
   <div class="r6-detail-modal" id="modal-server-redeem" style="z-index: 99999; display: none;">
-    <div class="r6-detail-card" style="max-width: 480px; text-align: center;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+    <div class="r6-detail-card" style="max-width: 500px; text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
         <div style="text-align: left;">
           <span style="font-size: 0.75rem; font-weight: 800; color: #10B981; background: rgba(16,185,129,0.1); padding: 2px 8px; border-radius: 10px;">Validation Serveur / Caisse</span>
           <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-dark); margin: 0.3rem 0 0 0;">Valider une Récompense</h2>
@@ -2701,15 +2705,39 @@
       <div class="alert-banner error" id="server-redeem-error" style="display: none; margin-bottom: 1rem; text-align: left;"></div>
       <div class="alert-banner success" id="server-redeem-success" style="display: none; margin-bottom: 1rem; text-align: left;"></div>
 
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1.25rem 0; text-align: left;">
-        Saisissez le code alphanumérique de secours présenté par le client sur son Pass (ou scannez son QR code).
-      </p>
+      <!-- TABS: SCANNER CAMÉRA VS CODE MANUEL -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem;">
+        <button type="button" id="tab-redeem-scan" onclick="switchRedeemMode('scan')" style="padding: 0.65rem 0.5rem; border-radius: 8px; font-weight: 800; font-size: 0.82rem; border: 2px solid #10B981; background: #ECFDF5; color: #065F46; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+          <span>📷 Scanner QR Pass</span>
+        </button>
+        <button type="button" id="tab-redeem-code" onclick="switchRedeemMode('code')" style="padding: 0.65rem 0.5rem; border-radius: 8px; font-weight: 700; font-size: 0.82rem; border: 1.5px solid var(--border-color); background: white; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.35rem;">
+          <span>⌨️ Saisie Code NX</span>
+        </button>
+      </div>
 
-      <div style="background: #F8FAFC; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
+      <!-- SECTION 1: SCANNER CAMÉRA DIRECT -->
+      <div id="section-redeem-scanner" style="margin-bottom: 1.25rem;">
+        <div id="server-qr-reader" style="width: 100%; border-radius: 12px; overflow: hidden; background: #000; min-height: 240px; position: relative;">
+          <div id="server-qr-placeholder" style="padding: 2.5rem 1rem; color: white;">
+            <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">📷</div>
+            <p style="font-size: 0.9rem; font-weight: 800; margin: 0 0 0.3rem 0;">Pointez la caméra vers le pass du client</p>
+            <p style="font-size: 0.75rem; color: #94A3B8; margin: 0 0 1rem 0;">La détection est instantanée et automatique.</p>
+            <button type="button" onclick="startServerQrScanner()" class="btn-create-account" style="width: auto; padding: 0.6rem 1.4rem; font-size: 0.85rem; background: #10B981; border-color: #10B981; margin: 0 auto;">
+              <span>Activer la Caméra</span>
+            </button>
+          </div>
+        </div>
+        <div id="server-qr-status" style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem;">
+          💡 Approchez le QR code affiché sur le smartphone du client.
+        </div>
+      </div>
+
+      <!-- SECTION 2: SAISIE CODE ALPHANUMÉRIQUE MANUEL -->
+      <div id="section-redeem-manual" style="display: none; background: #F8FAFC; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
         <label for="server-redeem-code-input" style="display: block; font-size: 0.82rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem; text-transform: uppercase;">
-          Code Alphanumérique Client (ex: NX-8429)
+          Code Alphanumérique Client (ex: NX-8429 ou 8429)
         </label>
-        <input type="text" id="server-redeem-code-input" placeholder="NX-XXXX" style="width: 100%; padding: 0.75rem; font-size: 1.4rem; font-weight: 900; text-align: center; letter-spacing: 2px; text-transform: uppercase; border: 2px solid var(--border-color); border-radius: 10px; font-family: monospace; box-sizing: border-box;" autocomplete="off">
+        <input type="text" id="server-redeem-code-input" placeholder="NX-XXXX" style="width: 100%; padding: 0.75rem; font-size: 1.4rem; font-weight: 900; text-align: center; letter-spacing: 2px; text-transform: uppercase; border: 2px solid var(--border-color); border-radius: 10px; font-family: monospace; box-sizing: border-box;" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();handleServerRedeemSubmit();}">
         <button type="button" class="btn-create-account" id="btn-server-verify" style="width: 100%; margin-top: 0.75rem; padding: 0.75rem; font-size: 0.95rem; background: #10B981; border-color: #10B981;" onclick="handleServerRedeemSubmit()">
           <span>✓ Vérifier & Valider le Cadeau</span>
         </button>
@@ -2717,16 +2745,19 @@
 
       <!-- SUCCESS CARD PREVIEW (DISPLAYED UPON REDEMPTION) -->
       <div id="server-redeem-result-card" style="display: none; background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; text-align: left;">
-        <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
-          <span style="font-size: 1.5rem;">🎉</span>
-          <div>
-            <strong style="font-size: 0.95rem; color: #065F46; display: block;" id="res-redeem-title">Cadeau Validé !</strong>
-            <span style="font-size: 0.75rem; color: #047857;" id="res-redeem-client">Client: Jean</span>
+        <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.6rem;">
+          <div id="res-redeem-img-box" style="width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: #E2E8F0; flex-shrink: 0; display: none;">
+            <img id="res-redeem-img" src="" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+          <span id="res-redeem-icon" style="font-size: 1.8rem; flex-shrink: 0;">🎉</span>
+          <div style="flex-grow: 1;">
+            <strong style="font-size: 1rem; color: #065F46; display: block;" id="res-redeem-title">Cadeau Validé !</strong>
+            <span style="font-size: 0.8rem; color: #047857;" id="res-redeem-client">Client: Jean (+226...)</span>
           </div>
         </div>
-        <div style="font-size: 0.8rem; color: #065F46; border-top: 1px dashed #A7F3D0; padding-top: 0.4rem; display: flex; justify-content: space-between;">
-          <span id="res-redeem-pts">-50 points</span>
-          <span id="res-redeem-time">À l'instant</span>
+        <div style="font-size: 0.82rem; color: #065F46; border-top: 1px dashed #A7F3D0; padding-top: 0.5rem; display: flex; justify-content: space-between; font-weight: 700;">
+          <span id="res-redeem-pts" style="color: #DC2626;">-50 points déduits</span>
+          <span id="res-redeem-time" style="color: #047857;">Code: NX-XXXX • Validé ✅</span>
         </div>
       </div>
 
@@ -2747,6 +2778,139 @@
     // ==========================================================================
     // SERVER REWARD REDEMPTION & VOUCHER VALIDATOR (CYCLE DE CONVERSION)
     // ==========================================================================
+    let serverQrScanner = null;
+    let isServerScannerRunning = false;
+
+    window.switchRedeemMode = function(mode) {
+      const secScan = document.getElementById('section-redeem-scanner');
+      const secCode = document.getElementById('section-redeem-manual');
+      const tabScan = document.getElementById('tab-redeem-scan');
+      const tabCode = document.getElementById('tab-redeem-code');
+      const input = document.getElementById('server-redeem-code-input');
+
+      if (mode === 'scan') {
+        if (secScan) secScan.style.display = 'block';
+        if (secCode) secCode.style.display = 'none';
+        if (tabScan) {
+          tabScan.style.border = '2px solid #10B981';
+          tabScan.style.background = '#ECFDF5';
+          tabScan.style.color = '#065F46';
+          tabScan.style.fontWeight = '800';
+        }
+        if (tabCode) {
+          tabCode.style.border = '1.5px solid var(--border-color)';
+          tabCode.style.background = 'white';
+          tabCode.style.color = 'var(--text-muted)';
+          tabCode.style.fontWeight = '700';
+        }
+        startServerQrScanner();
+      } else {
+        stopServerQrScanner();
+        if (secScan) secScan.style.display = 'none';
+        if (secCode) secCode.style.display = 'block';
+        if (tabCode) {
+          tabCode.style.border = '2px solid #10B981';
+          tabCode.style.background = '#ECFDF5';
+          tabCode.style.color = '#065F46';
+          tabCode.style.fontWeight = '800';
+        }
+        if (tabScan) {
+          tabScan.style.border = '1.5px solid var(--border-color)';
+          tabScan.style.background = 'white';
+          tabScan.style.color = 'var(--text-muted)';
+          tabScan.style.fontWeight = '700';
+        }
+        setTimeout(() => { if (input) input.focus(); }, 100);
+      }
+    };
+
+    window.startServerQrScanner = async function() {
+      const readerBox = document.getElementById('server-qr-reader');
+      const statusBox = document.getElementById('server-qr-status');
+      if (!readerBox) return;
+
+      if (isServerScannerRunning) return;
+
+      if (typeof Html5Qrcode === 'undefined') {
+        if (statusBox) statusBox.innerHTML = '<span style="color: #EF4444;">❌ Moteur de scan non chargé. Utilisez la saisie manuelle.</span>';
+        return;
+      }
+
+      const placeholder = document.getElementById('server-qr-placeholder');
+      if (placeholder) placeholder.style.display = 'none';
+
+      try {
+        if (!serverQrScanner) {
+          serverQrScanner = new Html5Qrcode('server-qr-reader');
+        }
+
+        const config = {
+          fps: 15,
+          qrbox: { width: 220, height: 220 },
+          aspectRatio: 1.0
+        };
+
+        if (statusBox) statusBox.innerHTML = '🔄 <span style="color: #10B981;">Caméra active. Pointez vers le Pass client…</span>';
+
+        await serverQrScanner.start(
+          { facingMode: 'environment' },
+          config,
+          async (decodedText) => {
+            console.log('📷 Server scanned voucher:', decodedText);
+            // Flash audio/haptic feedback
+            if (navigator.vibrate) try { navigator.vibrate(100); } catch(e){}
+
+            let extractedCode = decodedText.trim();
+            // Handle URL or JSON payloads
+            if (extractedCode.includes('vch=')) {
+              try {
+                const u = new URL(extractedCode);
+                extractedCode = u.searchParams.get('vch') || extractedCode;
+              } catch(e){}
+            } else if (extractedCode.startsWith('{')) {
+              try {
+                const parsed = JSON.parse(extractedCode);
+                extractedCode = parsed.code || parsed.voucherId || extractedCode;
+              } catch(e){}
+            }
+
+            const input = document.getElementById('server-redeem-code-input');
+            if (input) input.value = extractedCode;
+
+            stopServerQrScanner();
+            if (statusBox) statusBox.innerHTML = `✅ <span style="color: #10B981;">Code détecté : <strong>${extractedCode}</strong>. Validation…</span>`;
+            await handleServerRedeemSubmit(extractedCode);
+          },
+          () => {}
+        );
+
+        isServerScannerRunning = true;
+      } catch (err) {
+        console.warn('[SERVER SCANNER START FAILED]', err);
+        isServerScannerRunning = false;
+        if (placeholder) placeholder.style.display = 'block';
+        if (statusBox) {
+          statusBox.innerHTML = `<span style="color: #EF4444;">⚠️ Impossible d'accéder à la caméra (${err.message || 'permission'}). Utilisez la saisie manuelle.</span>`;
+        }
+      }
+    };
+
+    window.stopServerQrScanner = function() {
+      if (serverQrScanner && isServerScannerRunning) {
+        try {
+          serverQrScanner.stop().then(() => {
+            isServerScannerRunning = false;
+            const placeholder = document.getElementById('server-qr-placeholder');
+            if (placeholder) placeholder.style.display = 'block';
+          }).catch(() => {
+            isServerScannerRunning = false;
+          });
+        } catch(e) {
+          isServerScannerRunning = false;
+        }
+      }
+    };
+
     window.openServerRedeemModal = function() {
       const modal = document.getElementById('modal-server-redeem');
       if (!modal) return;
@@ -2763,10 +2927,13 @@
       modal.style.visibility = 'visible';
       modal.style.opacity = '1';
       modal.style.zIndex = '99999';
-      setTimeout(() => { if (input) input.focus(); }, 150);
+
+      // Default to Camera Scanner mode with clean fallback
+      switchRedeemMode('scan');
     };
 
     window.closeServerRedeemModal = function() {
+      stopServerQrScanner();
       const modal = document.getElementById('modal-server-redeem');
       if (modal) {
         modal.classList.remove('active');
@@ -2774,7 +2941,7 @@
       }
     };
 
-    window.handleServerRedeemSubmit = async function() {
+    window.handleServerRedeemSubmit = async function(manualCode = null) {
       const input = document.getElementById('server-redeem-code-input');
       const btn = document.getElementById('btn-server-verify');
       const errBanner = document.getElementById('server-redeem-error');
@@ -2785,10 +2952,10 @@
       if (succBanner) succBanner.style.display = 'none';
       if (resCard) resCard.style.display = 'none';
 
-      const code = (input && input.value || '').trim();
+      let code = manualCode || (input && input.value || '').trim();
       if (!code) {
         if (errBanner) {
-          errBanner.textContent = '⚠️ Veuillez renseigner le code alphanumérique du client (ex: NX-8429).';
+          errBanner.textContent = '⚠️ Veuillez renseigner le code alphanumérique du client (ex: NX-8429) ou scanner le QR code.';
           errBanner.style.display = 'block';
         }
         return;
@@ -2819,10 +2986,28 @@
         }
 
         if (resCard && result.voucher) {
-          document.getElementById('res-redeem-title').textContent = `${result.voucher.rewardIcon || '🎁'} ${result.voucher.rewardTitle}`;
-          document.getElementById('res-redeem-client').textContent = `Client: ${result.voucher.clientName || 'Client Nexa'} (${result.voucher.clientPhone || ''})`;
-          document.getElementById('res-redeem-pts').textContent = `-${result.voucher.pts} points déduits`;
-          document.getElementById('res-redeem-time').textContent = `Code: ${result.voucher.code} • Validé ✅`;
+          const v = result.voucher;
+          document.getElementById('res-redeem-title').textContent = `${v.rewardTitle || 'Cadeau Fidélité'}`;
+          document.getElementById('res-redeem-client').textContent = `Client: ${v.clientName || 'Client Nexa'} (${v.clientPhone || ''})`;
+          document.getElementById('res-redeem-pts').textContent = `-${v.pts} points déduits du solde client`;
+          document.getElementById('res-redeem-time').textContent = `Code: ${v.code} • Validé ✅`;
+
+          const imgBox = document.getElementById('res-redeem-img-box');
+          const imgEl = document.getElementById('res-redeem-img');
+          const iconEl = document.getElementById('res-redeem-icon');
+
+          if (v.rewardImage && imgBox && imgEl) {
+            imgEl.src = v.rewardImage;
+            imgBox.style.display = 'block';
+            if (iconEl) iconEl.style.display = 'none';
+          } else {
+            if (imgBox) imgBox.style.display = 'none';
+            if (iconEl) {
+              iconEl.textContent = v.rewardIcon || '🎁';
+              iconEl.style.display = 'block';
+            }
+          }
+
           resCard.style.display = 'block';
         }
 
@@ -3596,24 +3781,74 @@
     let currentR8RewardImageBase64 = '';
     let currentR9OfferImageBase64 = '';
 
-    window.handleR8RewardImageUpload = function(event) {
+    // FAST & LIGHTWEIGHT CLIENT-SIDE IMAGE COMPRESSION (Max 600px, JPEG 0.75)
+    // Guarantees small ~30-50KB base64 strings that never exceed localStorage quota
+    function compressImageFile(file, maxWidth = 600, maxHeight = 600, quality = 0.75) {
+      return new Promise((resolve, reject) => {
+        if (!file) return resolve('');
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const img = new Image();
+          img.onload = function() {
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+            console.log(`[IMG COMPRESS] Original: ${Math.round(file.size/1024)}KB -> Compressed: ${Math.round(compressedBase64.length/1024)}KB`);
+            resolve(compressedBase64);
+          };
+          img.onerror = function(err) {
+            console.warn('[IMG COMPRESS ERROR]', err);
+            resolve(e.target.result); // Fallback to raw base64
+          };
+          img.src = e.target.result;
+        };
+        reader.onerror = function(err) {
+          reject(err);
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // R8 REWARDS: Photo upload handler
+    window.handleR8RewardImageUpload = async function(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
-      if (file.size > 2 * 1024 * 1024) {
-        alert('Image trop volumineuse. Taille maximale : 2 Mo.');
+      if (file.size > 8 * 1024 * 1024) {
+        alert('Image trop volumineuse. Veuillez choisir un fichier de moins de 8 Mo.');
         return;
       }
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        currentR8RewardImageBase64 = e.target.result;
+      try {
+        const compressed = await compressImageFile(file, 600, 600, 0.75);
+        currentR8RewardImageBase64 = compressed;
         const preview = document.getElementById('r8-reward-img-preview');
         const placeholder = document.getElementById('r8-reward-img-placeholder');
         const btnRemove = document.getElementById('btn-remove-r8-img');
         if (preview) { preview.src = currentR8RewardImageBase64; preview.style.display = 'block'; }
         if (placeholder) placeholder.style.display = 'none';
         if (btnRemove) btnRemove.style.display = 'inline-block';
-      };
-      reader.readAsDataURL(file);
+      } catch (err) {
+        console.error('[R8 REWARD IMAGE UPLOAD FAILED]', err);
+        alert('Erreur lors du traitement de l\'image.');
+      }
     };
 
     window.removeR8RewardImage = function() {
@@ -3622,6 +3857,41 @@
       const placeholder = document.getElementById('r8-reward-img-placeholder');
       const btnRemove = document.getElementById('btn-remove-r8-img');
       const fileInput = document.getElementById('r8-reward-file-input');
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      if (placeholder) placeholder.style.display = 'block';
+      if (btnRemove) btnRemove.style.display = 'none';
+      if (fileInput) fileInput.value = '';
+    };
+
+    // R9 OFFERS: Photo upload handler (Discounts & Promos)
+    window.handleR9OfferImageUpload = async function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (file.size > 8 * 1024 * 1024) {
+        alert('Image trop volumineuse. Veuillez choisir un fichier de moins de 8 Mo.');
+        return;
+      }
+      try {
+        const compressed = await compressImageFile(file, 700, 450, 0.75);
+        currentR9OfferImageBase64 = compressed;
+        const preview = document.getElementById('r9-offer-img-preview');
+        const placeholder = document.getElementById('r9-offer-img-placeholder');
+        const btnRemove = document.getElementById('btn-remove-r9-img');
+        if (preview) { preview.src = currentR9OfferImageBase64; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        if (btnRemove) btnRemove.style.display = 'inline-block';
+      } catch (err) {
+        console.error('[R9 OFFER IMAGE UPLOAD FAILED]', err);
+        alert('Erreur lors du traitement de l\'image.');
+      }
+    };
+
+    window.removeR9OfferImage = function() {
+      currentR9OfferImageBase64 = '';
+      const preview = document.getElementById('r9-offer-img-preview');
+      const placeholder = document.getElementById('r9-offer-img-placeholder');
+      const btnRemove = document.getElementById('btn-remove-r9-img');
+      const fileInput = document.getElementById('r9-offer-file-input');
       if (preview) { preview.src = ''; preview.style.display = 'none'; }
       if (placeholder) placeholder.style.display = 'block';
       if (btnRemove) btnRemove.style.display = 'none';
@@ -5384,7 +5654,7 @@
       }
     }
 
-    function handleR13LogoUpload(event) {
+    async function handleR13LogoUpload(event) {
       const file = event.target.files && event.target.files[0];
       if (!file) return;
 
@@ -5395,23 +5665,21 @@
         return;
       }
 
-      // Max size: 2MB
-      if (file.size > 2 * 1024 * 1024) {
-        showR13Alert('error', 'L\'image dépasse la taille maximale autorisée de 2 Mo.');
+      if (file.size > 8 * 1024 * 1024) {
+        showR13Alert('error', 'L\'image dépasse la taille maximale autorisée de 8 Mo.');
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        r13CurrentLogoData = e.target.result;
+      try {
+        const compressed = await compressImageFile(file, 400, 400, 0.8);
+        r13CurrentLogoData = compressed;
         const currentName = document.getElementById('r13-input-name')?.value || 'NX';
         updateR13LogoDisplay(r13CurrentLogoData, currentName);
-        showR13Alert('success', 'Logo chargé avec succès. Cliquez sur "Save changes" pour enregistrer.');
-      };
-      reader.onerror = function() {
+        showR13Alert('success', 'Logo chargé et optimisé. Cliquez sur "Enregistrer les modifications" pour valider.');
+      } catch (err) {
+        console.error('[R13 LOGO ERROR]', err);
         showR13Alert('error', 'Erreur lors de la lecture du fichier image.');
-      };
-      reader.readAsDataURL(file);
+      }
     }
 
     function removeR13Logo() {

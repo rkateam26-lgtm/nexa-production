@@ -43,6 +43,9 @@
   <!-- HTML5 Real Camera QR Code Scanner Engine -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
+  <!-- Real QR Code Generator Library for Client Vouchers -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+
   <!-- Supabase Official JS Client SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -110,26 +113,39 @@
 
         <div class="phone-content">
 
-          <!-- Clean Restaurant Header -->
-          <div class="restaurant-hero-clean">
-            <div style="display: flex; align-items: center; gap: 0.75rem;">
-              <img src="./assets/savane_dish.jpg" alt="Logo" class="restaurant-logo-clean">
-              <div class="restaurant-title-clean">
-                <h1 id="mobile-resto-name">Le Savane</h1>
-                <p id="mobile-resto-type">★ 4.9 • Bistro & Grillades</p>
+          <!-- Curved Red Restaurant Header (Mockup Style) -->
+          <div class="client-curved-hero">
+            <div class="client-curved-topbar">
+              <div class="client-resto-brand-mini">
+                <img id="mobile-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="client-resto-logo-mini">
+                <div>
+                  <div class="client-resto-name-mini" id="mobile-resto-name">CHITIR CHICKEN</div>
+                  <div style="font-size: 0.65rem; color: rgba(255,255,255,0.85); font-weight: 600;" id="mobile-resto-type">Fast Food & Poulet Braisé</div>
+                </div>
               </div>
+              <button class="client-scan-pill-btn" onclick="startRealCameraScanner()">
+                <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+                <span id="mobile-table-badge">Table #4</span>
+              </button>
             </div>
-            <span style="font-size:0.75rem; background:var(--marron-light); padding:0.25rem 0.6rem; border-radius:20px; font-weight:700; color:var(--marron-dark);" id="mobile-table-badge">
-              Table #4
-            </span>
+
+            <!-- Incoming Pink Notification Alert Banner (Requested by user) -->
+            <div class="loyalty-notif-banner" id="client-incoming-notif-banner" onclick="switchMobileTab('notifs')">
+              <div class="loyalty-notif-bell-box">🔔</div>
+              <div class="loyalty-notif-body">
+                <div class="loyalty-notif-title" id="notif-banner-title">Votre Fidélité Chitir Chicken</div>
+                <div class="loyalty-notif-sub" id="notif-banner-sub">-20% sur votre prochain repas !</div>
+              </div>
+              <div style="font-size: 0.8rem; color: #DC2626; font-weight: 800;">›</div>
+            </div>
           </div>
 
           <!-- CLIENT REGISTRATION BANNER (Visible if customer not logged in yet) -->
-          <div id="client-login-banner" style="background: linear-gradient(135deg, rgba(217,119,6,0.15), rgba(42,29,21,0.08)); border: 1.5px solid var(--primary-gold); margin: 0.75rem; padding: 1rem; border-radius: 14px; text-align: center;">
-            <h3 style="font-size: 0.95rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.3rem 0;">📲 Inscription / Connexion Client</h3>
-            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 0.75rem 0;">Entrez votre WhatsApp pour débloquer votre solde et cumuler vos points.</p>
-            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; font-size: 0.85rem; font-weight: 800; background: var(--primary-gold); color: #2A1D15;">
-              <i data-lucide="user-plus"></i>
+          <div id="client-login-banner" style="background: linear-gradient(135deg, rgba(220,38,38,0.08), rgba(185,28,28,0.04)); border: 1.5px solid #FCA5A5; margin: 0.75rem 1rem 0 1rem; padding: 0.85rem; border-radius: 16px; text-align: center;">
+            <h3 style="font-size: 0.88rem; font-weight: 800; color: #991B1B; margin: 0 0 0.2rem 0;">📲 Inscription / Connexion Client</h3>
+            <p style="font-size: 0.75rem; color: #6B7280; margin: 0 0 0.6rem 0;">Entrez votre WhatsApp pour débloquer votre solde et cumuler vos points.</p>
+            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; font-size: 0.82rem; font-weight: 800; background: #DC2626; color: #FFFFFF; padding: 0.6rem;">
+              <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
               <span>Créer mon Compte Client (10 Sec)</span>
             </button>
           </div>
@@ -142,7 +158,7 @@
               Scannez le QR Code de votre table en restaurant ou connectez-vous avec votre numéro WhatsApp pour accéder à votre espace fidélité !
             </p>
             
-            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; background: var(--primary-gold); color: #FFFFFF; font-weight: 800; font-size: 0.9rem; padding: 0.85rem; margin-bottom: 0.75rem;">
+            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; background: #DC2626; color: #FFFFFF; font-weight: 800; font-size: 0.9rem; padding: 0.85rem; margin-bottom: 0.75rem;">
               <i data-lucide="user-check"></i>
               <span>📲 Connexion / Inscription Client (WhatsApp)</span>
             </button>
@@ -151,81 +167,127 @@
               📷 Scanner un QR Code de Table (Caméra)
             </button>
 
-            <button class="btn-secondary" onclick="loadDemoRestaurant('Chitir Chicken')" style="width: 100%; justify-content: center; font-size: 0.8rem; font-weight: 700; border-color: var(--primary-gold); color: var(--primary-gold);">
+            <button class="btn-secondary" onclick="loadDemoRestaurant('Chitir Chicken')" style="width: 100%; justify-content: center; font-size: 0.8rem; font-weight: 700; border-color: #DC2626; color: #DC2626;">
               🧪 Démo Restaurant (Chitir Chicken)
             </button>
           </div>
 
-          <!-- SCREEN 1: LOYALTY HOME (DEFAULT ACTIVE) -->
+          <!-- SCREEN 1: LOYALTY HOME (MATCHING MOCKUP) -->
           <div class="client-screen active" id="screen-home">
             
-            <!-- Clean Points Card -->
-            <div class="points-card-clean">
-              <span class="points-label-clean">Votre Solde de Points</span>
-              <div class="points-val-clean" id="user-points-val">0</div>
-              <p style="font-size:0.78rem; color:var(--text-muted); margin-bottom: 0.5rem;">
-                Points attribués par scan : <strong id="user-scan-pts-badge" style="color:var(--primary-gold);">+20 PTS</strong>
-              </p>
-
-              <!-- Main Action Camera Scan Button -->
-              <button class="btn-scan-main" id="btn-trigger-scan">
-                <i data-lucide="camera"></i>
-                <span id="btn-scan-label">📷 Scanner ma Table (Caméra)</span>
-              </button>
-
-              <button style="margin-top: 0.75rem; font-size: 0.8rem; color: var(--text-muted); font-weight: 600; text-decoration: underline;" onclick="showPassModalFirst()">
-                Afficher mon Pass QR pour la caisse
-              </button>
-            </div>
-
-            <!-- Commercial Offers Highlight Section -->
-            <div id="client-offers-highlight-container" style="padding: 0 1rem; margin-bottom: 1.25rem; display: none;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h2 style="font-size: 1rem; font-weight: 800; color: var(--marron-dark); display: flex; align-items: center; gap: 0.4rem;">
-                  <span>📢 Offres Spéciales du Moment</span>
-                </h2>
+            <!-- Featured Floating Offer Card (from mockup) -->
+            <div class="featured-offer-floating-card" id="featured-hero-offer-card">
+              <div class="featured-offer-content">
+                <div class="featured-offer-headline" id="featured-offer-title">Nouvelle offre de -20% sur votre prochain repas</div>
+                <div class="featured-offer-details" id="featured-offer-desc">Présentez ce coupon au comptoir lors de votre commande.</div>
+                <button class="featured-offer-cta-link" onclick="showPassModalFirst()">
+                  <span>Échanger</span>
+                  <span>&gt;</span>
+                </button>
               </div>
-              <div id="client-offers-list" style="display: flex; flex-direction: column; gap: 0.6rem;">
-                <!-- Dynamically rendered by app.js -->
+              <div class="featured-offer-photo-container">
+                <img id="featured-offer-img" src="./assets/chicken_combo.jpg" alt="Offre Spéciale">
+                <span class="featured-offer-tag-badge">-20%</span>
               </div>
             </div>
 
-            <!-- Available Rewards Title -->
-            <div style="padding: 0 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-              <h2 style="font-size: 1rem; font-weight: 800; color: var(--marron-dark);">Récompenses du Restaurant</h2>
+            <!-- Quick Points & Scan Bar -->
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; margin: 0 1rem 1rem 1rem; background: #FFFFFF; border-radius: 14px; border: 1px solid #F3F4F6; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+              <div>
+                <span style="font-size: 0.7rem; color: #6B7280; font-weight: 700; text-transform: uppercase;">Vos Points :</span>
+                <strong style="font-size: 1.15rem; color: #DC2626; font-weight: 900; margin-left: 4px;" id="user-points-val">0</strong>
+                <span style="font-size: 0.72rem; color: #9CA3AF; margin-left: 2px;">pts</span>
+              </div>
+              <button class="btn-scan-main" id="btn-trigger-scan" style="width: auto; margin: 0; padding: 0.45rem 0.85rem; font-size: 0.75rem; border-radius: 20px; background: #DC2626; color: white;">
+                <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
+                <span>Scanner ma Table</span>
+              </button>
             </div>
 
-            <!-- Simple Rewards Catalogue -->
-            <div class="rewards-list-clean" id="client-rewards-list">
+            <!-- Section: Échangez vos points (Horizontal Cards like Mockup) -->
+            <div class="mockup-section-heading">
+              <span>Échangez vos points</span>
+              <button onclick="switchMobileTab('rewards')" style="font-size: 0.75rem; color: #DC2626; font-weight: 700; text-decoration: none;">
+                Voir tout &gt;
+              </button>
+            </div>
+
+            <!-- Horizontal Reward Cards List -->
+            <div id="mockup-rewards-container">
               <!-- Rendered dynamically by app.js -->
+            </div>
+
+            <!-- Carousel Pagination Dots -->
+            <div class="mockup-carousel-indicator">
+              <div class="mockup-indicator-dot active"></div>
+              <div class="mockup-indicator-dot"></div>
+              <div class="mockup-indicator-dot"></div>
+            </div>
+
+            <!-- Section: Vos favoris (From Mockup) -->
+            <div class="mockup-section-heading">
+              <span>Vos favoris</span>
+            </div>
+
+            <!-- Favorites Horizontal Scroller -->
+            <div class="mockup-favorites-scroller" id="mockup-favorites-list">
+              <div class="mockup-fav-card">
+                <img src="./assets/chicken_combo.jpg" class="mockup-fav-img" alt="Chicken Combo">
+                <div class="mockup-fav-body">
+                  <div class="mockup-fav-title">Chicken Combo Box</div>
+                  <div class="mockup-fav-tag">★ Coup de cœur</div>
+                </div>
+              </div>
+              <div class="mockup-fav-card">
+                <img src="./assets/pizza_toubel.jpg" class="mockup-fav-img" alt="Pizza de l'école">
+                <div class="mockup-fav-body">
+                  <div class="mockup-fav-title">Pizza Spéciale</div>
+                  <div class="mockup-fav-tag">Populaire</div>
+                </div>
+              </div>
+              <div class="mockup-fav-card">
+                <img src="./assets/burger_favori.jpg" class="mockup-fav-img" alt="Gourmet Burger">
+                <div class="mockup-fav-body">
+                  <div class="mockup-fav-title">Burger Braisé</div>
+                  <div class="mockup-fav-tag">Recommandé</div>
+                </div>
+              </div>
             </div>
 
           </div>
 
-          <!-- SCREEN 2: HISTORY TIMELINE -->
-          <div class="client-screen" id="screen-history">
-            <div style="padding: 1rem;">
-              <h2 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Historique d'Activité</h2>
-              <div class="history-feed" id="client-history-feed">
-                <!-- Rendered dynamically -->
+          <!-- SCREEN 2: DEDICATED REWARDS CATALOGUE (NEW 2nd TAB LIKE MOCKUP) -->
+          <div class="client-screen" id="screen-rewards">
+            <div style="padding: 1.25rem 1rem 0.5rem 1rem;">
+              <h2 style="font-size: 1.15rem; font-weight: 800; color: #111827; margin-bottom: 0.2rem;">Catalogue des Récompenses</h2>
+              <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 1rem;">Échangez vos points contre des menus et boissons offertes.</p>
+              
+              <!-- Full Rewards List -->
+              <div id="full-rewards-catalogue-list" style="display: flex; flex-direction: column; gap: 0.85rem;">
+                <!-- Dynamically populated by app.js -->
               </div>
             </div>
           </div>
 
           <!-- SCREEN 3: NOTIFICATIONS CENTER -->
           <div class="client-screen" id="screen-notifs">
-            <div style="padding: 1rem;">
-              <h2 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1rem;">Offres & Notifications</h2>
+            <div style="padding: 1.25rem 1rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h2 style="font-size: 1.15rem; font-weight: 800; color: #111827;">Offres & Notifications</h2>
+                <span style="background: #FEE2E2; color: #DC2626; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 12px;">5 nouvelles</span>
+              </div>
+              <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 1rem;">Vos promotions actives, remises au comptoir et alertes fidélité.</p>
+              
               <div class="rewards-list-clean" id="client-notifs-feed">
                 <!-- Rendered dynamically -->
               </div>
             </div>
           </div>
 
-          <!-- SCREEN 4: CLIENT PROFILE -->
+          <!-- SCREEN 4: CLIENT PROFILE & ACTIVITY -->
           <div class="client-screen" id="screen-profile">
             <div style="padding: 1.25rem 1rem; text-align: center;">
-              <div style="width: 72px; height: 72px; background: var(--primary-gold); color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 12px rgba(229, 57, 53, 0.2);" id="client-avatar-letters">
+              <div style="width: 72px; height: 72px; background: #DC2626; color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);" id="client-avatar-letters">
                 NC
               </div>
               <h2 style="color: var(--marron-dark); font-size: 1.2rem; font-weight: 800; margin-bottom: 0.1rem;" id="profile-display-name">Client Nexa</h2>
@@ -235,37 +297,33 @@
               <div style="background: #FFFFFF; border: 1px solid var(--dash-border); border-radius: 14px; padding: 1rem; text-align: left; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
                   <span style="color: var(--text-muted); font-size: 0.85rem;">Solde Actuel de Points</span>
-                  <strong style="color: var(--primary-gold); font-size: 0.95rem; font-weight: 800;" id="profile-display-points">0 points ⭐</strong>
+                  <strong style="color: #DC2626; font-size: 0.95rem; font-weight: 800;" id="profile-display-points">0 points ⭐</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
                   <span style="color: var(--text-muted); font-size: 0.85rem;">Restaurant Associé</span>
-                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-resto">Le Savane</strong>
+                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-resto">Chitir Chicken</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
                   <span style="color: var(--text-muted); font-size: 0.85rem;">Statut Fidélité</span>
-                  <strong style="color: var(--primary-gold); font-size: 0.85rem;" id="profile-display-tier">Membre Silver</strong>
+                  <strong style="color: #DC2626; font-size: 0.85rem;" id="profile-display-tier">Membre Silver</strong>
                 </div>
               </div>
 
               <!-- Quick Client Navigation Shortcuts -->
               <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
-                <button class="btn-secondary" onclick="switchMobileTab('history')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
-                  <span>📜 Consulter mon Historique</span>
+                <button class="btn-secondary" onclick="openClientHistoryModal()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
+                  <span>📜 Consulter mon Historique de Scans</span>
                   <span>➔</span>
                 </button>
-                <button class="btn-secondary" onclick="switchMobileTab('home')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
-                  <span>🎁 Catalogue des Récompenses</span>
-                  <span>➔</span>
-                </button>
-                <button class="btn-secondary" onclick="switchMobileTab('notifs')" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
-                  <span>🔔 Offres & Notifications</span>
+                <button class="btn-secondary" onclick="showPassModalFirst()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
+                  <span>💳 Afficher mon Pass QR de Caisse</span>
                   <span>➔</span>
                 </button>
                 <button class="btn-secondary" onclick="openClientSupportWhatsApp()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700; border-color: #25D366; color: #16A34A;">
                   <span>💬 Aide & Support WhatsApp</span>
                   <span>💬</span>
                 </button>
-                <button class="btn-secondary" id="btn-pwa-install" onclick="installNexaPWA()" style="width: 100%; justify-content: center; padding: 0.75rem 1rem; font-weight: 700; border-color: var(--primary-gold); color: var(--primary-gold);">
+                <button class="btn-secondary" id="btn-pwa-install" onclick="installNexaPWA()" style="width: 100%; justify-content: center; padding: 0.75rem 1rem; font-weight: 700; border-color: #DC2626; color: #DC2626;">
                   <span>📲 Ajouter NEXA à l'Écran d'Accueil</span>
                 </button>
               </div>
@@ -285,21 +343,22 @@
 
         </div>
 
-        <!-- Mobile Bottom Navigation (Client App - 4 Tabs Exact) -->
+        <!-- Mobile Bottom Navigation (Client App - Exact 4 Tabs from Mockup) -->
         <nav class="mobile-nav">
-          <button class="nav-tab active" data-tab="home">
+          <button class="nav-tab active" data-tab="home" onclick="switchMobileTab('home')">
             <i data-lucide="home"></i>
             <span>Accueil</span>
           </button>
-          <button class="nav-tab" data-tab="history">
-            <i data-lucide="history"></i>
-            <span>Historique</span>
+          <button class="nav-tab" data-tab="rewards" onclick="switchMobileTab('rewards')">
+            <i data-lucide="gift"></i>
+            <span>Récompenses</span>
           </button>
-          <button class="nav-tab" data-tab="notifs">
+          <button class="nav-tab" data-tab="notifs" onclick="switchMobileTab('notifs')">
             <i data-lucide="bell"></i>
+            <span class="nav-tab-badge-count">5</span>
             <span>Notifications</span>
           </button>
-          <button class="nav-tab" data-tab="profile">
+          <button class="nav-tab" data-tab="profile" onclick="switchMobileTab('profile')">
             <i data-lucide="user"></i>
             <span>Profil</span>
           </button>
@@ -950,6 +1009,50 @@
       </div>
 
       <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0;">Présentez cet écran ou votre code au serveur lors du règlement.</p>
+    </div>
+  </div>
+
+  <!-- MODAL EN SAVOIR PLUS SUR LA RÉCOMPENSE (Mockup Style) -->
+  <div class="nexa-modal-backdrop" id="modal-reward-detail">
+    <div class="nexa-modal-card" style="max-width: 400px; padding: 1.25rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 800; color: #111827; margin: 0;">Détail de la Récompense</h3>
+        <button onclick="closeRewardDetailModal()" style="font-size: 1.2rem; background: none; border: none; cursor: pointer; color: #9CA3AF;">✕</button>
+      </div>
+      <div style="width: 100%; height: 160px; border-radius: 14px; overflow: hidden; margin-bottom: 1rem; background: #F3F4F6;">
+        <img id="detail-reward-img" src="" alt="Photo Récompense" style="width: 100%; height: 100%; object-fit: cover;">
+      </div>
+      <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+        <h4 style="font-size: 1.1rem; font-weight: 800; color: #111827; margin: 0;" id="detail-reward-title">Frite Combo Chicken</h4>
+        <span style="font-size: 0.95rem; font-weight: 900; color: #DC2626;" id="detail-reward-pts">50 pts</span>
+      </div>
+      <p style="font-size: 0.82rem; color: #4B5563; line-height: 1.45; margin-bottom: 1.25rem;" id="detail-reward-desc">
+        8 morceaux épicés et une portion de frite croustillante offerts.
+      </p>
+      <div style="background: #F9FAFB; border-radius: 12px; padding: 0.75rem; font-size: 0.75rem; color: #6B7280; margin-bottom: 1.25rem;">
+        📌 <strong>Conditions de validation :</strong> Valable sur place au comptoir ou à emporter auprès du serveur.
+      </div>
+      <div style="display: flex; gap: 0.6rem;">
+        <button class="btn-secondary" onclick="closeRewardDetailModal()" style="flex: 1; justify-content: center; font-size: 0.82rem;">
+          Fermer
+        </button>
+        <button class="btn-primary" id="detail-reward-cta-btn" style="flex: 1.5; justify-content: center; font-size: 0.82rem; background: #DC2626; color: white;">
+          🎁 Échanger Maintenant
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL HISTORIQUE DU CLIENT -->
+  <div class="nexa-modal-backdrop" id="modal-client-history">
+    <div class="nexa-modal-card" style="max-width: 420px; padding: 1.25rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h3 style="font-size: 1.05rem; font-weight: 800; color: #111827; margin: 0;">📜 Mon Historique</h3>
+        <button onclick="closeClientHistoryModal()" style="font-size: 1.2rem; background: none; border: none; cursor: pointer; color: #9CA3AF;">✕</button>
+      </div>
+      <div class="history-feed" id="client-modal-history-feed" style="max-height: 380px; overflow-y: auto;">
+        <!-- Dynamically rendered -->
+      </div>
     </div>
   </div>
 
