@@ -783,6 +783,10 @@
     </div>
 
     <div class="user-menu-group">
+      <button class="btn-create-account" onclick="openLiveClientView()" style="width: auto; padding: 0.42rem 0.85rem; font-size: 0.8rem; background: #10B981; border-color: #10B981; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 8px rgba(16,185,129,0.25); cursor: pointer;" title="Tester l'expérience client à table">
+        <i data-lucide="smartphone" style="width: 14px; height: 14px;"></i>
+        <span>📱 Démo Scan Client (Table #1)</span>
+      </button>
       <span class="user-email-text" id="txt-user-email">owner@restaurant.com</span>
       <button class="btn-logout" onclick="handleR5SignOut()">
         <i data-lucide="log-out" style="width: 14px; height: 14px;"></i>
@@ -800,39 +804,39 @@
     <aside class="b2b-sidebar">
       <a class="nav-item active" onclick="switchR5Tab('dashboard', this)">
         <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>
-        <span>Dashboard</span>
+        <span>Tableau de Bord</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('clients', this)">
         <i data-lucide="users" style="width: 18px; height: 18px;"></i>
-        <span>Clients</span>
+        <span>Clients & CRM</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('points', this)">
         <i data-lucide="zap" style="width: 18px; height: 18px;"></i>
-        <span>Loyalty / Points</span>
+        <span>Barème & Points</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('rewards', this)">
         <i data-lucide="gift" style="width: 18px; height: 18px;"></i>
-        <span>Rewards</span>
+        <span>Cadeaux & Récompenses</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('offers', this)">
         <i data-lucide="megaphone" style="width: 18px; height: 18px;"></i>
-        <span>Offers</span>
+        <span>Offres Commerciales</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('qr', this)">
         <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
-        <span>QR Code</span>
+        <span>Studio QR Code Table</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('analytics', this)">
         <i data-lucide="trending-up" style="width: 18px; height: 18px;"></i>
-        <span>Analytics</span>
+        <span>Statistiques</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('subscription', this)">
         <i data-lucide="credit-card" style="width: 18px; height: 18px;"></i>
-        <span>Subscription</span>
+        <span>Abonnement</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('settings', this)">
         <i data-lucide="settings" style="width: 18px; height: 18px;"></i>
-        <span>Settings</span>
+        <span>Paramètres</span>
       </a>
     </aside>
 
@@ -842,8 +846,8 @@
       <!-- DASHBOARD TAB CONTENT (R5 ACTIVE VIEW) -->
       <div id="tab-r5-dashboard">
         <div class="section-title-group">
-          <h1>Restaurant Overview</h1>
-          <p>Real-time metrics and customer activity from Supabase Cloud</p>
+          <h1>Vue d'Ensemble du Restaurant</h1>
+          <p>Statistiques en direct et activité de vos clients fidèles</p>
         </div>
 
         <!-- METRICS GRID (6 CARDS) -->
@@ -1700,6 +1704,13 @@
     function showR5AuthError() {
       document.getElementById('b2b-main-layout').style.display = 'none';
       document.getElementById('view-r5-auth-error').style.display = 'block';
+    }
+
+    function openLiveClientView() {
+      const currentResto = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
+      const backend = window.nexaBackend || new NexaProductionBackend();
+      const slug = backend.getSlug(currentResto);
+      window.open(`index.html?resto=nx_${slug}&table=1`, '_blank');
     }
 
     async function loadDashboardMetrics(restoName, userEmail) {

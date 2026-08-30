@@ -155,15 +155,33 @@ class NexaProductionBackend {
 
     if (client) {
       try {
-        await client
+        const { data: existing } = await client
           .from('restaurants')
-          .upsert({
-            name: restoName,
-            email: ownerEmail,
-            whatsapp_contact: restoPhone || ownerPhone,
-            city: metaObj,
-            currency: 'FCFA'
-          }, { onConflict: 'email' });
+          .select('id')
+          .eq('email', ownerEmail)
+          .maybeSingle();
+
+        if (existing && existing.id) {
+          await client
+            .from('restaurants')
+            .update({
+              name: restoName,
+              whatsapp_contact: restoPhone || ownerPhone,
+              city: metaObj,
+              currency: 'FCFA'
+            })
+            .eq('id', existing.id);
+        } else {
+          await client
+            .from('restaurants')
+            .insert({
+              name: restoName,
+              email: ownerEmail,
+              whatsapp_contact: restoPhone || ownerPhone,
+              city: metaObj,
+              currency: 'FCFA'
+            });
+        }
       } catch (dbErr) {
         console.warn('[DIAGNOSTIC B2B DB UPSERT WARN NON-BLOCKING]', dbErr);
       }
