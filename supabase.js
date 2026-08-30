@@ -818,6 +818,7 @@ class NexaProductionBackend {
         desc: (r.desc && r.desc !== slug) ? r.desc : (isLegacyDescResto ? 'Valable sur présentation en caisse.' : (r.description || 'Valable sur présentation en caisse.')),
         pts: r.points_required || r.pts || r.points_cost || 20,
         icon: r.icon || '🎁',
+        image: r.image || '',
         category: r.category || 'Général',
         active: r.active !== false && r.is_active !== false,
         useCount: r.redemptions_count || r.use_count || 0,
@@ -881,6 +882,7 @@ class NexaProductionBackend {
       points_required: ptsVal,
       points_cost: ptsVal,
       icon: rewardData.icon || '🎁',
+      image: rewardData.image || '',
       category: rewardData.category || 'Général',
       active: rewardData.active !== false,
       is_active: rewardData.active !== false,
@@ -1042,6 +1044,7 @@ class NexaProductionBackend {
         restoName: o.restoName || o.restaurant_name || restoName,
         title: o.title || 'Offre Spéciale',
         desc: o.desc || o.description || 'Offre privilège pour les clients Nexa.',
+        image: o.image || '',
         startDate: startDateStr,
         endDate: endDateStr,
         active: o.active !== false && o.is_active !== false,
@@ -1102,6 +1105,7 @@ class NexaProductionBackend {
       restaurant_name: restoName,
       title: offerData.title.trim(),
       description: offerData.desc.trim(),
+      image: offerData.image || '',
       start_date: startDate,
       end_date: endDate,
       active: offerData.active !== false,
@@ -2387,6 +2391,141 @@ class NexaProductionBackend {
     } catch (e) {}
 
     return true;
+  }
+
+  // 16. VOUCHER & REWARD REDEMPTION LIFECYCLE (CONVERSION POINTS -> QR & CODE ALPHANUMÉRIQUE)
+  async createRewardVoucher(restoName, clientPhone, rewardData) {
+    const slug = this.getSlug(restoName || 'savane');
+    const pts = parseInt(rewardData.pts || rewardData.points_required || 0, 10);
+
+    // 1. Deduct points from client in Supabase Cloud
+    await this.deductPointsCloud(restoName, clientPhone, pts);
+
+    // 2. Generate unique alphanumeric voucher code: NX-XXXX (e.g. NX-8429, NX-7A3B)
+    const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const code = `NX-${randomChars}`;
+    const voucherId = `vch_${Date.now()}_${randomChars.toLowerCase()}`;
+
+    const voucher = {
+      id: voucherId,
+      voucherId,
+      code,
+      rewardId: rewardData.id || '',
+      rewardTitle: rewardData.title || 'Cadeau Fidélité',
+      rewardIcon: rewardData.icon || '🎁',
+      rewardImage: rewardData.image || '',
+      pts,
+      clientName: rewardData.clientName || 'Client Nexa',
+      clientPhone,
+      restoName,
+      restoSlug: slug,
+      status: 'pending', // 'pending' -> 'used'
+      createdAt: new Date().toISOString(),
+      usedAt: null
+    };
+
+    // 3. Persist voucher in restaurant storage and client storage
+    try {
+      let list = [];
+      const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
+      if (raw) list = JSON.parse(raw);
+      list.unshift(voucher);
+      localStorage.setItem(`nexa_vouchers_${slug}`, JSON.stringify(list));
+
+      // Also persist in global pending claims
+      let pendingClaims = [];
+      const rawClaims = localStorage.getItem(`nexa_pending_claims_${slug}`);
+      if (rawClaims) pendingClaims = JSON.parse(rawClaims);
+      pendingClaims.unshift(voucher);
+      localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(pendingClaims));
+    } catch (e) {}
+
+    return voucher;
+  }
+
+  // 16b. Server scans QR or enters alphanumeric code to verify & redeem
+  async verifyAndRedeemVoucher(restoName, codeOrId) {
+    const slug = this.getSlug(restoName || 'savane');
+    const search = (codeOrId || '').trim().toUpperCase();
+
+    if (!search) {
+      return { success: false, error: 'Veuillez saisir un code de récompense.' };
+    }
+
+    let vouchers = [];
+    try {
+      const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
+      if (raw) vouchers = JSON.parse(raw);
+    } catch (e) {}
+
+    // Find voucher by code (e.g. NX-8429) or id (e.g. vch_...)
+    const voucherIdx = vouchers.findIndex(v => 
+      (v.code && v.code.toUpperCase() === search) || 
+      (v.voucherId && v.voucherId.toUpperCase() === search) ||
+      (v.id && String(v.id).toUpperCase() === search)
+    );
+
+    if (voucherIdx < 0) {
+      return { 
+        success: false, 
+        error: `Code « ${search} » introuvable ou invalide pour cet établissement.` 
+      };
+    }
+
+    const voucher = vouchers[voucherIdx];
+
+    // Check anti-fraud / already used
+    if (voucher.status === 'used') {
+      const dateUsed = voucher.usedAt ? new Date(voucher.usedAt).toLocaleString('fr-FR') : 'précédemment';
+      return {
+        success: false,
+        alreadyUsed: true,
+        voucher,
+        error: `⚠️ Ce cadeau a DÉJÀ été utilisé le ${dateUsed} pour ${voucher.clientName}.`
+      };
+    }
+
+    // Mark as Used ✅
+    voucher.status = 'used';
+    voucher.usedAt = new Date().toISOString();
+    vouchers[voucherIdx] = voucher;
+
+    try {
+      localStorage.setItem(`nexa_vouchers_${slug}`, JSON.stringify(vouchers));
+
+      // Record in proofs feed for KPIs and analytics
+      let proofs = [];
+      const rawProofs = localStorage.getItem(`nexa_validated_proofs_${slug}`);
+      if (rawProofs) proofs = JSON.parse(rawProofs);
+      proofs.unshift({
+        id: Date.now(),
+        voucherCode: voucher.code,
+        rewardTitle: voucher.rewardTitle,
+        pts: voucher.pts,
+        clientName: voucher.clientName,
+        clientPhone: voucher.clientPhone,
+        date: new Date().toLocaleDateString('fr-FR'),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+      localStorage.setItem(`nexa_validated_proofs_${slug}`, JSON.stringify(proofs));
+    } catch (e) {}
+
+    return {
+      success: true,
+      voucher,
+      message: `🎉 Récompense validée avec succès : « ${voucher.rewardTitle} » pour ${voucher.clientName} (-${voucher.pts} pts).`
+    };
+  }
+
+  // 16c. Get all vouchers for restaurant
+  getRestaurantVouchers(restoName) {
+    const slug = this.getSlug(restoName || 'savane');
+    try {
+      const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
   }
 }
 

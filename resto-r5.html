@@ -1108,6 +1108,10 @@
     </div>
 
     <div class="user-menu-group">
+      <button class="btn-create-account" onclick="openServerRedeemModal()" style="width: auto; padding: 0.42rem 0.85rem; font-size: 0.8rem; background: var(--text-dark); border-color: var(--text-dark); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;" title="Valider un cadeau client via QR ou code alphanumérique">
+        <i data-lucide="scan-line" style="width: 14px; height: 14px; color: #10B981;"></i>
+        <span>🔍 Valider un Cadeau</span>
+      </button>
       <button class="btn-create-account" onclick="openLiveClientView()" style="width: auto; padding: 0.42rem 0.85rem; font-size: 0.8rem; background: #10B981; border-color: #10B981; display: inline-flex; align-items: center; gap: 0.4rem; box-shadow: 0 2px 8px rgba(16,185,129,0.25); cursor: pointer;" title="Tester l'expérience client à table">
         <i data-lucide="smartphone" style="width: 14px; height: 14px;"></i>
         <span>📱 Démo Scan Client (Table #1)</span>
@@ -1135,13 +1139,9 @@
         <i data-lucide="users" style="width: 18px; height: 18px;"></i>
         <span>Clients & CRM</span>
       </a>
-      <a class="nav-item" onclick="switchR5Tab('points', this)">
-        <i data-lucide="zap" style="width: 18px; height: 18px;"></i>
-        <span>Barème & Points</span>
-      </a>
       <a class="nav-item" onclick="switchR5Tab('rewards', this)">
         <i data-lucide="gift" style="width: 18px; height: 18px;"></i>
-        <span>Cadeaux & Récompenses</span>
+        <span>Récompenses & Fidélité</span>
       </a>
       <a class="nav-item" onclick="switchR5Tab('offers', this)">
         <i data-lucide="megaphone" style="width: 18px; height: 18px;"></i>
@@ -1430,16 +1430,39 @@
         </div>
       </div>
 
-      <!-- REWARDS TAB CONTENT (ÉTAPE R8 ACTIVE VIEW) -->
+      <!-- REWARDS TAB CONTENT (RÉCOMPENSES & FIDÉLITÉ) -->
       <div id="tab-r8-rewards" style="display: none;">
-        <div class="section-title-group" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
+        <div class="section-title-group" style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
           <div>
-            <h1>🎁 Catalogue des Récompenses</h1>
-            <p>Créez et gérez les avantages offerts à vos clients fidèles</p>
+            <h1>🎁 Récompenses & Fidélité</h1>
+            <p>Gérez les avantages offerts à vos clients, réglez vos points par scan et validez les récompenses en caisse</p>
           </div>
-          <button class="btn-create-account" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.85rem;" onclick="openR8RewardModal()">
-            <span>+ Add reward</span>
-          </button>
+          <div style="display: flex; gap: 0.6rem; flex-wrap: wrap;">
+            <button class="btn-create-account" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.85rem; background: #10B981; border-color: #10B981;" onclick="openServerRedeemModal()">
+              <span>🔍 Valider un Cadeau (Scanner / Code)</span>
+            </button>
+            <button class="btn-create-account" style="width: auto; padding: 0.6rem 1.2rem; font-size: 0.85rem;" onclick="openR8RewardModal()">
+              <span>+ Add reward</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- BARÈME & POINTS PAR SCAN (INTÉGRÉ) -->
+        <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 14px; padding: 0.9rem 1.25rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <span style="font-size: 1.4rem;">⚡</span>
+            <div>
+              <strong style="font-size: 0.92rem; color: var(--text-dark); display: block;">Barème : Points attribués par Scan de Table</strong>
+              <span style="font-size: 0.78rem; color: var(--text-muted);">Points cumulés à chaque visite client (délai de sécurité anti-triche : 2h).</span>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <input type="number" id="quick-r7-pts-input" value="20" min="5" max="500" step="5" style="width: 80px; padding: 0.45rem 0.6rem; border: 1.5px solid var(--border-color); border-radius: 8px; font-weight: 800; font-size: 1rem; text-align: center; color: var(--nexa-red);">
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">pts</span>
+            <button class="btn-create-account" id="btn-quick-save-pts" style="width: auto; padding: 0.45rem 1rem; font-size: 0.82rem;" onclick="handleQuickLoyaltyPointsSave()">
+              <span>Enregistrer</span>
+            </button>
+          </div>
         </div>
 
         <!-- BANNIÈRE D'ERREUR ET DE SUCCÈS R8 -->
@@ -2427,6 +2450,31 @@
           </select>
         </div>
 
+        <!-- MENU ITEM PHOTO / IMAGE (RÉCOMPENSE) -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Photo du menu / plat (optionnel)
+          </label>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div id="r8-reward-img-box" style="width: 64px; height: 64px; border-radius: 10px; border: 1.5px dashed var(--border-color); background: #FAF9F6; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+              <img id="r8-reward-img-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              <span id="r8-reward-img-placeholder" style="font-size: 1.5rem;">📸</span>
+            </div>
+            <div style="flex: 1;">
+              <input type="file" id="r8-reward-file-input" accept="image/png,image/jpeg,image/jpg,image/webp" style="display: none;" onchange="handleR8RewardImageUpload(event)">
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn-create-account" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.78rem;" onclick="document.getElementById('r8-reward-file-input').click()">
+                  Choisir une photo
+                </button>
+                <button type="button" class="btn-logout" id="btn-remove-r8-img" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.78rem; display: none;" onclick="removeR8RewardImage()">
+                  Retirer
+                </button>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">PNG, JPG, WEBP • Max 2 Mo</span>
+            </div>
+          </div>
+        </div>
+
         <!-- POINTS COST -->
         <div style="margin-bottom: 1rem;">
           <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
@@ -2581,6 +2629,31 @@
           <textarea id="r9-offer-desc" class="form-control-r4" style="height: 80px; font-family: inherit;" placeholder="Ex: Profitez de 20% de réduction sur toutes nos pizzas tous les mardis soir sur présentation de l'application..." required></textarea>
         </div>
 
+        <!-- MENU ITEM PHOTO / BANNER (OFFRE) -->
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.35rem;">
+            Photo du menu / visuel de la promotion (optionnel)
+          </label>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <div id="r9-offer-img-box" style="width: 72px; height: 50px; border-radius: 8px; border: 1.5px dashed var(--border-color); background: #FAF9F6; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+              <img id="r9-offer-img-preview" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+              <span id="r9-offer-img-placeholder" style="font-size: 1.3rem;">📢</span>
+            </div>
+            <div style="flex: 1;">
+              <input type="file" id="r9-offer-file-input" accept="image/png,image/jpeg,image/jpg,image/webp" style="display: none;" onchange="handleR9OfferImageUpload(event)">
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn-create-account" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.78rem;" onclick="document.getElementById('r9-offer-file-input').click()">
+                  Choisir une photo
+                </button>
+                <button type="button" class="btn-logout" id="btn-remove-r9-img" style="width: auto; padding: 0.4rem 0.8rem; font-size: 0.78rem; display: none;" onclick="removeR9OfferImage()">
+                  Retirer
+                </button>
+              </div>
+              <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 0.2rem;">PNG, JPG, WEBP • Max 2 Mo</span>
+            </div>
+          </div>
+        </div>
+
         <!-- DATES GRID (START & END DATE) -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
           <div>
@@ -2614,6 +2687,55 @@
     </div>
   </div>
 
+  <!-- MODAL VALIDATION CADEAU PAR LE SERVEUR (CYCLE DE CONVERSION) -->
+  <div class="r6-detail-modal" id="modal-server-redeem" style="z-index: 99999; display: none;">
+    <div class="r6-detail-card" style="max-width: 480px; text-align: center;">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.25rem;">
+        <div style="text-align: left;">
+          <span style="font-size: 0.75rem; font-weight: 800; color: #10B981; background: rgba(16,185,129,0.1); padding: 2px 8px; border-radius: 10px;">Validation Serveur / Caisse</span>
+          <h2 style="font-family: var(--font-heading); font-size: 1.35rem; font-weight: 800; color: var(--text-dark); margin: 0.3rem 0 0 0;">Valider une Récompense</h2>
+        </div>
+        <button onclick="closeServerRedeemModal()" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted);">✕</button>
+      </div>
+
+      <div class="alert-banner error" id="server-redeem-error" style="display: none; margin-bottom: 1rem; text-align: left;"></div>
+      <div class="alert-banner success" id="server-redeem-success" style="display: none; margin-bottom: 1rem; text-align: left;"></div>
+
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0 0 1.25rem 0; text-align: left;">
+        Saisissez le code alphanumérique de secours présenté par le client sur son Pass (ou scannez son QR code).
+      </p>
+
+      <div style="background: #F8FAFC; border: 1.5px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
+        <label for="server-redeem-code-input" style="display: block; font-size: 0.82rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem; text-transform: uppercase;">
+          Code Alphanumérique Client (ex: NX-8429)
+        </label>
+        <input type="text" id="server-redeem-code-input" placeholder="NX-XXXX" style="width: 100%; padding: 0.75rem; font-size: 1.4rem; font-weight: 900; text-align: center; letter-spacing: 2px; text-transform: uppercase; border: 2px solid var(--border-color); border-radius: 10px; font-family: monospace; box-sizing: border-box;" autocomplete="off">
+        <button type="button" class="btn-create-account" id="btn-server-verify" style="width: 100%; margin-top: 0.75rem; padding: 0.75rem; font-size: 0.95rem; background: #10B981; border-color: #10B981;" onclick="handleServerRedeemSubmit()">
+          <span>✓ Vérifier & Valider le Cadeau</span>
+        </button>
+      </div>
+
+      <!-- SUCCESS CARD PREVIEW (DISPLAYED UPON REDEMPTION) -->
+      <div id="server-redeem-result-card" style="display: none; background: #ECFDF5; border: 1.5px solid #A7F3D0; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; text-align: left;">
+        <div style="display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem;">
+          <span style="font-size: 1.5rem;">🎉</span>
+          <div>
+            <strong style="font-size: 0.95rem; color: #065F46; display: block;" id="res-redeem-title">Cadeau Validé !</strong>
+            <span style="font-size: 0.75rem; color: #047857;" id="res-redeem-client">Client: Jean</span>
+          </div>
+        </div>
+        <div style="font-size: 0.8rem; color: #065F46; border-top: 1px dashed #A7F3D0; padding-top: 0.4rem; display: flex; justify-content: space-between;">
+          <span id="res-redeem-pts">-50 points</span>
+          <span id="res-redeem-time">À l'instant</span>
+        </div>
+      </div>
+
+      <button type="button" class="btn-logout" style="width: 100%; border-color: var(--border-color);" onclick="closeServerRedeemModal()">
+        <span>Fermer</span>
+      </button>
+    </div>
+  </div>
+
   <script>
     // Initialize Lucide Icons
     if (window.lucide) {
@@ -2621,6 +2743,106 @@
     }
 
     let activeB2BSession = null;
+
+    // ==========================================================================
+    // SERVER REWARD REDEMPTION & VOUCHER VALIDATOR (CYCLE DE CONVERSION)
+    // ==========================================================================
+    window.openServerRedeemModal = function() {
+      const modal = document.getElementById('modal-server-redeem');
+      if (!modal) return;
+      const err = document.getElementById('server-redeem-error');
+      const succ = document.getElementById('server-redeem-success');
+      const resCard = document.getElementById('server-redeem-result-card');
+      const input = document.getElementById('server-redeem-code-input');
+      if (err) err.style.display = 'none';
+      if (succ) succ.style.display = 'none';
+      if (resCard) resCard.style.display = 'none';
+      if (input) { input.value = ''; input.disabled = false; }
+      modal.classList.add('active');
+      modal.style.display = 'flex';
+      modal.style.visibility = 'visible';
+      modal.style.opacity = '1';
+      modal.style.zIndex = '99999';
+      setTimeout(() => { if (input) input.focus(); }, 150);
+    };
+
+    window.closeServerRedeemModal = function() {
+      const modal = document.getElementById('modal-server-redeem');
+      if (modal) {
+        modal.classList.remove('active');
+        modal.style.display = 'none';
+      }
+    };
+
+    window.handleServerRedeemSubmit = async function() {
+      const input = document.getElementById('server-redeem-code-input');
+      const btn = document.getElementById('btn-server-verify');
+      const errBanner = document.getElementById('server-redeem-error');
+      const succBanner = document.getElementById('server-redeem-success');
+      const resCard = document.getElementById('server-redeem-result-card');
+
+      if (errBanner) errBanner.style.display = 'none';
+      if (succBanner) succBanner.style.display = 'none';
+      if (resCard) resCard.style.display = 'none';
+
+      const code = (input && input.value || '').trim();
+      if (!code) {
+        if (errBanner) {
+          errBanner.textContent = '⚠️ Veuillez renseigner le code alphanumérique du client (ex: NX-8429).';
+          errBanner.style.display = 'block';
+        }
+        return;
+      }
+
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Vérification en cours…</span>';
+      }
+
+      try {
+        const restoName = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const result = await backend.verifyAndRedeemVoucher(restoName, code);
+
+        if (!result.success) {
+          if (errBanner) {
+            errBanner.textContent = result.error || 'Code invalide ou introuvable.';
+            errBanner.style.display = 'block';
+          }
+          return;
+        }
+
+        // Success!
+        if (succBanner) {
+          succBanner.textContent = result.message || '🎉 Récompense validée avec succès !';
+          succBanner.style.display = 'block';
+        }
+
+        if (resCard && result.voucher) {
+          document.getElementById('res-redeem-title').textContent = `${result.voucher.rewardIcon || '🎁'} ${result.voucher.rewardTitle}`;
+          document.getElementById('res-redeem-client').textContent = `Client: ${result.voucher.clientName || 'Client Nexa'} (${result.voucher.clientPhone || ''})`;
+          document.getElementById('res-redeem-pts').textContent = `-${result.voucher.pts} points déduits`;
+          document.getElementById('res-redeem-time').textContent = `Code: ${result.voucher.code} • Validé ✅`;
+          resCard.style.display = 'block';
+        }
+
+        if (input) input.value = '';
+        
+        // Refresh metrics and rewards if active
+        loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
+        if (typeof loadR11Analytics === 'function') loadR11Analytics(restoName);
+      } catch (err) {
+        if (errBanner) {
+          errBanner.textContent = 'Erreur : ' + err.message;
+          errBanner.style.display = 'block';
+        }
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>✓ Vérifier & Valider le Cadeau</span>';
+        }
+      }
+    };
 
     // RESTAURANT SWITCHER HANDLER
     window.switchActiveRestaurant = async function(newRestoName) {
@@ -2862,13 +3084,13 @@
 
     // TAB SWITCHER HANDLER
     function switchR5Tab(tabName, clickedEl) {
-      if (tabName === 'loyalty') tabName = 'points';
+      if (tabName === 'loyalty' || tabName === 'points') tabName = 'rewards';
       document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => el.classList.remove('active'));
       
       // Auto-activate corresponding links on sidebar and mobile dock
       document.querySelectorAll('.nav-item, .mobile-dock-item').forEach(el => {
         const onclickAttr = el.getAttribute('onclick') || '';
-        if (onclickAttr.includes(`'${tabName}'`) || (tabName === 'points' && onclickAttr.includes("'loyalty'"))) {
+        if (onclickAttr.includes(`'${tabName}'`)) {
           el.classList.add('active');
         }
       });
@@ -3371,6 +3593,69 @@
     // ÉTAPE R8: REWARDS CATALOGUE ENGINE (CREATE, EDIT, TOGGLE STATUS, RENDER)
     // ==========================================================================
     let rawR8RewardsList = [];
+    let currentR8RewardImageBase64 = '';
+    let currentR9OfferImageBase64 = '';
+
+    window.handleR8RewardImageUpload = function(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Image trop volumineuse. Taille maximale : 2 Mo.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        currentR8RewardImageBase64 = e.target.result;
+        const preview = document.getElementById('r8-reward-img-preview');
+        const placeholder = document.getElementById('r8-reward-img-placeholder');
+        const btnRemove = document.getElementById('btn-remove-r8-img');
+        if (preview) { preview.src = currentR8RewardImageBase64; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        if (btnRemove) btnRemove.style.display = 'inline-block';
+      };
+      reader.readAsDataURL(file);
+    };
+
+    window.removeR8RewardImage = function() {
+      currentR8RewardImageBase64 = '';
+      const preview = document.getElementById('r8-reward-img-preview');
+      const placeholder = document.getElementById('r8-reward-img-placeholder');
+      const btnRemove = document.getElementById('btn-remove-r8-img');
+      const fileInput = document.getElementById('r8-reward-file-input');
+      if (preview) { preview.src = ''; preview.style.display = 'none'; }
+      if (placeholder) placeholder.style.display = 'block';
+      if (btnRemove) btnRemove.style.display = 'none';
+      if (fileInput) fileInput.value = '';
+    };
+
+    window.handleQuickLoyaltyPointsSave = async function() {
+      const input = document.getElementById('quick-r7-pts-input');
+      const btn = document.getElementById('btn-quick-save-pts');
+      if (!input) return;
+      const pts = parseInt(input.value, 10);
+      if (isNaN(pts) || pts <= 0) {
+        alert('Veuillez entrer un nombre de points valide (supérieur à 0).');
+        return;
+      }
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Sauvegarde…</span>';
+      }
+      try {
+        const restoName = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
+        const userEmail = (activeB2BSession && activeB2BSession.email) || 'owner@restaurant.com';
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.updateRestaurantLoyaltyConfig(restoName, userEmail, { pointsPerScan: pts });
+        alert(`✅ Barème mis à jour : ${pts} points seront attribués par scan de table.`);
+      } catch (e) {
+        alert('Erreur lors de la sauvegarde : ' + e.message);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<span>Enregistrer</span>';
+        }
+      }
+    };
 
     async function loadR8Rewards() {
       const restoName = (activeB2BSession && activeB2BSession.restoName)
@@ -3384,8 +3669,15 @@
       if (errBanner) errBanner.style.display = 'none';
       if (succBanner) succBanner.style.display = 'none';
 
-      // 1. Instant 0ms render from local cache
+      // Populate quick points input
       const slug = (restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      try {
+        const localSavedPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active') || '20';
+        const quickInput = document.getElementById('quick-r7-pts-input');
+        if (quickInput) quickInput.value = localSavedPts;
+      } catch (e) {}
+
+      // 1. Instant 0ms render from local cache
       try {
         const cached = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`);
         if (cached) {
@@ -3440,9 +3732,16 @@
 
         const usageText = r.useCount > 0 ? `🔥 ${r.useCount} utilisation(s)` : `0 utilisation`;
 
+        const imgHeader = r.image ? `
+          <div style="width: 100%; height: 140px; border-radius: 12px; overflow: hidden; margin-bottom: 0.85rem; background: #F8FAFC;">
+            <img src="${r.image}" alt="${escapeHtml(r.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+        ` : '';
+
         return `
           <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
             <div>
+              ${imgHeader}
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
                   <span style="font-size: 1.5rem;">${escapeHtml(r.icon)}</span>
@@ -3505,8 +3804,9 @@
       const elId = document.getElementById('r8-reward-id');
       const elModalTitle = document.getElementById('r8-modal-title');
 
+      let reward = null;
       if (rewardId && Array.isArray(rawR8RewardsList)) {
-        const reward = rawR8RewardsList.find(r => r.id === rewardId);
+        reward = rawR8RewardsList.find(r => r.id === rewardId);
         if (reward) {
           if (elModalTitle) elModalTitle.textContent = 'Modifier la Récompense';
           if (elId) elId.value = reward.id;
@@ -3524,6 +3824,22 @@
         if (elPts) elPts.value = 50;
         if (elDesc) elDesc.value = '';
         if (elActive) elActive.checked = true;
+      }
+
+      currentR8RewardImageBase64 = (reward && reward.image) || '';
+      const preview = document.getElementById('r8-reward-img-preview');
+      const placeholder = document.getElementById('r8-reward-img-placeholder');
+      const btnRemove = document.getElementById('btn-remove-r8-img');
+      const fileInput = document.getElementById('r8-reward-file-input');
+      if (fileInput) fileInput.value = '';
+      if (currentR8RewardImageBase64) {
+        if (preview) { preview.src = currentR8RewardImageBase64; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        if (btnRemove) btnRemove.style.display = 'inline-block';
+      } else {
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        if (placeholder) placeholder.style.display = 'block';
+        if (btnRemove) btnRemove.style.display = 'none';
       }
 
       modal.classList.add('active');
@@ -3605,6 +3921,7 @@
           id: rewardId || null,
           title,
           icon,
+          image: currentR8RewardImageBase64,
           category,
           pts,
           desc,
@@ -3790,9 +4107,16 @@
           statusPill = `<span style="background: #FEE2E2; color: #991B1B; font-size: 0.72rem; font-weight: 800; padding: 3px 10px; border-radius: 10px;">🔴 DISABLED</span>`;
         }
 
+        const imgBanner = o.image ? `
+          <div style="width: 100%; height: 130px; border-radius: 12px; overflow: hidden; margin-bottom: 0.85rem; background: #F8FAFC;">
+            <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+        ` : '';
+
         return `
           <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
             <div>
+              ${imgBanner}
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem;">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0; padding-right: 0.5rem;">${escapeHtml(o.title)}</h3>
                 ${statusPill}
@@ -3848,8 +4172,9 @@
       const elId = document.getElementById('r9-offer-id');
       const elModalTitle = document.getElementById('r9-modal-title');
 
+      let offer = null;
       if (offerId && Array.isArray(rawR9OffersList)) {
-        const offer = rawR9OffersList.find(o => o.id === offerId);
+        offer = rawR9OffersList.find(o => o.id === offerId);
         if (offer) {
           if (elModalTitle) elModalTitle.textContent = 'Modifier l\'Offre';
           if (elId) elId.value = offer.id;
@@ -3867,6 +4192,22 @@
         if (elStart) elStart.value = todayStr;
         if (elEnd) elEnd.value = nextWeekStr;
         if (elActive) elActive.checked = true;
+      }
+
+      currentR9OfferImageBase64 = (offer && offer.image) || '';
+      const preview = document.getElementById('r9-offer-img-preview');
+      const placeholder = document.getElementById('r9-offer-img-placeholder');
+      const btnRemove = document.getElementById('btn-remove-r9-img');
+      const fileInput = document.getElementById('r9-offer-file-input');
+      if (fileInput) fileInput.value = '';
+      if (currentR9OfferImageBase64) {
+        if (preview) { preview.src = currentR9OfferImageBase64; preview.style.display = 'block'; }
+        if (placeholder) placeholder.style.display = 'none';
+        if (btnRemove) btnRemove.style.display = 'inline-block';
+      } else {
+        if (preview) { preview.src = ''; preview.style.display = 'none'; }
+        if (placeholder) placeholder.style.display = 'block';
+        if (btnRemove) btnRemove.style.display = 'none';
       }
 
       modal.classList.add('active');
@@ -3954,6 +4295,7 @@
           id: offerId || null,
           title,
           desc,
+          image: currentR9OfferImageBase64,
           startDate,
           endDate,
           active

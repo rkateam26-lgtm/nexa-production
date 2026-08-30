@@ -932,15 +932,23 @@ function initNexaApp() {
         rewardsContainer.innerHTML = state.rewards.map(reward => {
           const canClaim = state.clientSession.points >= reward.pts;
           const titleEscaped = reward.title.replace(/'/g, "\\'");
+          const imgHtml = reward.image ? `
+            <div style="width: 100%; height: 110px; border-radius: 10px; overflow: hidden; margin-bottom: 0.6rem; background: #F8FAFC;">
+              <img src="${reward.image}" alt="${escapeHtml(reward.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+          ` : '';
           return `
-            <div class="reward-card-clean" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;">
-              <div class="reward-info-clean">
-                <h3>${reward.icon} ${reward.title}</h3>
-                <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
+            <div class="reward-card-clean" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer; flex-direction: column; align-items: stretch;">
+              ${imgHtml}
+              <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div class="reward-info-clean">
+                  <h3>${reward.icon} ${reward.title}</h3>
+                  <p>${reward.desc} • <strong>${reward.pts} pts</strong></p>
+                </div>
+                <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="event.stopPropagation(); handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
+                  ${canClaim ? 'Échanger' : `${reward.pts} pts`}
+                </button>
               </div>
-              <button class="btn-claim-clean ${canClaim ? 'unlocked' : 'locked'}" onclick="event.stopPropagation(); handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
-                ${canClaim ? 'Échanger' : `${reward.pts} pts`}
-              </button>
             </div>
           `;
         }).join('');
@@ -956,8 +964,14 @@ function initNexaApp() {
           const offerDesc = o.desc || o.description || 'Offre spéciale disponible en restaurant.';
           const offerStart = o.startDate || o.start_date || 'Aujourd\'hui';
           const offerEnd = o.endDate || o.end_date || 'Bientôt';
+          const offerImg = o.image ? `
+            <div style="width: 100%; height: 110px; border-radius: 10px; overflow: hidden; margin-bottom: 0.5rem; background: #F8FAFC;">
+              <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+            </div>
+          ` : '';
           return `
             <div style="background: linear-gradient(135deg, #FEF2F2 0%, #FFFBEB 100%); border: 1.5px solid #FCA5A5; border-radius: 14px; padding: 0.9rem 1rem; box-shadow: 0 2px 6px rgba(220,38,38,0.06);">
+              ${offerImg}
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
                 <strong style="font-size: 0.95rem; font-weight: 800; color: #991B1B;">🏷️ ${escapeHtml(o.title)}</strong>
                 <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">En cours</span>
@@ -1074,28 +1088,76 @@ function initNexaApp() {
     }
   };
 
-  // CLIENT CREATES PENDING CLAIM
-  window.claimReward = function(rewardId) {
+  // CLIENT CREATES PENDING CLAIM & DEDUCTS POINTS
+  window.claimReward = async function(rewardId) {
     const reward = state.rewards.find(r => String(r.id) === String(rewardId));
     if (!reward || state.clientSession.points < reward.pts) return;
 
-    const claimObj = {
-      id: Date.now(),
-      rewardId: reward.id,
-      rewardTitle: reward.title,
-      pts: reward.pts,
-      clientName: state.clientSession.name || 'Client Nexa',
-      clientPhone: state.clientSession.whatsapp || '+226 ...',
-      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-      status: 'pending'
-    };
+    let voucher = null;
+    const backend = window.nexaBackend || (typeof NexaProductionBackend !== 'undefined' ? new NexaProductionBackend() : null);
 
-    state.pendingClaims.unshift(claimObj);
+    if (backend && typeof backend.createRewardVoucher === 'function') {
+      try {
+        voucher = await backend.createRewardVoucher(
+          state.restaurant.name,
+          state.clientSession.whatsapp,
+          {
+            id: reward.id,
+            title: reward.title,
+            icon: reward.icon,
+            image: reward.image || '',
+            pts: reward.pts,
+            clientName: state.clientSession.name || 'Client Nexa'
+          }
+        );
+      } catch (err) {
+        console.warn('Backend voucher creation warning:', err);
+      }
+    }
+
+    if (!voucher) {
+      const randomChars = Math.random().toString(36).substring(2, 6).toUpperCase();
+      const code = `NX-${randomChars}`;
+      voucher = {
+        id: `vch_${Date.now()}`,
+        voucherId: `vch_${Date.now()}`,
+        code: code,
+        rewardId: reward.id,
+        rewardTitle: reward.title,
+        rewardIcon: reward.icon || '🎁',
+        rewardImage: reward.image || '',
+        pts: reward.pts,
+        clientName: state.clientSession.name || 'Client Nexa',
+        clientPhone: state.clientSession.whatsapp || '+226 ...',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      };
+      if (backend && typeof backend.deductPointsCloud === 'function') {
+        backend.deductPointsCloud(state.restaurant.name, state.clientSession.whatsapp, reward.pts).catch(() => {});
+      }
+    }
+
+    // Deduct client points locally
+    state.clientSession.points = Math.max(0, state.clientSession.points - reward.pts);
+    localStorage.setItem('nexa_client_points', state.clientSession.points);
+
+    // Save in pending claims
+    state.pendingClaims.unshift(voucher);
     localStorage.setItem(`nexa_pending_claims_${slug}`, JSON.stringify(state.pendingClaims));
+
+    // Save in client history
+    state.clientSession.history.unshift({
+      id: Date.now(),
+      title: `🎁 Pass Récompense : ${reward.title}`,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+      date: new Date().toLocaleDateString('fr-FR'),
+      pts: `-${reward.pts}`
+    });
+    localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
 
     renderClientUI();
     renderMerchantUI();
-    showRedemptionPassModal(reward, claimObj.id);
+    showRedemptionPassModal(reward, voucher);
   };
 
   // MERCHANT VALIDATES REWARD IN 1-CLICK & SENDS INSTANT CLIENT PUSH NOTIFICATION!
@@ -1162,17 +1224,50 @@ function initNexaApp() {
     }
   };
 
-  function showRedemptionPassModal(reward, claimId = Date.now()) {
+  function showRedemptionPassModal(reward, voucher = null) {
     const passModal = document.getElementById('redemption-pass-modal');
-    document.getElementById('pass-reward-title').textContent = reward.title;
-    document.getElementById('pass-qr-box').innerHTML = `
-      <div style="background: white; padding: 12px; border-radius: 12px; display: inline-block; border: 2px solid var(--primary-gold);">
-        <svg width="130" height="130" viewBox="0 0 100 100">
-          <rect width="100" height="100" fill="#ffffff"/>
-          <path d="M10 10h30v30h-30zM50 10h40v10h-40zM10 50h10v40h-10zM30 50h30v10h-30zM70 40h20v50h-20z" fill="#2A1D15"/>
-        </svg>
-      </div>
-    `;
+    if (!passModal) return;
+
+    const voucherCode = (voucher && voucher.code) || 'NX-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    const ptsDeducted = (voucher && voucher.pts) || reward.pts || 0;
+
+    const elTitle = document.getElementById('pass-reward-title');
+    const elBadge = document.getElementById('pass-pts-badge');
+    const elCode = document.getElementById('pass-voucher-code');
+    const elImgBox = document.getElementById('pass-img-box');
+    const elImgPreview = document.getElementById('pass-img-preview');
+    const elQr = document.getElementById('pass-qr-box');
+    const elStatus = document.getElementById('pass-status-pill');
+
+    if (elTitle) elTitle.textContent = `${reward.icon || '🎁'} ${reward.title}`;
+    if (elBadge) elBadge.textContent = `-${ptsDeducted} points déduits de votre solde`;
+    if (elCode) elCode.textContent = voucherCode;
+
+    const rewardImg = (voucher && voucher.rewardImage) || reward.image || '';
+    if (rewardImg && elImgBox && elImgPreview) {
+      elImgPreview.src = rewardImg;
+      elImgBox.style.display = 'block';
+    } else if (elImgBox) {
+      elImgBox.style.display = 'none';
+    }
+
+    if (elStatus) {
+      elStatus.textContent = '⏳ En attente de validation par le serveur';
+      elStatus.style.background = '#FEF3C7';
+      elStatus.style.color = '#92400E';
+    }
+
+    if (elQr) {
+      elQr.innerHTML = `
+        <div style="background: white; padding: 12px; border-radius: 12px; display: inline-block; border: 2px solid var(--primary-gold); box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+          <svg width="130" height="130" viewBox="0 0 100 100">
+            <rect width="100" height="100" fill="#ffffff"/>
+            <path d="M10 10h30v30h-30zM15 15h20v20h-20zM60 10h30v30h-30zM65 15h20v20h-20zM10 60h30v30h-30zM15 65h20v20h-20zM50 45h10v10h-10zM70 45h20v10h-20zM45 65h10v25h-10zM65 65h25v10h-25zM65 80h10v10h-10zM80 80h10v10h-10z" fill="#2A1D15"/>
+          </svg>
+        </div>
+      `;
+    }
+
     passModal.classList.add('active');
   }
 
