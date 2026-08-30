@@ -894,13 +894,13 @@
           </div>
 
           <!-- 5. OFFRES ACTIVES -->
-          <div class="metric-card-r5">
+          <div class="metric-card-r5" onclick="switchB2BTab('offers')" style="cursor: pointer;">
             <div class="metric-header">
               <span class="metric-label">📢 Offres Actives</span>
               <div class="metric-icon-badge purple">📢</div>
             </div>
             <p class="metric-val" id="metric-offers-count">0</p>
-            <p class="metric-subtext">Privilèges & offres disponibles</p>
+            <p class="metric-subtext">Campagnes et offres en cours</p>
           </div>
 
           <!-- 6. ABONNEMENT -->
@@ -1723,13 +1723,15 @@
           applyMetricsToDashboard(JSON.parse(cached));
         } else {
           const localClients = JSON.parse(localStorage.getItem(`nexa_clients_cache_${slug}`) || localStorage.getItem(`nexa_clients_${slug}`) || '[]');
+          const localOffers = JSON.parse(localStorage.getItem(`nexa_offers_cache_${slug}`) || localStorage.getItem(`nexa_offers_${slug}`) || '[]');
+          const activeOffersCount = Array.isArray(localOffers) ? localOffers.filter(o => o.active !== false && (o.computedStatus === 'ACTIVE' || !o.computedStatus)).length : 0;
           if (Array.isArray(localClients) && localClients.length > 0) {
             applyMetricsToDashboard({
               totalClients: localClients.length,
               totalScans: localClients.reduce((s, c) => s + (c.visits_count || c.visits || 0), 0),
               totalPoints: localClients.reduce((s, c) => s + (c.points_balance || c.points || 0), 0),
               rewardsRedeemed: 0,
-              activeOffers: 0
+              activeOffers: activeOffersCount
             });
           }
         }
@@ -2571,6 +2573,10 @@
         if (elExp) elExp.textContent = expiredCount;
         if (elDis) elDis.textContent = disabledCount;
 
+        // Keep Dashboard Overview Card "Offres Actives" in sync
+        const elMetricOffers = document.getElementById('metric-offers-count');
+        if (elMetricOffers) elMetricOffers.textContent = activeCount;
+
         renderR9OffersFeed();
 
       } catch (err) {
@@ -2818,6 +2824,7 @@
         }
 
         await loadR9Offers();
+        loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
 
       } catch (err) {
         console.error('[DIAGNOSTIC R9 SAVE OFFER ERROR]', err);
@@ -2849,6 +2856,7 @@
         const backend = window.nexaBackend || new NexaProductionBackend();
         await backend.toggleRestaurantOfferStatus(restoName, offerId, currentActiveState);
         await loadR9Offers();
+        loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
       } catch (err) {
         console.error('[DIAGNOSTIC R9 TOGGLE OFFER ERROR]', err);
         const errBanner = document.getElementById('r9-offers-error-banner');
@@ -2870,6 +2878,7 @@
         const backend = window.nexaBackend || new NexaProductionBackend();
         await backend.deleteRestaurantOffer(restoName, offerId);
         await loadR9Offers();
+        loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
       } catch (err) {
         console.error('[DIAGNOSTIC R9 DELETE OFFER ERROR]', err);
       }

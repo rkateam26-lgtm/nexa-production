@@ -326,31 +326,27 @@ class NexaProductionBackend {
         }
       } catch (e) {}
 
-      // C. Query Supabase Cloud rewards table
+      // C. Query Commercial Offers & Campaigns count
       try {
-        const { data: rewardsRows } = await client
-          .from('rewards')
-          .select('*')
-          .or(`resto_id.eq.${slug},restaurant_name.eq.${restoName}`);
+        const offers = await this.getRestaurantOffers(restoName);
+        if (Array.isArray(offers)) {
+          const activeCommercialOffers = offers.filter(o => o.active !== false && o.computedStatus === 'ACTIVE');
+          activeOffersCount = activeCommercialOffers.length;
+        }
+      } catch (e) {
+        console.warn('[DIAGNOSTIC R5 OFFERS COUNT WARN]', e);
+      }
 
-        if (Array.isArray(rewardsRows)) {
-          const activeRewards = rewardsRows.filter(r => r.active !== false);
-          activeOffersCount += activeRewards.length;
-          const sumCloud = rewardsRows.reduce((sum, r) => sum + (parseInt(r.use_count || r.redemptions_count || 0, 10)), 0);
+      // D. Query Supabase Cloud rewards table for redemptions count
+      try {
+        const rewards = await this.getRestaurantRewards(restoName);
+        if (Array.isArray(rewards)) {
+          const sumCloud = rewards.reduce((sum, r) => sum + (parseInt(r.useCount || r.use_count || r.redemptions_count || 0, 10)), 0);
           rewardsRedeemedCount = Math.max(rewardsRedeemedCount, sumCloud);
         }
       } catch (err) {
-        console.warn('[DIAGNOSTIC R5 REWARDS WARN]', err);
+        console.warn('[DIAGNOSTIC R5 REWARDS REDEEMED WARN]', err);
       }
-
-      // D. Check commercial offers count
-      try {
-        const localOffers = this.getLocalOffers(slug);
-        if (Array.isArray(localOffers)) {
-          const activeCommercialOffers = localOffers.filter(o => o.active !== false && o.computedStatus === 'ACTIVE');
-          activeOffersCount += activeCommercialOffers.length;
-        }
-      } catch (e) {}
 
       // 3. Query restaurant record for subscription status & creation date
       let subscriptionStatus = 'Actif - Période d\'Essai';
