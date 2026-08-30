@@ -13,10 +13,34 @@ const SUPABASE_CONFIG = {
 const NEXA_SUBSCRIPTION_CONFIG = {
   planId: 'nexa-restaurant',
   planName: 'Nexa Restaurant',
-  price: 25000,
   currency: 'XOF',
   currencySymbol: 'FCFA',
-  billingPeriod: 'month',
+  monthly: {
+    id: 'nexa-restaurant-monthly',
+    name: 'Nexa Restaurant Mensuel',
+    billingPeriod: 'month',
+    durationMonths: 1,
+    price: 25000,
+    formattedPrice: '25,000 FCFA / month',
+    formattedPriceFr: '25 000 FCFA / mois',
+    description: 'Facturation mensuelle sans engagement'
+  },
+  annual: {
+    id: 'nexa-restaurant-annual',
+    name: 'Nexa Restaurant Annuel',
+    billingPeriod: 'year',
+    durationMonths: 12,
+    monthsBilled: 11,
+    discountMonths: 1,
+    price: 275000, // 11 mois facturés x 25 000 FCFA (1 mois offert)
+    savingsAmount: 25000,
+    formattedPrice: '275,000 FCFA / year',
+    formattedPriceFr: '275 000 FCFA / an',
+    badgeText: '1 MOIS OFFERT (-25 000 FCFA)',
+    description: 'Facturation annuelle • 11 mois facturés au lieu de 12 (1 mois offert)'
+  },
+  // Default active pricing reference
+  price: 25000,
   formattedPrice: '25,000 FCFA / month',
   formattedPriceFr: '25 000 FCFA / mois',
   features: [
@@ -2136,6 +2160,10 @@ class NexaProductionBackend {
       currencySymbol: NEXA_SUBSCRIPTION_CONFIG.currencySymbol,
       formattedPrice: NEXA_SUBSCRIPTION_CONFIG.formattedPrice,
       formattedPriceFr: NEXA_SUBSCRIPTION_CONFIG.formattedPriceFr,
+      plans: {
+        monthly: NEXA_SUBSCRIPTION_CONFIG.monthly,
+        annual: NEXA_SUBSCRIPTION_CONFIG.annual
+      },
       status: computedStatus,
       startDate: startDate.toISOString().split('T')[0],
       endDate: endDate.toISOString().split('T')[0],

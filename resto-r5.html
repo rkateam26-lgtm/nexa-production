@@ -1785,6 +1785,52 @@
           </div>
         </div>
 
+        <!-- PLAN OPTIONS & ANNUAL DISCOUNT CARD (1 MOIS OFFERT) -->
+        <div style="margin-top: 1.5rem; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 20px; padding: 1.5rem 1.75rem; box-shadow: 0 4px 16px rgba(0,0,0,0.03);">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem;">
+            <div>
+              <h3 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0;">Formules d'Abonnement Nexa</h3>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Choisissez la formule adaptée à votre rythme d'activité</p>
+            </div>
+            <span style="background: #FEF3C7; color: #B45309; font-weight: 800; font-size: 0.75rem; padding: 4px 10px; border-radius: 12px; border: 1px solid #FDE68A;">
+              ⚡ Économisez 25 000 FCFA en passant au format annuel
+            </span>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.25rem;">
+            
+            <!-- FORMULE MENSUELLE -->
+            <div style="border: 1.5px solid var(--border-color); border-radius: 16px; padding: 1.25rem; background: #FAF9F6;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 800; color: var(--text-dark); text-transform: uppercase;">Mensuel</span>
+                <span style="font-size: 0.72rem; color: var(--text-muted); background: white; padding: 2px 8px; border-radius: 8px; border: 1px solid var(--border-color);">Standard</span>
+              </div>
+              <div style="font-size: 1.5rem; font-weight: 900; color: var(--text-dark); margin-bottom: 0.25rem;">25 000 FCFA <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">/ mois</span></div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem 0;">Renouvellement mensuel régulier sans engagement de durée.</p>
+              <button class="btn-logout" style="width: 100%; border-color: var(--border-color); font-size: 0.82rem; padding: 0.5rem;" onclick="openR12RenewalModal('monthly')">
+                Renouveler pour 1 mois
+              </button>
+            </div>
+
+            <!-- FORMULE ANNUELLE (1 MOIS OFFERT) -->
+            <div style="border: 2px solid var(--nexa-red); border-radius: 16px; padding: 1.25rem; background: #FFFFFF; position: relative; box-shadow: 0 4px 16px rgba(229,57,53,0.08);">
+              <div style="position: absolute; top: -10px; right: 14px; background: var(--nexa-red); color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 9px; border-radius: 12px; letter-spacing: 0.4px;">
+                1 MOIS OFFERT
+              </div>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.8rem; font-weight: 800; color: var(--nexa-red); text-transform: uppercase;">Annuel (12 mois)</span>
+                <span style="font-size: 0.72rem; color: #15803D; font-weight: 800; background: #DCFCE7; padding: 2px 8px; border-radius: 8px;">Économie 25 000 FCFA</span>
+              </div>
+              <div style="font-size: 1.5rem; font-weight: 900; color: var(--nexa-red); margin-bottom: 0.25rem;">275 000 FCFA <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">/ an</span></div>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem 0;">11 mois facturés au lieu de 12 (soit ~22 917 FCFA / mois équivalent).</p>
+              <button class="btn-create-account" style="width: 100%; font-size: 0.82rem; padding: 0.5rem; justify-content: center;" onclick="openR12RenewalModal('annual')">
+                Choisir la formule Annuelle (1 mois offert)
+              </button>
+            </div>
+
+          </div>
+        </div>
+
         <!-- 2-COLUMN GRID: FEATURES INCLUDED & BILLING HISTORY -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.5rem;" class="r12-details-grid">
           
@@ -2025,13 +2071,44 @@
         <button onclick="closeR12RenewalModal()" type="button" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--text-muted);">✕</button>
       </div>
 
-      <div style="background: #F8F9FA; border-radius: 14px; border: 1px solid var(--border-color); padding: 1.25rem; margin-bottom: 1.25rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-          <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-dark);">Plan Nexa Restaurant (1 mois)</span>
-          <strong style="font-size: 1.15rem; color: var(--nexa-red); font-weight: 900;" id="r12-modal-price">25 000 FCFA</strong>
+      <!-- PLAN DURATION SELECTOR (MENSUEL vs ANNUEL 1 MOIS OFFERT) -->
+      <div style="margin-bottom: 1.25rem;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.5rem;">
+          Choisir la durée du renouvellement :
+        </label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+          
+          <!-- OPTION 1: MENSUEL -->
+          <div id="r12-opt-monthly" onclick="selectR12RenewalPeriod('monthly')" style="border: 2px solid var(--border-color); border-radius: 12px; padding: 0.85rem; cursor: pointer; transition: all 0.2s ease; background: #FFFFFF;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-dark);">1 Mois</strong>
+              <span id="r12-radio-monthly" style="width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border-color); display: inline-block;"></span>
+            </div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark);">25 000 FCFA</div>
+            <span style="font-size: 0.72rem; color: var(--text-muted);">Sans engagement</span>
+          </div>
+
+          <!-- OPTION 2: ANNUEL (1 MOIS OFFERT) -->
+          <div id="r12-opt-annual" onclick="selectR12RenewalPeriod('annual')" style="border: 2px solid var(--nexa-red); border-radius: 12px; padding: 0.85rem; cursor: pointer; transition: all 0.2s ease; background: #FFF5F5; position: relative;">
+            <span style="position: absolute; top: -9px; right: 8px; background: var(--nexa-red); color: white; font-size: 0.65rem; font-weight: 800; padding: 1px 6px; border-radius: 10px; letter-spacing: 0.3px;">1 MOIS OFFERT</span>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <strong style="font-size: 0.85rem; color: var(--text-dark);">1 An (12 mois)</strong>
+              <span id="r12-radio-annual" style="width: 14px; height: 14px; border-radius: 50%; border: 4px solid var(--nexa-red); background: white; display: inline-block;"></span>
+            </div>
+            <div style="font-size: 1.05rem; font-weight: 800; color: var(--nexa-red);">275 000 FCFA</div>
+            <span style="font-size: 0.72rem; color: #15803D; font-weight: 700;">Économie : 25 000 FCFA</span>
+          </div>
+
         </div>
-        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;">
-          Accès complet à la plateforme : fidélité, scans QR de table, récompenses, offres et analytics.
+      </div>
+
+      <div style="background: #F8F9FA; border-radius: 14px; border: 1px solid var(--border-color); padding: 1.1rem; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <span style="font-size: 0.88rem; font-weight: 700; color: var(--text-dark);" id="r12-modal-plan-label">Plan Nexa Restaurant (1 an • 1 mois offert)</span>
+          <strong style="font-size: 1.2rem; color: var(--nexa-red); font-weight: 900;" id="r12-modal-price">275 000 FCFA</strong>
+        </div>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0;" id="r12-modal-plan-subtext">
+          12 mois d'accès complet facturés 11 mois (soit ~22 917 FCFA/mois) : fidélité, scans QR de table, récompenses, offres et analytics.
         </p>
       </div>
 
@@ -4361,11 +4438,77 @@
       if (elSubExpire) elSubExpire.textContent = sub.endDate;
     }
 
-    function openR12RenewalModal() {
+    let r12SelectedPeriod = 'annual'; // Default recommended choice with 1 month free
+
+    function selectR12RenewalPeriod(periodType) {
+      r12SelectedPeriod = periodType === 'monthly' ? 'monthly' : 'annual';
+      const optMonthly = document.getElementById('r12-opt-monthly');
+      const optAnnual = document.getElementById('r12-opt-annual');
+      const radioMonthly = document.getElementById('r12-radio-monthly');
+      const radioAnnual = document.getElementById('r12-radio-annual');
+      const priceEl = document.getElementById('r12-modal-price');
+      const labelEl = document.getElementById('r12-modal-plan-label');
+      const subtextEl = document.getElementById('r12-modal-plan-subtext');
+      const waLink = document.getElementById('r12-whatsapp-renew-link');
+
+      const restoName = (activeB2BSession && activeB2BSession.restoName) || 'notre restaurant';
+      const cfg = window.NEXA_SUBSCRIPTION_CONFIG;
+
+      if (r12SelectedPeriod === 'monthly') {
+        if (optMonthly) {
+          optMonthly.style.borderColor = 'var(--nexa-red)';
+          optMonthly.style.background = '#FFF5F5';
+        }
+        if (optAnnual) {
+          optAnnual.style.borderColor = 'var(--border-color)';
+          optAnnual.style.background = '#FFFFFF';
+        }
+        if (radioMonthly) {
+          radioMonthly.style.borderColor = 'var(--nexa-red)';
+          radioMonthly.style.background = 'var(--nexa-red)';
+        }
+        if (radioAnnual) {
+          radioAnnual.style.borderColor = 'var(--border-color)';
+          radioAnnual.style.background = 'transparent';
+        }
+        if (priceEl) priceEl.textContent = cfg?.monthly?.formattedPriceFr || '25 000 FCFA';
+        if (labelEl) labelEl.textContent = 'Plan Nexa Restaurant (1 mois)';
+        if (subtextEl) subtextEl.textContent = '1 mois d\'accès complet sans engagement : fidélité, scans QR de table, récompenses, offres et analytics.';
+        if (waLink) {
+          waLink.href = `https://wa.me/22674364161?text=Bonjour%20Nexa,%20je%20suis%20le%20restaurant%20${encodeURIComponent(restoName)}%20et%20je%20souhaite%20renouveler%20mon%20abonnement%20mensuel%20(25%20000%20FCFA/mois).`;
+        }
+      } else {
+        if (optMonthly) {
+          optMonthly.style.borderColor = 'var(--border-color)';
+          optMonthly.style.background = '#FFFFFF';
+        }
+        if (optAnnual) {
+          optAnnual.style.borderColor = 'var(--nexa-red)';
+          optAnnual.style.background = '#FFF5F5';
+        }
+        if (radioMonthly) {
+          radioMonthly.style.borderColor = 'var(--border-color)';
+          radioMonthly.style.background = 'transparent';
+        }
+        if (radioAnnual) {
+          radioAnnual.style.borderColor = 'var(--nexa-red)';
+          radioAnnual.style.background = 'var(--nexa-red)';
+        }
+        if (priceEl) priceEl.textContent = cfg?.annual?.formattedPriceFr || '275 000 FCFA';
+        if (labelEl) labelEl.textContent = 'Plan Nexa Restaurant (1 an • 1 mois offert)';
+        if (subtextEl) subtextEl.textContent = '12 mois d\'accès complet facturés 11 mois (soit ~22 917 FCFA/mois) : fidélité, scans QR de table, récompenses, offres et analytics.';
+        if (waLink) {
+          waLink.href = `https://wa.me/22674364161?text=Bonjour%20Nexa,%20je%20suis%20le%20restaurant%20${encodeURIComponent(restoName)}%20et%20je%20souhaite%20renouveler%20mon%20abonnement%20annuel%20(275%20000%20FCFA/an%20avec%201%20mois%20offert).`;
+        }
+      }
+    }
+
+    function openR12RenewalModal(preferredPeriod = 'annual') {
       const modal = document.getElementById('modal-r12-renewal');
       if (modal) {
         modal.style.display = 'flex';
         modal.classList.add('active');
+        selectR12RenewalPeriod(preferredPeriod);
       }
     }
 
@@ -4382,6 +4525,7 @@
     window.renderR12Subscription = renderR12Subscription;
     window.openR12RenewalModal = openR12RenewalModal;
     window.closeR12RenewalModal = closeR12RenewalModal;
+    window.selectR12RenewalPeriod = selectR12RenewalPeriod;
   </script>
 
 </body>
