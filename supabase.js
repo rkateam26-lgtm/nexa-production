@@ -2184,6 +2184,210 @@ class NexaProductionBackend {
 
     return result;
   }
+
+  // 15. ÉTAPE R13: Get Restaurant Settings & Preferences from Supabase Cloud
+  async getRestaurantSettings(restoName, userEmail) {
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+
+    let resto = null;
+    if (client) {
+      try {
+        let query = client.from('restaurants').select('*');
+        if (userEmail && userEmail.includes('@') && !userEmail.includes('owner@restaurant.com')) {
+          query = query.eq('email', userEmail);
+        } else {
+          query = query.or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
+        }
+        const { data: rows } = await query.limit(1);
+        if (Array.isArray(rows) && rows.length > 0) {
+          resto = rows[0];
+        }
+      } catch (err) {
+        console.warn('[R13 SETTINGS FETCH WARN]', err.message);
+      }
+    }
+
+    // Parse metadata from city
+    let meta = {};
+    if (resto && resto.city) {
+      try {
+        meta = typeof resto.city === 'object' ? resto.city : JSON.parse(resto.city);
+      } catch (e) {
+        meta = { city: resto.city };
+      }
+    }
+
+    const defaultNotifications = {
+      customer_activity: true,
+      loyalty_activity: true,
+      reward_activity: true,
+      offer_activity: true,
+      subscription_reminders: true
+    };
+
+    const result = {
+      id: resto ? resto.id : `resto_${slug}`,
+      name: resto ? resto.name : (restoName || 'Mon Restaurant'),
+      email: (resto && resto.email) || userEmail || `${slug}@restaurant.com`,
+      phone: (resto && resto.whatsapp_contact) || meta.owner_phone || '',
+      category: meta.type || 'Bistro & Grillades',
+      country: meta.country || 'Côte d\'Ivoire',
+      city: meta.city || 'Abidjan',
+      address: meta.address || '',
+      ownerName: meta.owner_name || '',
+      logo: meta.logo || '',
+      notifications: Object.assign({}, defaultNotifications, meta.notifications || {})
+    };
+
+    // Cache locally
+    try {
+      localStorage.setItem(`nexa_settings_cache_${slug}`, JSON.stringify(result));
+    } catch (e) {}
+
+    return result;
+  }
+
+  // 15b. ÉTAPE R13: Save / Update Restaurant Settings in Supabase Cloud
+  async updateRestaurantSettings(restoName, userEmail, payload) {
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+
+    if (!payload || typeof payload !== 'object') {
+      throw new Error('Données de configuration invalides.');
+    }
+
+    // Validation: name is required
+    const newName = (payload.name || '').trim();
+    if (!newName) {
+      throw new Error('Le nom du restaurant est obligatoire.');
+    }
+
+    let existingResto = null;
+    if (client) {
+      try {
+        let query = client.from('restaurants').select('*');
+        if (userEmail && userEmail.includes('@') && !userEmail.includes('owner@restaurant.com')) {
+          query = query.eq('email', userEmail);
+        } else {
+          query = query.or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
+        }
+        const { data: rows } = await query.limit(1);
+        if (Array.isArray(rows) && rows.length > 0) {
+          existingResto = rows[0];
+        }
+      } catch (err) {
+        console.warn('[R13 UPDATE PRE-CHECK WARN]', err.message);
+      }
+    }
+
+    // Existing metadata
+    let currentMeta = {};
+    if (existingResto && existingResto.city) {
+      try {
+        currentMeta = typeof existingResto.city === 'object' ? existingResto.city : JSON.parse(existingResto.city);
+      } catch (e) {
+        currentMeta = {};
+      }
+    }
+
+    // Strictly authorize only legitimate fields (NEVER let user modify subscription, role, or ownership)
+    const updatedMeta = Object.assign({}, currentMeta, {
+      type: payload.category !== undefined ? payload.category.trim() : (currentMeta.type || 'Bistro & Grillades'),
+      country: payload.country !== undefined ? payload.country.trim() : (currentMeta.country || 'Côte d\'Ivoire'),
+      city: payload.city !== undefined ? payload.city.trim() : (currentMeta.city || 'Abidjan'),
+      address: payload.address !== undefined ? payload.address.trim() : (currentMeta.address || ''),
+      owner_name: payload.ownerName !== undefined ? payload.ownerName.trim() : (currentMeta.owner_name || ''),
+      owner_phone: payload.phone !== undefined ? payload.phone.trim() : (currentMeta.owner_phone || ''),
+      logo: payload.logo !== undefined ? payload.logo : (currentMeta.logo || ''),
+      notifications: payload.notifications !== undefined ? payload.notifications : (currentMeta.notifications || {})
+    });
+
+    const updateFields = {
+      name: newName,
+      whatsapp_contact: (payload.phone || '').trim() || existingResto?.whatsapp_contact || '',
+      city: JSON.stringify(updatedMeta)
+    };
+
+    if (client && existingResto && existingResto.id) {
+      const { error: updateErr } = await client
+        .from('restaurants')
+        .update(updateFields)
+        .eq('id', existingResto.id);
+
+      if (updateErr) {
+        throw new Error(`[Supabase Error] ${updateErr.message}`);
+      }
+    }
+
+    // Update local cache
+    const updatedSettings = {
+      id: existingResto ? existingResto.id : `resto_${slug}`,
+      name: newName,
+      email: existingResto ? existingResto.email : userEmail,
+      phone: updateFields.whatsapp_contact,
+      category: updatedMeta.type,
+      country: updatedMeta.country,
+      city: updatedMeta.city,
+      address: updatedMeta.address,
+      ownerName: updatedMeta.owner_name,
+      logo: updatedMeta.logo,
+      notifications: updatedMeta.notifications
+    };
+
+    try {
+      localStorage.setItem(`nexa_settings_cache_${slug}`, JSON.stringify(updatedSettings));
+      const newSlug = this.getSlug(newName);
+      if (newSlug !== slug) {
+        localStorage.setItem(`nexa_settings_cache_${newSlug}`, JSON.stringify(updatedSettings));
+      }
+    } catch (e) {}
+
+    return updatedSettings;
+  }
+
+  // 15c. ÉTAPE R13: Change Password via Supabase Auth Official API
+  async updateRestaurantPassword(newPassword) {
+    if (!newPassword || newPassword.length < 6) {
+      throw new Error('Le mot de passe doit comporter au moins 6 caractères.');
+    }
+
+    const client = this.getClient();
+    if (!client || !client.auth) {
+      throw new Error('Service d\'authentification Supabase indisponible.');
+    }
+
+    const { data, error } = await client.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) {
+      throw new Error(`[Supabase Auth Error] ${error.message}`);
+    }
+
+    return { success: true, user: data.user };
+  }
+
+  // 15d. ÉTAPE R13: Sign Out Cleanly from Supabase Auth & Clear Session
+  async logoutRestaurantB2B() {
+    const client = this.getClient();
+    if (client && client.auth) {
+      try {
+        await client.auth.signOut();
+      } catch (e) {
+        console.warn('Supabase Auth SignOut warning:', e);
+      }
+    }
+
+    try {
+      localStorage.removeItem('nexa_merchant_b2b_session');
+      localStorage.removeItem('nexa_resto_name');
+    } catch (e) {}
+
+    return true;
+  }
 }
 
 // Global Singleton Instance

@@ -889,6 +889,142 @@
       font-size: 1rem;
     }
 
+    /* ==========================================================================
+       ÉTAPE R13: SETTINGS (PARAMÈTRES DU RESTAURANT) STYLES
+       ========================================================================== */
+    .r13-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.5rem 1.75rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+      margin-bottom: 1.5rem;
+    }
+
+    .r13-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid #F1F5F9;
+    }
+
+    .r13-card-title {
+      font-size: 1.05rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      margin: 0;
+    }
+
+    .r13-card-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      margin: 0.15rem 0 0 0;
+    }
+
+    .r13-grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+
+    .r13-field {
+      margin-bottom: 1.1rem;
+    }
+
+    .r13-field label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 0.35rem;
+    }
+
+    .r13-field input,
+    .r13-field select,
+    .r13-field textarea {
+      width: 100%;
+      padding: 0.75rem 0.9rem;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      color: var(--text-dark);
+      background: #FFFFFF;
+      box-sizing: border-box;
+      transition: border-color 0.2s;
+    }
+
+    .r13-field input:focus,
+    .r13-field select:focus,
+    .r13-field textarea:focus {
+      outline: none;
+      border-color: var(--nexa-red);
+    }
+
+    .r13-field input[readonly] {
+      background: #F8FAFC;
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    .r13-logo-box {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      flex-wrap: wrap;
+    }
+
+    .r13-logo-avatar {
+      width: 88px;
+      height: 88px;
+      border-radius: 16px;
+      border: 2px solid var(--border-color);
+      background: #FAF9F6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      flex-shrink: 0;
+    }
+
+    .r13-logo-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .r13-checkbox-label {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      padding: 0.65rem 0;
+      border-bottom: 1px solid #F8FAFC;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--text-dark);
+    }
+
+    .r13-checkbox-label:last-child {
+      border-bottom: none;
+    }
+
+    .r13-checkbox-label input[type="checkbox"] {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--nexa-red);
+      cursor: pointer;
+      margin-top: 2px;
+    }
+
+    @media (max-width: 768px) {
+      .r13-grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
     /* PRINT LAYOUT FOR PHYSICAL PRODUCTION (TABLE, COMPTOIR, AFFICHE) */
     @media print {
       body {
@@ -912,7 +1048,8 @@
       #tab-r8-rewards,
       #tab-r9-offers,
       #tab-r11-analytics,
-      #tab-r12-subscription {
+      #tab-r12-subscription,
+      #tab-r13-settings {
         display: none !important;
       }
 
@@ -1879,7 +2016,273 @@
 
       </div>
 
-      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R13 - R14) -->
+      <!-- ==========================================================================
+           SETTINGS TAB CONTENT (ÉTAPE R13 ACTIVE VIEW)
+           ========================================================================== -->
+      <div id="tab-r13-settings" style="display: none;">
+        
+        <!-- HEADER -->
+        <div class="section-title-group" style="margin-bottom: 1.25rem;">
+          <h1 style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+            <span>⚙️ Settings</span>
+          </h1>
+          <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 0.25rem;">
+            Gérez les informations de votre établissement, votre image de marque et vos préférences de sécurité.
+          </p>
+        </div>
+
+        <!-- NOTIFICATION BANNERS -->
+        <div class="alert-banner success" id="r13-alert-success" style="display: none; margin-bottom: 1.25rem;">
+          Changes saved successfully.
+        </div>
+        <div class="alert-banner error" id="r13-alert-error" style="display: none; margin-bottom: 1.25rem;">
+          Unable to save changes. Please try again.
+        </div>
+
+        <form id="form-r13-settings" onsubmit="handleR13SettingsSubmit(event); return false;">
+
+          <!-- SECTION A: RESTAURANT INFORMATION -->
+          <div class="r13-card">
+            <div class="r13-card-header">
+              <span style="font-size: 1.2rem;">🏢</span>
+              <div>
+                <h3 class="r13-card-title">A. Informations de l'Établissement</h3>
+                <p class="r13-card-desc">Identité publique et localisation de votre restaurant</p>
+              </div>
+            </div>
+
+            <div class="r13-grid-2">
+              <div class="r13-field">
+                <label for="r13-input-name">Nom du Restaurant *</label>
+                <input type="text" id="r13-input-name" required placeholder="ex: Le Savane">
+              </div>
+              <div class="r13-field">
+                <label for="r13-input-category">Catégorie d'Établissement</label>
+                <select id="r13-input-category">
+                  <option value="Bistro & Grillades">Bistro & Grillades</option>
+                  <option value="Café & Lounge">Café & Lounge</option>
+                  <option value="Restaurant Gastronomique">Restaurant Gastronomique</option>
+                  <option value="Fast Food & Burger">Fast Food & Burger</option>
+                  <option value="Pizzeria & Trattoria">Pizzeria & Trattoria</option>
+                  <option value="Maquis & Spécialités Africaines">Maquis & Spécialités Africaines</option>
+                  <option value="Buffet & Traiteur">Buffet & Traiteur</option>
+                  <option value="Autre">Autre</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="r13-grid-2">
+              <div class="r13-field">
+                <label for="r13-input-country">Pays</label>
+                <input type="text" id="r13-input-country" placeholder="ex: Côte d'Ivoire, Burkina Faso, Sénégal...">
+              </div>
+              <div class="r13-field">
+                <label for="r13-input-city">Ville / Commune</label>
+                <input type="text" id="r13-input-city" placeholder="ex: Abidjan, Ouagadougou, Dakar...">
+              </div>
+            </div>
+
+            <div class="r13-field" style="margin-bottom: 0;">
+              <label for="r13-input-address">Adresse Physique</label>
+              <input type="text" id="r13-input-address" placeholder="ex: Boulevard Valéry Giscard d'Estaing, Zone 4">
+            </div>
+          </div>
+
+          <!-- SECTION B: CONTACT INFORMATION -->
+          <div class="r13-card">
+            <div class="r13-card-header">
+              <span style="font-size: 1.2rem;">📞</span>
+              <div>
+                <h3 class="r13-card-title">B. Coordonnées & Responsable</h3>
+                <p class="r13-card-desc">Canaux de contact et gérant de l'établissement</p>
+              </div>
+            </div>
+
+            <div class="r13-grid-2">
+              <div class="r13-field">
+                <label for="r13-input-phone">Numéro WhatsApp / Téléphone de Contact</label>
+                <input type="tel" id="r13-input-phone" placeholder="ex: +226 70 12 34 56">
+              </div>
+              <div class="r13-field">
+                <label for="r13-input-owner-name">Nom du Gérant / Responsable</label>
+                <input type="text" id="r13-input-owner-name" placeholder="ex: Jean Dupont">
+              </div>
+            </div>
+
+            <div class="r13-field" style="margin-bottom: 0;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                <label for="r13-input-email" style="margin: 0;">E-mail Officiel du Compte</label>
+                <span style="font-size: 0.72rem; color: #1E40AF; background: #EFF6FF; padding: 2px 7px; border-radius: 6px; font-weight: 700;">Compte Supabase Auth</span>
+              </div>
+              <input type="email" id="r13-input-email" readonly title="L'e-mail de connexion est sécurisé par Supabase Auth et ne peut être modifié que par la procédure de sécurité officielle.">
+              <span style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 0.25rem;">
+                Identifiant de connexion authentifié.
+              </span>
+            </div>
+          </div>
+
+          <!-- SECTION C: RESTAURANT BRANDING / LOGO -->
+          <div class="r13-card">
+            <div class="r13-card-header">
+              <span style="font-size: 1.2rem;">🎨</span>
+              <div>
+                <h3 class="r13-card-title">C. Image de Marque & Logo</h3>
+                <p class="r13-card-desc">Personnalisez votre logo affiché sur les supports et le pass client</p>
+              </div>
+            </div>
+
+            <div class="r13-logo-box">
+              <div class="r13-logo-avatar" id="r13-logo-container">
+                <img id="r13-logo-preview-img" src="" alt="Logo restaurant" style="display: none;">
+                <div id="r13-logo-monogram" style="font-size: 1.8rem; font-weight: 900; color: var(--nexa-red);">NX</div>
+              </div>
+
+              <div style="flex: 1; min-width: 240px;">
+                <input type="file" id="r13-logo-file-input" accept="image/png,image/jpeg,image/jpg,image/webp" style="display: none;" onchange="handleR13LogoUpload(event)">
+                <div style="display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                  <button type="button" class="btn-create-account" style="width: auto; padding: 0.55rem 1.2rem; font-size: 0.85rem;" onclick="document.getElementById('r13-logo-file-input').click()">
+                    <span>Upload logo</span>
+                  </button>
+                  <button type="button" class="btn-logout" id="btn-r13-remove-logo" style="width: auto; padding: 0.55rem 1.1rem; font-size: 0.85rem; border-color: var(--border-color);" onclick="removeR13Logo()">
+                    <span>Supprimer le logo</span>
+                  </button>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">
+                  Formats acceptés : PNG, JPG, JPEG, WEBP. Taille max : 2 Mo. Ratio carré conseillé.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- SECTION D: ACCOUNT & SECURITY -->
+          <div class="r13-card">
+            <div class="r13-card-header">
+              <span style="font-size: 1.2rem;">🔒</span>
+              <div>
+                <h3 class="r13-card-title">D. Compte & Sécurité</h3>
+                <p class="r13-card-desc">Gestion de vos identifiants et mot de passe de connexion</p>
+              </div>
+            </div>
+
+            <div style="background: #F8FAFC; border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem;">
+              <h4 style="font-size: 0.9rem; font-weight: 800; color: var(--text-dark); margin: 0 0 0.5rem 0;">Changer votre mot de passe</h4>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0 0 1rem 0;">
+                Mise à jour directe et chiffrée de vos identifiants sur Supabase Auth.
+              </p>
+
+              <div class="r13-grid-2">
+                <div class="r13-field" style="margin-bottom: 0.75rem;">
+                  <label for="r13-input-new-password">Nouveau mot de passe</label>
+                  <input type="password" id="r13-input-new-password" placeholder="Minimum 6 caractères" autocomplete="new-password">
+                </div>
+                <div class="r13-field" style="margin-bottom: 0.75rem;">
+                  <label for="r13-input-confirm-password">Confirmer le mot de passe</label>
+                  <input type="password" id="r13-input-confirm-password" placeholder="Retapez le mot de passe" autocomplete="new-password">
+                </div>
+              </div>
+
+              <div style="margin-top: 0.75rem;">
+                <button type="button" class="btn-logout" id="btn-r13-update-pwd" style="width: auto; padding: 0.55rem 1.2rem; font-size: 0.85rem; color: var(--nexa-red); border-color: var(--nexa-red);" onclick="handleR13PasswordChange(event)">
+                  <span>Change password</span>
+                </button>
+              </div>
+              <div id="r13-pwd-feedback" style="font-size: 0.78rem; margin-top: 0.5rem; display: none;"></div>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-muted);">
+              🛡️ <em>Vos mots de passe ne sont jamais stockés en clair et sont protégés par le chiffrement Supabase Auth.</em>
+            </div>
+          </div>
+
+          <!-- SECTION E: NOTIFICATIONS PREFERENCES -->
+          <div class="r13-card">
+            <div class="r13-card-header">
+              <span style="font-size: 1.2rem;">🔔</span>
+              <div>
+                <h3 class="r13-card-title">E. Notifications</h3>
+                <p class="r13-card-desc">Choisissez les alertes et événements que vous souhaitez suivre</p>
+              </div>
+            </div>
+
+            <div>
+              <label class="r13-checkbox-label">
+                <input type="checkbox" id="r13-notif-customers" checked>
+                <div>
+                  <strong>Customer activity</strong>
+                  <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Alertes lors des premiers scans et nouvelles inscriptions clients</span>
+                </div>
+              </label>
+
+              <label class="r13-checkbox-label">
+                <input type="checkbox" id="r13-notif-loyalty" checked>
+                <div>
+                  <strong>Loyalty activity</strong>
+                  <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Suivi des attributions de points de fidélité par scan de table</span>
+                </div>
+              </label>
+
+              <label class="r13-checkbox-label">
+                <input type="checkbox" id="r13-notif-rewards" checked>
+                <div>
+                  <strong>Reward activity</strong>
+                  <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Notifications lors de la validation des cadeaux et privilèges en caisse</span>
+                </div>
+              </label>
+
+              <label class="r13-checkbox-label">
+                <input type="checkbox" id="r13-notif-offers" checked>
+                <div>
+                  <strong>Offer activity</strong>
+                  <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Rappels d'expiration et activation des offres commerciales</span>
+                </div>
+              </label>
+
+              <label class="r13-checkbox-label">
+                <input type="checkbox" id="r13-notif-subscription" checked>
+                <div>
+                  <strong>Subscription reminders</strong>
+                  <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">Rappels préventifs 5 jours avant l'échéance de votre abonnement</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- SECTION F: ACCOUNT ACTIONS -->
+          <div class="r13-card" style="border-color: #FCA5A5; background: #FFF5F5;">
+            <div class="r13-card-header" style="border-bottom-color: #FED7D7;">
+              <span style="font-size: 1.2rem;">🚪</span>
+              <div>
+                <h3 class="r13-card-title" style="color: #991B1B;">F. Actions du Compte</h3>
+                <p class="r13-card-desc">Fermeture sécurisée de la session de travail</p>
+              </div>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <strong style="font-size: 0.9rem; color: var(--text-dark); display: block;">Déconnexion de l'espace restaurateur</strong>
+                <span style="font-size: 0.78rem; color: var(--text-muted);">Ferme votre session active sur cet appareil et protège l'accès à vos données.</span>
+              </div>
+              <button type="button" class="btn-logout" style="width: auto; padding: 0.6rem 1.4rem; font-size: 0.88rem; background: #FFFFFF; color: #DC2626; border-color: #F87171;" onclick="handleR13SignOut()">
+                <span>Sign out</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- SUBMIT ACTION BAR -->
+          <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; margin-bottom: 3rem;">
+            <button type="button" class="btn-logout" id="btn-r13-cancel" style="width: auto; padding: 0.75rem 1.5rem;" onclick="loadR13Settings()">
+              <span>Cancel</span>
+            </button>
+            <button type="submit" class="btn-create-account" id="btn-r13-save" style="width: auto; padding: 0.75rem 2rem;">
+              <span>Save changes</span>
+            </button>
+          </div>
+
+        </form>
+
+      </div>
+
+      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R14) -->
       <div class="coming-soon-container" id="tab-r5-coming-soon">
         <div class="coming-soon-icon">🚧</div>
         <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;" id="coming-soon-title">Section Coming Soon</h2>
@@ -2279,6 +2682,7 @@
       loadR9Offers();
       loadR11Analytics();
       loadR12Subscription();
+      loadR13Settings();
     };
 
     // PAGE LOAD: CHECK AUTHENTICATED SESSION & FETCH SUPABASE METRICS
@@ -2380,6 +2784,7 @@
       loadR9Offers();
       loadR11Analytics();
       loadR12Subscription();
+      loadR13Settings();
     });
 
     function showR5AuthError() {
@@ -2477,6 +2882,7 @@
       const qrTab = document.getElementById('tab-r10-qr');
       const analyticsTab = document.getElementById('tab-r11-analytics');
       const subTab = document.getElementById('tab-r12-subscription');
+      const settingsTab = document.getElementById('tab-r13-settings');
       const comingSoonTab = document.getElementById('tab-r5-coming-soon');
 
       if (tabName === 'dashboard') {
@@ -2488,6 +2894,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
       } else if (tabName === 'clients') {
         dashTab.style.display = 'none';
@@ -2498,6 +2905,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR6Clients();
       } else if (tabName === 'points') {
@@ -2509,6 +2917,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR7LoyaltyConfig();
       } else if (tabName === 'rewards') {
@@ -2520,6 +2929,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR8Rewards();
       } else if (tabName === 'offers') {
@@ -2531,6 +2941,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR9Offers();
       } else if (tabName === 'qr') {
@@ -2542,6 +2953,7 @@
         if (qrTab) qrTab.style.display = 'block';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR10QRCodeStudio();
       } else if (tabName === 'analytics') {
@@ -2553,6 +2965,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'block';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR11Analytics();
       } else if (tabName === 'subscription') {
@@ -2564,8 +2977,21 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'block';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR12Subscription();
+      } else if (tabName === 'settings') {
+        dashTab.style.display = 'none';
+        if (clientsTab) clientsTab.style.display = 'none';
+        if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
+        if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
+        if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'block';
+        comingSoonTab.style.display = 'none';
+        loadR13Settings();
       } else {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'none';
@@ -2575,6 +3001,7 @@
         if (qrTab) qrTab.style.display = 'none';
         if (analyticsTab) analyticsTab.style.display = 'none';
         if (subTab) subTab.style.display = 'none';
+        if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'block';
         
         const titles = {
@@ -4520,12 +4947,342 @@
       }
     }
 
+    // ==========================================================================
+    // ÉTAPE R13: SETTINGS ENGINE (PARAMÈTRES DU RESTAURANT)
+    // ==========================================================================
+    let r13CurrentSettings = null;
+    let r13CurrentLogoData = '';
+
+    async function loadR13Settings() {
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
+      const userEmail = (activeB2BSession && activeB2BSession.email) || '';
+      const backend = window.nexaBackend || new NexaProductionBackend();
+      const slug = backend.getSlug(restoName);
+
+      // 1. Instant Cache Display (0ms)
+      try {
+        const cachedStr = localStorage.getItem(`nexa_settings_cache_${slug}`);
+        if (cachedStr) {
+          r13CurrentSettings = JSON.parse(cachedStr);
+          renderR13Settings(r13CurrentSettings);
+        }
+      } catch (e) {}
+
+      // 2. Fetch Live from Supabase
+      try {
+        const data = await backend.getRestaurantSettings(restoName, userEmail);
+        r13CurrentSettings = data;
+        renderR13Settings(data);
+      } catch (err) {
+        console.error('[DIAGNOSTIC R13 SETTINGS LOAD ERROR]', err);
+      }
+    }
+
+    function renderR13Settings(settings) {
+      if (!settings) return;
+
+      const elName = document.getElementById('r13-input-name');
+      const elCategory = document.getElementById('r13-input-category');
+      const elCountry = document.getElementById('r13-input-country');
+      const elCity = document.getElementById('r13-input-city');
+      const elAddress = document.getElementById('r13-input-address');
+      const elPhone = document.getElementById('r13-input-phone');
+      const elOwnerName = document.getElementById('r13-input-owner-name');
+      const elEmail = document.getElementById('r13-input-email');
+
+      if (elName) elName.value = settings.name || '';
+      if (elCategory) elCategory.value = settings.category || 'Bistro & Grillades';
+      if (elCountry) elCountry.value = settings.country || '';
+      if (elCity) elCity.value = settings.city || '';
+      if (elAddress) elAddress.value = settings.address || '';
+      if (elPhone) elPhone.value = settings.phone || '';
+      if (elOwnerName) elOwnerName.value = settings.ownerName || '';
+      if (elEmail) elEmail.value = settings.email || '';
+
+      // Branding / Logo
+      r13CurrentLogoData = settings.logo || '';
+      updateR13LogoDisplay(r13CurrentLogoData, settings.name);
+
+      // Notifications
+      const notifs = settings.notifications || {};
+      const chkCust = document.getElementById('r13-notif-customers');
+      const chkLoy = document.getElementById('r13-notif-loyalty');
+      const chkRew = document.getElementById('r13-notif-rewards');
+      const chkOff = document.getElementById('r13-notif-offers');
+      const chkSub = document.getElementById('r13-notif-subscription');
+
+      if (chkCust) chkCust.checked = notifs.customer_activity !== false;
+      if (chkLoy) chkLoy.checked = notifs.loyalty_activity !== false;
+      if (chkRew) chkRew.checked = notifs.reward_activity !== false;
+      if (chkOff) chkOff.checked = notifs.offer_activity !== false;
+      if (chkSub) chkSub.checked = notifs.subscription_reminders !== false;
+    }
+
+    function updateR13LogoDisplay(logoUrl, restoName) {
+      const imgEl = document.getElementById('r13-logo-preview-img');
+      const monoEl = document.getElementById('r13-logo-monogram');
+      if (logoUrl) {
+        if (imgEl) {
+          imgEl.src = logoUrl;
+          imgEl.style.display = 'block';
+        }
+        if (monoEl) monoEl.style.display = 'none';
+      } else {
+        if (imgEl) {
+          imgEl.src = '';
+          imgEl.style.display = 'none';
+        }
+        if (monoEl) {
+          const initials = (restoName || 'NX').trim().slice(0, 2).toUpperCase();
+          monoEl.textContent = initials;
+          monoEl.style.display = 'block';
+        }
+      }
+    }
+
+    function handleR13LogoUpload(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      // Validation format: png, jpg, jpeg, webp
+      const validTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+      if (!validTypes.includes(file.type)) {
+        showR13Alert('error', 'Format d\'image non supporté. Veuillez choisir un fichier PNG, JPG ou WEBP.');
+        return;
+      }
+
+      // Max size: 2MB
+      if (file.size > 2 * 1024 * 1024) {
+        showR13Alert('error', 'L\'image dépasse la taille maximale autorisée de 2 Mo.');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        r13CurrentLogoData = e.target.result;
+        const currentName = document.getElementById('r13-input-name')?.value || 'NX';
+        updateR13LogoDisplay(r13CurrentLogoData, currentName);
+        showR13Alert('success', 'Logo chargé avec succès. Cliquez sur "Save changes" pour enregistrer.');
+      };
+      reader.onerror = function() {
+        showR13Alert('error', 'Erreur lors de la lecture du fichier image.');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function removeR13Logo() {
+      r13CurrentLogoData = '';
+      const currentName = document.getElementById('r13-input-name')?.value || 'NX';
+      updateR13LogoDisplay('', currentName);
+      const fileInput = document.getElementById('r13-logo-file-input');
+      if (fileInput) fileInput.value = '';
+      showR13Alert('success', 'Logo retiré. Cliquez sur "Save changes" pour enregistrer.');
+    }
+
+    async function handleR13SettingsSubmit(event) {
+      if (event) event.preventDefault();
+
+      const btnSave = document.getElementById('btn-r13-save');
+      const btnCancel = document.getElementById('btn-r13-cancel');
+
+      const name = document.getElementById('r13-input-name')?.value?.trim();
+      const category = document.getElementById('r13-input-category')?.value;
+      const country = document.getElementById('r13-input-country')?.value?.trim();
+      const city = document.getElementById('r13-input-city')?.value?.trim();
+      const address = document.getElementById('r13-input-address')?.value?.trim();
+      const phone = document.getElementById('r13-input-phone')?.value?.trim();
+      const ownerName = document.getElementById('r13-input-owner-name')?.value?.trim();
+
+      if (!name) {
+        showR13Alert('error', 'Le nom du restaurant est obligatoire.');
+        return;
+      }
+
+      const notifications = {
+        customer_activity: !!document.getElementById('r13-notif-customers')?.checked,
+        loyalty_activity: !!document.getElementById('r13-notif-loyalty')?.checked,
+        reward_activity: !!document.getElementById('r13-notif-rewards')?.checked,
+        offer_activity: !!document.getElementById('r13-notif-offers')?.checked,
+        subscription_reminders: !!document.getElementById('r13-notif-subscription')?.checked
+      };
+
+      const payload = {
+        name,
+        category,
+        country,
+        city,
+        address,
+        phone,
+        ownerName,
+        logo: r13CurrentLogoData,
+        notifications
+      };
+
+      // Set saving state
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.innerHTML = '<span>Saving changes...</span>';
+      }
+      if (btnCancel) btnCancel.disabled = true;
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const curResto = (activeB2BSession && activeB2BSession.restoName) || name;
+        const curEmail = (activeB2BSession && activeB2BSession.email) || '';
+
+        const updated = await backend.updateRestaurantSettings(curResto, curEmail, payload);
+        r13CurrentSettings = updated;
+
+        // If name changed, update header display and session
+        if (activeB2BSession) {
+          activeB2BSession.restoName = updated.name;
+          window.activeB2BSession = activeB2BSession;
+          localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
+          localStorage.setItem('nexa_resto_name', updated.name);
+        }
+
+        const sel = document.getElementById('select-active-resto');
+        if (sel) {
+          let found = false;
+          for (let opt of sel.options) {
+            if (opt.value === curResto) {
+              opt.value = updated.name;
+              opt.textContent = updated.name;
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            const opt = document.createElement('option');
+            opt.value = updated.name;
+            opt.textContent = updated.name;
+            sel.appendChild(opt);
+          }
+          sel.value = updated.name;
+        }
+
+        showR13Alert('success', 'Changes saved successfully.');
+      } catch (err) {
+        console.error('[R13 SAVE ERROR]', err);
+        showR13Alert('error', `Unable to save changes. Please try again. (${err.message || ''})`);
+      } finally {
+        if (btnSave) {
+          btnSave.disabled = false;
+          btnSave.innerHTML = '<span>Save changes</span>';
+        }
+        if (btnCancel) btnCancel.disabled = false;
+      }
+    }
+
+    async function handleR13PasswordChange(event) {
+      if (event) event.preventDefault();
+      const pwdInput = document.getElementById('r13-input-new-password');
+      const confirmInput = document.getElementById('r13-input-confirm-password');
+      const feedbackEl = document.getElementById('r13-pwd-feedback');
+      const btnPwd = document.getElementById('btn-r13-update-pwd');
+
+      const newPwd = pwdInput ? pwdInput.value : '';
+      const confirmPwd = confirmInput ? confirmInput.value : '';
+
+      if (feedbackEl) {
+        feedbackEl.style.display = 'block';
+        feedbackEl.style.color = '#DC2626';
+      }
+
+      if (!newPwd || newPwd.length < 6) {
+        if (feedbackEl) feedbackEl.textContent = 'Le mot de passe doit comporter au moins 6 caractères.';
+        return;
+      }
+
+      if (newPwd !== confirmPwd) {
+        if (feedbackEl) feedbackEl.textContent = 'Les deux mots de passe ne correspondent pas.';
+        return;
+      }
+
+      if (btnPwd) {
+        btnPwd.disabled = true;
+        btnPwd.innerHTML = '<span>Changement en cours...</span>';
+      }
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.updateRestaurantPassword(newPwd);
+
+        if (feedbackEl) {
+          feedbackEl.style.color = '#15803D';
+          feedbackEl.textContent = 'Mot de passe mis à jour avec succès.';
+        }
+        if (pwdInput) pwdInput.value = '';
+        if (confirmInput) confirmInput.value = '';
+      } catch (err) {
+        if (feedbackEl) {
+          feedbackEl.style.color = '#DC2626';
+          feedbackEl.textContent = `Erreur : ${err.message || 'Impossible de mettre à jour le mot de passe.'}`;
+        }
+      } finally {
+        if (btnPwd) {
+          btnPwd.disabled = false;
+          btnPwd.innerHTML = '<span>Change password</span>';
+        }
+      }
+    }
+
+    async function handleR13SignOut() {
+      if (!confirm('Êtes-vous sûr de vouloir vous déconnecter de votre espace restaurateur ?')) {
+        return;
+      }
+
+      const backend = window.nexaBackend || new NexaProductionBackend();
+      try {
+        await backend.logoutRestaurantB2B();
+      } catch (e) {}
+
+      // Clear session storage and redirect to login page
+      localStorage.removeItem('nexa_merchant_b2b_session');
+      localStorage.removeItem('nexa_resto_name');
+      window.location.href = 'resto-r4.html';
+    }
+
+    function showR13Alert(type, message) {
+      const alertSuccess = document.getElementById('r13-alert-success');
+      const alertError = document.getElementById('r13-alert-error');
+
+      if (type === 'success') {
+        if (alertError) alertError.style.display = 'none';
+        if (alertSuccess) {
+          alertSuccess.textContent = message || 'Changes saved successfully.';
+          alertSuccess.style.display = 'block';
+          alertSuccess.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => { alertSuccess.style.display = 'none'; }, 4000);
+        }
+      } else {
+        if (alertSuccess) alertSuccess.style.display = 'none';
+        if (alertError) {
+          alertError.textContent = message || 'Unable to save changes. Please try again.';
+          alertError.style.display = 'block';
+          alertError.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          setTimeout(() => { alertError.style.display = 'none'; }, 6000);
+        }
+      }
+    }
+
     // Expose functions globally for CDP and console tests
     window.loadR12Subscription = loadR12Subscription;
     window.renderR12Subscription = renderR12Subscription;
     window.openR12RenewalModal = openR12RenewalModal;
     window.closeR12RenewalModal = closeR12RenewalModal;
     window.selectR12RenewalPeriod = selectR12RenewalPeriod;
+
+    window.loadR13Settings = loadR13Settings;
+    window.renderR13Settings = renderR13Settings;
+    window.handleR13SettingsSubmit = handleR13SettingsSubmit;
+    window.handleR13LogoUpload = handleR13LogoUpload;
+    window.removeR13Logo = removeR13Logo;
+    window.handleR13PasswordChange = handleR13PasswordChange;
+    window.handleR13SignOut = handleR13SignOut;
+    window.showR13Alert = showR13Alert;
   </script>
 
 </body>
