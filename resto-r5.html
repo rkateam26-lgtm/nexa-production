@@ -20,6 +20,9 @@
   <!-- QR Code Generator Library (Step R10) -->
   <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
+  <!-- Chart.js Library (Step R11 Analytics) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     :root {
       --bg-canvas: #FAF9F6;
@@ -703,6 +706,97 @@
       border-color: #CBD5E1;
     }
 
+    /* ==========================================================================
+       ÉTAPE R11: ANALYTICS & STATISTIQUES STYLES
+       ========================================================================== */
+    .r11-header-flex {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .r11-period-bar {
+      display: flex;
+      gap: 0.35rem;
+      background: #FFFFFF;
+      border: 1.5px solid var(--border-color);
+      border-radius: 12px;
+      padding: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+      overflow-x: auto;
+      max-width: 100%;
+    }
+
+    .r11-period-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s ease;
+    }
+
+    .r11-period-btn:hover {
+      color: var(--text-dark);
+      background: #F8F9FA;
+    }
+
+    .r11-period-btn.active {
+      background: var(--nexa-red);
+      color: white;
+      box-shadow: 0 2px 6px rgba(229,57,53,0.3);
+    }
+
+    .r11-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .r11-charts-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .r11-details-grid {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .r11-charts-grid,
+      .r11-details-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
+
+    .r11-chart-card,
+    .r11-card {
+      background: #FFFFFF;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+    }
+
+    .r11-empty-state {
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      background: #FAF9F6;
+      border-radius: 12px;
+      border: 1px dashed var(--border-color);
+    }
+
     /* PRINT LAYOUT FOR PHYSICAL PRODUCTION (TABLE, COMPTOIR, AFFICHE) */
     @media print {
       body {
@@ -724,7 +818,8 @@
       #tab-r6-clients,
       #tab-r7-loyalty,
       #tab-r8-rewards,
-      #tab-r9-offers {
+      #tab-r9-offers,
+      #tab-r11-analytics {
         display: none !important;
       }
 
@@ -1307,7 +1402,221 @@
 
       </div>
 
-      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R11 - R14) -->
+      <!-- ==========================================================================
+           ANALYTICS & STATISTIQUES TAB CONTENT (ÉTAPE R11 ACTIVE VIEW)
+           ========================================================================== -->
+      <div id="tab-r11-analytics" style="display: none;">
+        <!-- TITLE & SUBTITLE & PERIOD SELECTOR -->
+        <div class="r11-header-flex">
+          <div class="section-title-group" style="margin-bottom: 0;">
+            <h1 style="display: flex; align-items: center; gap: 0.5rem; margin: 0;">
+              <span>📈 Analytics</span>
+            </h1>
+            <p style="font-size: 0.95rem; color: var(--text-muted); margin-top: 0.25rem;">
+              Understand your customer activity and loyalty performance.
+            </p>
+          </div>
+
+          <!-- PERIOD SELECTOR (R11 SECTION 2) -->
+          <div class="r11-period-bar">
+            <button class="r11-period-btn" data-period="today" onclick="filterR11Period('today', this)">Today</button>
+            <button class="r11-period-btn" data-period="7d" onclick="filterR11Period('7d', this)">Last 7 days</button>
+            <button class="r11-period-btn active" data-period="30d" onclick="filterR11Period('30d', this)">Last 30 days</button>
+            <button class="r11-period-btn" data-period="90d" onclick="filterR11Period('90d', this)">Last 90 days</button>
+            <button class="r11-period-btn" data-period="all" onclick="filterR11Period('all', this)">All time</button>
+          </div>
+        </div>
+
+        <!-- ERROR BANNER -->
+        <div class="alert-banner error" id="r11-analytics-error-banner" style="display: none; margin-top: 1rem;"></div>
+
+        <!-- LOADING SKELETON / SPINNER -->
+        <div id="r11-loading-state" style="display: none; text-align: center; padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color); margin-top: 1.5rem;">
+          <div style="font-size: 2rem; margin-bottom: 0.5rem;">⏳</div>
+          <p style="font-weight: 700; color: var(--text-dark); margin: 0;">Calcul des statistiques réelles en cours…</p>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 0.25rem;">Interrogation sécurisée de Supabase Cloud</p>
+        </div>
+
+        <!-- MAIN ANALYTICS DASHBOARD CONTAINER -->
+        <div id="r11-analytics-content" style="margin-top: 1.5rem;">
+          
+          <!-- 1. FIVE MAIN INDICATORS (KPIs R11) -->
+          <div class="r11-kpi-grid">
+            
+            <!-- KPI 1: TOTAL CUSTOMERS -->
+            <div class="metric-card-r5">
+              <div class="metric-header">
+                <span class="metric-label">👥 Total Customers</span>
+                <div class="metric-icon-badge red">👥</div>
+              </div>
+              <p class="metric-val" id="r11-kpi-customers">0</p>
+              <p class="metric-subtext" id="r11-subtext-customers">Clients uniques rattachés</p>
+            </div>
+
+            <!-- KPI 2: TOTAL SCANS / VISITS -->
+            <div class="metric-card-r5">
+              <div class="metric-header">
+                <span class="metric-label">📱 Total Scans / Visits</span>
+                <div class="metric-icon-badge blue">📱</div>
+              </div>
+              <p class="metric-val" id="r11-kpi-scans">0</p>
+              <p class="metric-subtext">Scans QR de table sur la période</p>
+            </div>
+
+            <!-- KPI 3: TOTAL POINTS AWARDED -->
+            <div class="metric-card-r5">
+              <div class="metric-header">
+                <span class="metric-label">⭐ Total Points Awarded</span>
+                <div class="metric-icon-badge amber">⭐</div>
+              </div>
+              <p class="metric-val" id="r11-kpi-points">0 pts</p>
+              <p class="metric-subtext" id="r11-subtext-points">Moyenne: 0 pts / visite</p>
+            </div>
+
+            <!-- KPI 4: REWARDS REDEEMED -->
+            <div class="metric-card-r5">
+              <div class="metric-header">
+                <span class="metric-label">🎁 Rewards Redeemed</span>
+                <div class="metric-icon-badge green">🎁</div>
+              </div>
+              <p class="metric-val" id="r11-kpi-rewards">0</p>
+              <p class="metric-subtext">Cadeaux validés en caisse</p>
+            </div>
+
+            <!-- KPI 5: ACTIVE OFFERS -->
+            <div class="metric-card-r5">
+              <div class="metric-header">
+                <span class="metric-label">📢 Active Offers</span>
+                <div class="metric-icon-badge purple">📢</div>
+              </div>
+              <p class="metric-val" id="r11-kpi-offers">0</p>
+              <p class="metric-subtext" id="r11-subtext-offers">Offres commerciales en cours</p>
+            </div>
+
+          </div>
+
+          <!-- 2. TIME-SERIES CHARTS SECTION (R11 SECTION 3 & 4) -->
+          <div class="r11-charts-grid" style="margin-top: 1.5rem;">
+            
+            <!-- CHART 1: CUSTOMER ACTIVITY (SCANS & VISITS EVOLUTION) -->
+            <div class="r11-chart-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <h2 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0;">📊 Customer Activity (Scans & Visits)</h2>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Évolution réelle des passages à table par date</p>
+                </div>
+                <span id="r11-chart1-badge" style="font-size: 0.75rem; font-weight: 700; background: #FEF2F2; color: var(--nexa-red); padding: 3px 10px; border-radius: 8px;">0 scan(s)</span>
+              </div>
+              
+              <!-- CANVAS CONTAINER -->
+              <div id="r11-activity-chart-wrapper" style="position: relative; height: 260px; width: 100%;">
+                <canvas id="r11-activity-canvas"></canvas>
+              </div>
+
+              <!-- EMPTY STATE IF NO SCANS IN PERIOD -->
+              <div id="r11-activity-empty-state" class="r11-empty-state" style="display: none;">
+                <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">📉</div>
+                <p style="font-weight: 700; color: var(--text-dark); margin: 0 0 0.25rem 0;">Aucune visite enregistrée sur cette période</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Les données de fréquentation apparaîtront dès que vos clients scanneront le QR code de table.</p>
+              </div>
+            </div>
+
+            <!-- CHART 2: NEW CUSTOMERS & POINTS DISTRIBUTED -->
+            <div class="r11-chart-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <h2 style="font-size: 1.05rem; font-weight: 800; color: var(--text-dark); margin: 0;">⭐ Points Distribués & Nouveaux Clients</h2>
+                  <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Points attribués et adhésions au programme</p>
+                </div>
+                <span id="r11-chart2-badge" style="font-size: 0.75rem; font-weight: 700; background: #FFFBEB; color: #D97706; padding: 3px 10px; border-radius: 8px;">0 pt(s)</span>
+              </div>
+
+              <!-- CANVAS CONTAINER -->
+              <div id="r11-points-chart-wrapper" style="position: relative; height: 260px; width: 100%;">
+                <canvas id="r11-points-canvas"></canvas>
+              </div>
+
+              <!-- EMPTY STATE IF NO POINTS IN PERIOD -->
+              <div id="r11-points-empty-state" class="r11-empty-state" style="display: none;">
+                <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">⭐</div>
+                <p style="font-weight: 700; color: var(--text-dark); margin: 0 0 0.25rem 0;">Aucun point distribué sur cette période</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Les points distribués s'actualiseront à chaque validation de scan client.</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- 3. DETAILED PERFORMANCE BREAKDOWN (R11 SECTIONS 6, 7 & 8) -->
+          <div class="r11-details-grid" style="margin-top: 1.5rem;">
+            
+            <!-- SECTION 8: TOP CLIENTS (PRIVACY FRIENDLY) -->
+            <div class="r11-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <div>
+                  <h3 style="font-size: 1rem; font-weight: 800; color: var(--text-dark); margin: 0;">👑 Top Clients les Plus Actifs</h3>
+                  <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Clients fidèles classés par passages et solde</p>
+                </div>
+                <button class="r6-btn-detail" style="font-size: 0.75rem; padding: 4px 10px;" onclick="switchR5Tab('clients')">Voir tout le CRM</button>
+              </div>
+
+              <div id="r11-top-clients-container">
+                <!-- Dynamically rendered -->
+              </div>
+            </div>
+
+            <!-- SECTION 6 & 7: TOP REWARDS & COMMERCIAL OFFERS OVERVIEW -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+              
+              <!-- TOP REWARDS -->
+              <div class="r11-card" style="flex: 1;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                  <div>
+                    <h3 style="font-size: 1rem; font-weight: 800; color: var(--text-dark); margin: 0;">🎁 Récompenses les Plus Utilisées</h3>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Palmarès réel des cadeaux débloqués en caisse</p>
+                  </div>
+                  <button class="r6-btn-detail" style="font-size: 0.75rem; padding: 4px 10px;" onclick="switchR5Tab('rewards')">Catalogue</button>
+                </div>
+
+                <div id="r11-top-rewards-container">
+                  <!-- Dynamically rendered -->
+                </div>
+              </div>
+
+              <!-- COMMERCIAL OFFERS STATUS -->
+              <div class="r11-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+                  <div>
+                    <h3 style="font-size: 1rem; font-weight: 800; color: var(--text-dark); margin: 0;">🏷️ Statut des Offres Commerciales</h3>
+                    <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Campagnes actives, programmées et terminées</p>
+                  </div>
+                  <button class="r6-btn-detail" style="font-size: 0.75rem; padding: 4px 10px;" onclick="switchR5Tab('offers')">Gérer</button>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; text-align: center;">
+                  <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 10px; padding: 0.75rem 0.5rem;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #991B1B; display: block; text-transform: uppercase;">Actives</span>
+                    <strong style="font-size: 1.3rem; color: var(--nexa-red); font-weight: 800;" id="r11-offers-active-count">0</strong>
+                  </div>
+                  <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 10px; padding: 0.75rem 0.5rem;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #1E40AF; display: block; text-transform: uppercase;">Programmées</span>
+                    <strong style="font-size: 1.3rem; color: #2563EB; font-weight: 800;" id="r11-offers-scheduled-count">0</strong>
+                  </div>
+                  <div style="background: #F8F9FA; border: 1px solid #E2E8F0; border-radius: 10px; padding: 0.75rem 0.5rem;">
+                    <span style="font-size: 0.72rem; font-weight: 700; color: #64748B; display: block; text-transform: uppercase;">Expirées</span>
+                    <strong style="font-size: 1.3rem; color: var(--text-muted); font-weight: 800;" id="r11-offers-expired-count">0</strong>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- PLACEHOLDER FOR FUTURE SECTIONS (R12 - R14) -->
       <div class="coming-soon-container" id="tab-r5-coming-soon">
         <div class="coming-soon-icon">🚧</div>
         <h2 style="font-family: var(--font-heading); font-size: 1.4rem; font-weight: 800; color: var(--text-dark); margin-bottom: 0.5rem;" id="coming-soon-title">Section Coming Soon</h2>
@@ -1578,6 +1887,8 @@
         loginTime: Date.now()
       };
 
+      window.activeB2BSession = activeB2BSession;
+
       localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
       localStorage.setItem('nexa_resto_name', effectiveName);
 
@@ -1617,33 +1928,23 @@
       loadR7LoyaltyConfig();
       loadR8Rewards();
       loadR9Offers();
+      loadR11Analytics();
     };
 
     // PAGE LOAD: CHECK AUTHENTICATED SESSION & FETCH SUPABASE METRICS
     window.addEventListener('DOMContentLoaded', async () => {
-      const urlParams = new URLSearchParams(window.location.search);
+      const rawSearch = window.location.search || (window.location.href.includes('?') ? '?' + window.location.href.split('?')[1].split('#')[0] : '');
+      const urlParams = new URLSearchParams(rawSearch);
       const urlResto = urlParams.get('resto') || urlParams.get('r') || urlParams.get('restaurant');
 
       const backend = window.nexaBackend || new NexaProductionBackend();
 
-      // 1. Fetch all restaurants from Supabase to populate the dropdown
-      try {
-        const allRestos = await backend.getAllRestaurants();
-        const sel = document.getElementById('select-active-resto');
-        if (sel && Array.isArray(allRestos) && allRestos.length > 0) {
-          sel.innerHTML = allRestos.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}</option>`).join('');
-        }
-      } catch (e) {
-        console.warn('Failed to load restaurants dropdown:', e);
-      }
-
+      // 0. Immediate synchronous session bootstrap (0ms)
       let storedSession = localStorage.getItem('nexa_merchant_b2b_session');
       let targetRestoName = 'Le Savane';
 
       if (urlResto) {
-        // If specified in URL (e.g. ?resto=noli or ?resto=malvoo or ?resto=Parisien)
-        const resolved = await backend.getRestaurantByName(urlResto);
-        targetRestoName = (resolved && resolved.name) || urlResto;
+        targetRestoName = urlResto;
       } else if (storedSession) {
         try {
           const parsed = JSON.parse(storedSession);
@@ -1653,33 +1954,55 @@
         targetRestoName = localStorage.getItem('nexa_resto_name') || 'Le Savane';
       }
 
-      const restoObj = await backend.getRestaurantByName(targetRestoName);
-      const effectiveName = (restoObj && restoObj.name) || targetRestoName;
-      const effectiveEmail = (restoObj && restoObj.email) || `${backend.getSlug(effectiveName)}@restaurant.com`;
-
       activeB2BSession = {
-        email: effectiveEmail,
-        restoName: effectiveName,
-        authUserId: (restoObj && restoObj.id) || 'user_b2b_' + backend.getSlug(effectiveName),
+        email: `${backend.getSlug(targetRestoName)}@restaurant.com`,
+        restoName: targetRestoName,
+        authUserId: 'user_b2b_' + backend.getSlug(targetRestoName),
         loginTime: Date.now()
       };
+      window.activeB2BSession = activeB2BSession;
       localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
-      localStorage.setItem('nexa_resto_name', effectiveName);
+      localStorage.setItem('nexa_resto_name', targetRestoName);
+
+      // 1. Fetch all restaurants from Supabase to populate the dropdown (non-blocking)
+      try {
+        backend.getAllRestaurants().then(allRestos => {
+          const sel = document.getElementById('select-active-resto');
+          if (sel && Array.isArray(allRestos) && allRestos.length > 0) {
+            sel.innerHTML = allRestos.map(r => `<option value="${escapeHtml(r.name)}">${escapeHtml(r.name)}</option>`).join('');
+            sel.value = activeB2BSession.restoName;
+          }
+        }).catch(() => {});
+      } catch (e) {}
+
+      // 2. Refine restaurant record if needed in background
+      try {
+        const restoObj = await backend.getRestaurantByName(targetRestoName);
+        if (restoObj) {
+          activeB2BSession.restoName = restoObj.name || targetRestoName;
+          activeB2BSession.email = restoObj.email || activeB2BSession.email;
+          activeB2BSession.authUserId = restoObj.id || activeB2BSession.authUserId;
+          window.activeB2BSession = activeB2BSession;
+          localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify(activeB2BSession));
+          localStorage.setItem('nexa_resto_name', activeB2BSession.restoName);
+        }
+      } catch (e) {}
 
       const sel = document.getElementById('select-active-resto');
-      if (sel) {
+      if (sel && activeB2BSession) {
+        const curName = activeB2BSession.restoName;
         let found = false;
         for (let opt of sel.options) {
-          if (opt.value.toLowerCase() === effectiveName.toLowerCase() || backend.getSlug(opt.value) === backend.getSlug(effectiveName)) {
+          if (opt.value.toLowerCase() === curName.toLowerCase() || backend.getSlug(opt.value) === backend.getSlug(curName)) {
             sel.value = opt.value;
             found = true;
             break;
           }
         }
-        if (!found && effectiveName) {
+        if (!found && curName) {
           const opt = document.createElement('option');
-          opt.value = effectiveName;
-          opt.textContent = effectiveName;
+          opt.value = curName;
+          opt.textContent = curName;
           opt.selected = true;
           sel.appendChild(opt);
         }
@@ -1794,6 +2117,7 @@
       const rewardsTab = document.getElementById('tab-r8-rewards');
       const offersTab = document.getElementById('tab-r9-offers');
       const qrTab = document.getElementById('tab-r10-qr');
+      const analyticsTab = document.getElementById('tab-r11-analytics');
       const comingSoonTab = document.getElementById('tab-r5-coming-soon');
 
       if (tabName === 'dashboard') {
@@ -1803,6 +2127,7 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
       } else if (tabName === 'clients') {
         dashTab.style.display = 'none';
@@ -1811,6 +2136,7 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR6Clients();
       } else if (tabName === 'points') {
@@ -1820,6 +2146,7 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR7LoyaltyConfig();
       } else if (tabName === 'rewards') {
@@ -1829,6 +2156,7 @@
         if (rewardsTab) rewardsTab.style.display = 'block';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR8Rewards();
       } else if (tabName === 'offers') {
@@ -1838,6 +2166,7 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'block';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR9Offers();
       } else if (tabName === 'qr') {
@@ -1847,8 +2176,19 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'block';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
         loadR10QRCodeStudio();
+      } else if (tabName === 'analytics') {
+        dashTab.style.display = 'none';
+        if (clientsTab) clientsTab.style.display = 'none';
+        if (loyaltyTab) loyaltyTab.style.display = 'none';
+        if (rewardsTab) rewardsTab.style.display = 'none';
+        if (offersTab) offersTab.style.display = 'none';
+        if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'block';
+        comingSoonTab.style.display = 'none';
+        loadR11Analytics();
       } else {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'none';
@@ -1856,10 +2196,10 @@
         if (rewardsTab) rewardsTab.style.display = 'none';
         if (offersTab) offersTab.style.display = 'none';
         if (qrTab) qrTab.style.display = 'none';
+        if (analyticsTab) analyticsTab.style.display = 'none';
         comingSoonTab.style.display = 'block';
         
         const titles = {
-          analytics: '📈 Advanced Analytics (Étape R11)',
           subscription: '💳 B2B Subscription & Billing (Étape R13)',
           settings: '⚙️ Restaurant Settings (Étape R14)'
         };
@@ -3223,6 +3563,396 @@
         banner.style.display = 'block';
         setTimeout(() => { banner.style.display = 'none'; }, 4500);
       }
+    }
+
+    // ==========================================================================
+    // ÉTAPE R11: RESTAURANT ANALYTICS & PERFORMANCE ENGINE (100% REAL DATA)
+    // ==========================================================================
+    let currentR11Period = '30d';
+    let r11ActivityChartInstance = null;
+    let r11PointsChartInstance = null;
+    let rawR11AnalyticsData = null;
+
+    async function loadR11Analytics(period) {
+      if (period) currentR11Period = period;
+
+      const selResto = document.getElementById('select-active-resto') ? document.getElementById('select-active-resto').value : null;
+      const restoName = (activeB2BSession && activeB2BSession.restoName)
+        || selResto
+        || localStorage.getItem('nexa_resto_name')
+        || 'Le Savane';
+      const slug = (restoName || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+
+      // Update Period Buttons Active State
+      document.querySelectorAll('.r11-period-btn').forEach(btn => {
+        if (btn.getAttribute('data-period') === currentR11Period) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      });
+
+      const errBanner = document.getElementById('r11-analytics-error-banner');
+      if (errBanner) errBanner.style.display = 'none';
+
+      // 1. Instant Fast Render from Local Cache (0ms)
+      try {
+        const cachedStr = localStorage.getItem(`nexa_analytics_cache_${slug}_${currentR11Period}`);
+        if (cachedStr) {
+          rawR11AnalyticsData = JSON.parse(cachedStr);
+          renderR11Analytics(rawR11AnalyticsData);
+        }
+      } catch (e) {}
+
+      // 2. Fetch Live Real Data from Supabase
+      const loadingState = document.getElementById('r11-loading-state');
+      if (!rawR11AnalyticsData && loadingState) loadingState.style.display = 'block';
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const data = await backend.getRestaurantAnalytics(restoName, currentR11Period);
+        rawR11AnalyticsData = data;
+        renderR11Analytics(data);
+      } catch (err) {
+        console.error('[DIAGNOSTIC R11 ANALYTICS LOAD ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = `Erreur de chargement des statistiques : ${err.message || 'Supabase indisponible'}`;
+          errBanner.style.display = 'block';
+        }
+      } finally {
+        if (loadingState) loadingState.style.display = 'none';
+      }
+    }
+
+    function filterR11Period(periodKey, btnEl) {
+      if (!periodKey) return;
+      currentR11Period = periodKey;
+      document.querySelectorAll('.r11-period-btn').forEach(b => b.classList.remove('active'));
+      if (btnEl) btnEl.classList.add('active');
+      loadR11Analytics(periodKey);
+    }
+
+    function renderR11Analytics(data) {
+      if (!data || !data.kpis) return;
+      const kpis = data.kpis;
+
+      // 1. Render Main 5 KPIs
+      const elCustomers = document.getElementById('r11-kpi-customers');
+      const elScans = document.getElementById('r11-kpi-scans');
+      const elPoints = document.getElementById('r11-kpi-points');
+      const elSubtextPoints = document.getElementById('r11-subtext-points');
+      const elRewards = document.getElementById('r11-kpi-rewards');
+      const elOffers = document.getElementById('r11-kpi-offers');
+
+      if (elCustomers) elCustomers.textContent = kpis.totalCustomers || 0;
+      const subCustomers = document.getElementById('r11-subtext-customers');
+      if (subCustomers) {
+        subCustomers.textContent = currentR11Period === 'all' 
+          ? 'Total clients enregistrés' 
+          : `+${kpis.newCustomersPeriod || 0} nouveaux sur la période`;
+      }
+
+      if (elScans) elScans.textContent = kpis.totalScans || 0;
+      if (elPoints) elPoints.textContent = `${kpis.totalPoints || 0} pts`;
+      if (elSubtextPoints) {
+        elSubtextPoints.textContent = `Moyenne : ${kpis.avgPointsPerVisit || 0} pts / visite`;
+      }
+      if (elRewards) elRewards.textContent = kpis.rewardsRedeemed || 0;
+      if (elOffers) elOffers.textContent = kpis.activeOffers || 0;
+
+      // 2. Render Commercial Offers Status
+      const elOffAct = document.getElementById('r11-offers-active-count');
+      const elOffSched = document.getElementById('r11-offers-scheduled-count');
+      const elOffExp = document.getElementById('r11-offers-expired-count');
+
+      if (elOffAct) elOffAct.textContent = kpis.activeOffers || 0;
+      if (elOffSched) elOffSched.textContent = kpis.scheduledOffers || 0;
+      if (elOffExp) elOffExp.textContent = kpis.expiredOffers || 0;
+
+      // 3. Render Chart 1: Customer Activity (Scans / Visits)
+      renderR11ActivityChart(data);
+
+      // 4. Render Chart 2: Points & New Customers
+      renderR11PointsChart(data);
+
+      // 5. Render Top Clients Table (Privacy Friendly)
+      renderR11TopClients(data.topClients || []);
+
+      // 6. Render Top Rewards Table
+      renderR11TopRewards(data.topRewards || []);
+    }
+
+    function renderR11ActivityChart(data) {
+      const badge = document.getElementById('r11-chart1-badge');
+      if (badge) badge.textContent = `${data.kpis.totalScans || 0} scan(s)`;
+
+      const wrapper = document.getElementById('r11-activity-chart-wrapper');
+      const emptyState = document.getElementById('r11-activity-empty-state');
+      const canvas = document.getElementById('r11-activity-canvas');
+
+      if (!data.hasActivityData || data.kpis.totalScans === 0) {
+        if (wrapper) wrapper.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'block';
+        if (r11ActivityChartInstance) {
+          r11ActivityChartInstance.destroy();
+          r11ActivityChartInstance = null;
+        }
+        return;
+      }
+
+      if (wrapper) wrapper.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'none';
+      if (!canvas || !window.Chart) return;
+
+      const labels = data.timeSeries.map(item => item.label);
+      const scanPoints = data.timeSeries.map(item => item.scans);
+
+      if (r11ActivityChartInstance) {
+        r11ActivityChartInstance.destroy();
+        r11ActivityChartInstance = null;
+      }
+
+      const ctx = canvas.getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, 260);
+      gradient.addColorStop(0, 'rgba(229, 57, 53, 0.25)');
+      gradient.addColorStop(1, 'rgba(229, 57, 53, 0.00)');
+
+      r11ActivityChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Scans de table',
+            data: scanPoints,
+            borderColor: '#E53935',
+            backgroundColor: gradient,
+            borderWidth: 2.5,
+            fill: true,
+            tension: 0.35,
+            pointBackgroundColor: '#E53935',
+            pointBorderColor: '#FFFFFF',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#0F172A',
+              padding: 10,
+              titleFont: { size: 12, weight: 'bold' },
+              bodyFont: { size: 12 },
+              displayColors: false,
+              callbacks: {
+                label: function(context) {
+                  return `${context.parsed.y} scan(s) enregistré(s)`;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: '#94A3B8', font: { size: 11 } },
+              grid: { color: '#F1F5F9' }
+            },
+            x: {
+              ticks: { color: '#94A3B8', font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function renderR11PointsChart(data) {
+      const badge = document.getElementById('r11-chart2-badge');
+      if (badge) badge.textContent = `${data.kpis.totalPoints || 0} pt(s)`;
+
+      const wrapper = document.getElementById('r11-points-chart-wrapper');
+      const emptyState = document.getElementById('r11-points-empty-state');
+      const canvas = document.getElementById('r11-points-canvas');
+
+      const hasPointsOrClients = (data.kpis.totalPoints > 0 || data.kpis.newCustomersPeriod > 0);
+
+      if (!hasPointsOrClients) {
+        if (wrapper) wrapper.style.display = 'none';
+        if (emptyState) emptyState.style.display = 'block';
+        if (r11PointsChartInstance) {
+          r11PointsChartInstance.destroy();
+          r11PointsChartInstance = null;
+        }
+        return;
+      }
+
+      if (wrapper) wrapper.style.display = 'block';
+      if (emptyState) emptyState.style.display = 'none';
+      if (!canvas || !window.Chart) return;
+
+      const labels = data.timeSeries.map(item => item.label);
+      const pointsData = data.timeSeries.map(item => item.points);
+      const clientsData = data.timeSeries.map(item => item.newClients);
+
+      if (r11PointsChartInstance) {
+        r11PointsChartInstance.destroy();
+        r11PointsChartInstance = null;
+      }
+
+      const ctx = canvas.getContext('2d');
+
+      r11PointsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              type: 'bar',
+              label: 'Points distribués',
+              data: pointsData,
+              backgroundColor: '#F59E0B',
+              borderRadius: 6,
+              barThickness: 14
+            },
+            {
+              type: 'line',
+              label: 'Nouveaux clients',
+              data: clientsData,
+              borderColor: '#10B981',
+              backgroundColor: 'transparent',
+              borderWidth: 2,
+              tension: 0.3,
+              pointBackgroundColor: '#10B981',
+              pointRadius: 3,
+              yAxisID: 'yClients'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'top',
+              labels: { boxWidth: 12, font: { size: 11, weight: 'bold' } }
+            },
+            tooltip: {
+              backgroundColor: '#0F172A',
+              padding: 10,
+              titleFont: { size: 12, weight: 'bold' }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { precision: 0, color: '#94A3B8' },
+              grid: { color: '#F1F5F9' },
+              title: { display: true, text: 'Points', color: '#94A3B8', font: { size: 10 } }
+            },
+            yClients: {
+              beginAtZero: true,
+              position: 'right',
+              ticks: { precision: 0, color: '#10B981' },
+              grid: { display: false },
+              title: { display: true, text: 'Clients', color: '#10B981', font: { size: 10 } }
+            },
+            x: {
+              ticks: { color: '#94A3B8', font: { size: 11 } },
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    function renderR11TopClients(clientsList) {
+      const container = document.getElementById('r11-top-clients-container');
+      if (!container) return;
+
+      if (!clientsList || clientsList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; background: #FAF9F6; border-radius: 12px; border: 1px dashed var(--border-color);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">👥</div>
+            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucun client enregistré</p>
+            <p style="font-size: 0.75rem; margin: 0;">Les clients les plus fidèles apparaîtront ici après leur premier scan.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 1.5px solid #F1F5F9; color: var(--text-muted); font-size: 0.75rem; text-transform: uppercase;">
+                <th style="padding: 0.5rem 0.5rem 0.5rem 0;">Client</th>
+                <th style="padding: 0.5rem; text-align: center;">Visites</th>
+                <th style="padding: 0.5rem; text-align: right;">Points</th>
+                <th style="padding: 0.5rem 0 0.5rem 0.5rem; text-align: right;">Statut</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${clientsList.map((c, idx) => `
+                <tr style="border-bottom: 1px solid #F8F9FA;">
+                  <td style="padding: 0.65rem 0.5rem 0.65rem 0;">
+                    <strong style="color: var(--text-dark); display: block;">${idx + 1}. ${escapeHtml(c.name)}</strong>
+                    <span style="font-size: 0.72rem; color: var(--text-muted); font-family: monospace;">${escapeHtml(c.maskedPhone)}</span>
+                  </td>
+                  <td style="padding: 0.65rem 0.5rem; text-align: center;">
+                    <span style="background: #F1F5F9; color: var(--text-dark); font-weight: 800; padding: 2px 7px; border-radius: 8px;">${c.visits}</span>
+                  </td>
+                  <td style="padding: 0.65rem 0.5rem; text-align: right; font-weight: 800; color: var(--nexa-red);">
+                    ${c.points} pts
+                  </td>
+                  <td style="padding: 0.65rem 0 0.65rem 0.5rem; text-align: right;">
+                    <span style="background: ${c.tier === 'VIP' ? '#FEF3C7' : '#F1F5F9'}; color: ${c.tier === 'VIP' ? '#B45309' : '#475569'}; font-weight: 800; font-size: 0.7rem; padding: 2px 7px; border-radius: 6px;">
+                      ${c.tier === 'VIP' ? '👑 VIP' : 'Silver'}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderR11TopRewards(rewardsList) {
+      const container = document.getElementById('r11-top-rewards-container');
+      if (!container) return;
+
+      if (!rewardsList || rewardsList.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 2rem 1rem; background: #FAF9F6; border-radius: 12px; border: 1px dashed var(--border-color);">
+            <div style="font-size: 1.8rem; margin-bottom: 0.3rem;">🎁</div>
+            <p style="font-size: 0.85rem; font-weight: 700; margin: 0 0 0.2rem 0;">Aucune récompense échangée pour l'instant</p>
+            <p style="font-size: 0.75rem; margin: 0;">Les cadeaux validés en caisse par vos serveurs apparaîtront ici.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+          ${rewardsList.map((r, idx) => `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.75rem; background: #F8F9FA; border-radius: 10px; border: 1px solid var(--border-color);">
+              <div style="display: flex; align-items: center; gap: 0.6rem;">
+                <span style="font-size: 1.3rem;">${r.icon || '🎁'}</span>
+                <div>
+                  <strong style="font-size: 0.85rem; color: var(--text-dark); display: block;">${idx + 1}. ${escapeHtml(r.title)}</strong>
+                  <span style="font-size: 0.72rem; color: var(--text-muted);">${r.pts} points requis</span>
+                </div>
+              </div>
+              <span style="background: #DCFCE7; color: #15803D; font-weight: 800; font-size: 0.75rem; padding: 3px 8px; border-radius: 8px;">
+                ${r.useCount} validé(s)
+              </span>
+            </div>
+          `).join('')}
+        </div>
+      `;
     }
   </script>
 

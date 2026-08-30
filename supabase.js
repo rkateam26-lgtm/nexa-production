@@ -1741,6 +1741,292 @@ class NexaProductionBackend {
       }
     }
   }
+
+  // 13. ÉTAPE R11: Get Restaurant Analytics & Performance Metrics (100% Real Data & Isolated)
+  async getRestaurantAnalytics(restoName, period = '30d') {
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+
+    // 1. Calculate Period Boundaries
+    const now = new Date();
+    let startDate = new Date(0); // 'all'
+    if (period === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
+    } else if (period === '7d') {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === '30d') {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (period === '90d') {
+      startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+    }
+
+    // 2. Fetch Restaurant Record (ID & Offers from logo_url)
+    let restoId = null;
+    let rawOffers = [];
+    if (client) {
+      try {
+        const { data: restoRows } = await client
+          .from('restaurants')
+          .select('id, name, logo_url')
+          .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+          .limit(1);
+        if (restoRows && restoRows[0]) {
+          restoId = restoRows[0].id;
+          if (restoRows[0].logo_url) {
+            try {
+              const parsed = JSON.parse(restoRows[0].logo_url);
+              rawOffers = Array.isArray(parsed) ? parsed : (parsed ? [parsed] : []);
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        console.warn('[R11 ANALYTICS RESTO FETCH]', e);
+      }
+    }
+
+    // 3. Fetch Real Clients of this restaurant only (Strict Isolation)
+    let clients = [];
+    if (client) {
+      try {
+        const { data: clientRows } = await client
+          .from('clients')
+          .select('*')
+          .ilike('whatsapp_phone', `%_${slug}`)
+          .order('created_at', { ascending: false });
+        if (Array.isArray(clientRows)) {
+          clients = clientRows;
+        }
+      } catch (e) {
+        console.warn('[R11 ANALYTICS CLIENTS FETCH]', e);
+      }
+    }
+    // Fallback merge with local clients if offline
+    const localClients = this.getLocalClients(slug);
+    if (clients.length === 0 && localClients.length > 0) {
+      clients = localClients.map(c => ({
+        id: c.id || `local_${Math.random()}`,
+        full_name: c.name || c.full_name || 'Client Nexa',
+        whatsapp_phone: c.rawKey || c.whatsapp_phone || `${c.phone}_${slug}`,
+        points_balance: c.points || c.points_balance || 0,
+        visits_count: c.visits || c.visits_count || 1,
+        tier: (c.points || 0) >= 200 ? 'VIP' : 'Silver',
+        created_at: c.createdAt || new Date().toISOString(),
+        last_scan_at: c.lastVisit || new Date().toISOString()
+      }));
+    }
+
+    const clientIds = clients.map(c => c.id).filter(Boolean);
+
+    // 4. Fetch Real Scans of this restaurant only
+    let scans = [];
+    if (client && (restoId || clientIds.length > 0)) {
+      try {
+        let scansQuery = client.from('scans').select('*');
+        if (restoId && clientIds.length > 0) {
+          scansQuery = scansQuery.or(`restaurant_id.eq.${restoId},client_id.in.(${clientIds.join(',')})`);
+        } else if (restoId) {
+          scansQuery = scansQuery.eq('restaurant_id', restoId);
+        } else {
+          scansQuery = scansQuery.in('client_id', clientIds);
+        }
+        const { data: scanRows } = await scansQuery.order('scanned_at', { ascending: true });
+        if (Array.isArray(scanRows)) {
+          scans = scanRows;
+        }
+      } catch (e) {
+        console.warn('[R11 ANALYTICS SCANS FETCH]', e);
+      }
+    }
+
+    // 5. Fetch Real Rewards of this restaurant
+    let rewards = [];
+    if (client) {
+      try {
+        const { data: rewardRows } = await client
+          .from('rewards')
+          .select('*')
+          .or(`description.ilike.%${slug}%,description.ilike.%${cleanSearch}%,description.ilike.%${restoName}%`);
+        if (Array.isArray(rewardRows)) {
+          rewards = rewardRows;
+        }
+      } catch (e) {
+        console.warn('[R11 ANALYTICS REWARDS FETCH]', e);
+      }
+    }
+
+    // 6. Fetch Local Validated Proofs (Redemptions)
+    let validatedProofs = [];
+    try {
+      const storedProofs = localStorage.getItem(`nexa_validated_proofs_${slug}`);
+      if (storedProofs) {
+        const parsed = JSON.parse(storedProofs);
+        if (Array.isArray(parsed)) validatedProofs = parsed;
+      }
+    } catch (e) {}
+
+    // ==========================================
+    // FILTER DATA FOR THE SELECTED PERIOD
+    // ==========================================
+    const scansInPeriod = scans.filter(s => {
+      if (!s.scanned_at) return false;
+      return new Date(s.scanned_at) >= startDate;
+    });
+
+    const newClientsInPeriod = clients.filter(c => {
+      if (!c.created_at) return false;
+      return new Date(c.created_at) >= startDate;
+    });
+
+    const redemptionsInPeriod = validatedProofs.filter(p => {
+      if (!p.date) return true;
+      return new Date(p.date) >= startDate;
+    });
+
+    // Compute Commercial Offers stats
+    let activeOffersCount = 0;
+    let expiredOffersCount = 0;
+    let scheduledOffersCount = 0;
+    const todayStr = now.toISOString().split('T')[0];
+
+    rawOffers.forEach(o => {
+      const start = o.startDate || o.start_date || todayStr;
+      const end = o.endDate || o.end_date || '9999-12-31';
+      if (o.active === false) {
+        // Disabled
+      } else if (todayStr > end) {
+        expiredOffersCount++;
+      } else if (todayStr < start) {
+        scheduledOffersCount++;
+      } else {
+        activeOffersCount++;
+      }
+    });
+
+    // Compute KPIs
+    const totalCustomers = clients.length;
+    const newCustomersPeriod = newClientsInPeriod.length;
+    const totalScansPeriod = scansInPeriod.length;
+    const totalPointsAwardedPeriod = scansInPeriod.reduce((sum, s) => sum + (parseInt(s.points_earned || 20, 10)), 0);
+    const avgPointsPerVisit = totalScansPeriod > 0 ? Math.round((totalPointsAwardedPeriod / totalScansPeriod) * 10) / 10 : 0;
+    
+    // Sum redemptions from local proofs + rewards use_count
+    const sumRewardsUseCount = rewards.reduce((sum, r) => sum + (parseInt(r.use_count || r.redemptions_count || 0, 10)), 0);
+    const totalRewardsRedeemed = Math.max(redemptionsInPeriod.length, sumRewardsUseCount);
+
+    // ==========================================
+    // BUILD DAY-BY-DAY TIME-SERIES
+    // ==========================================
+    const daysMap = new Map();
+
+    if (period === 'today') {
+      const todayKey = now.toISOString().split('T')[0];
+      daysMap.set(todayKey, { date: todayKey, label: "Aujourd'hui", scans: 0, points: 0, newClients: 0 });
+    } else {
+      const numDays = period === '7d' ? 7 : (period === '30d' ? 30 : (period === '90d' ? 90 : 30));
+      for (let i = numDays - 1; i >= 0; i--) {
+        const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+        const dKey = d.toISOString().split('T')[0];
+        const label = d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
+        daysMap.set(dKey, { date: dKey, label, scans: 0, points: 0, newClients: 0 });
+      }
+    }
+
+    // Populate scans into time-series
+    scansInPeriod.forEach(s => {
+      const sDateKey = s.scanned_at ? s.scanned_at.split('T')[0] : null;
+      if (sDateKey) {
+        if (!daysMap.has(sDateKey)) {
+          const dObj = new Date(sDateKey);
+          daysMap.set(sDateKey, {
+            date: sDateKey,
+            label: dObj.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }),
+            scans: 0,
+            points: 0,
+            newClients: 0
+          });
+        }
+        const entry = daysMap.get(sDateKey);
+        entry.scans += 1;
+        entry.points += parseInt(s.points_earned || 20, 10);
+      }
+    });
+
+    // Populate new clients into time-series
+    newClientsInPeriod.forEach(c => {
+      const cDateKey = c.created_at ? c.created_at.split('T')[0] : null;
+      if (cDateKey && daysMap.has(cDateKey)) {
+        daysMap.get(cDateKey).newClients += 1;
+      }
+    });
+
+    // Sort timeSeries chronologically
+    const timeSeries = Array.from(daysMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+
+    // ==========================================
+    // BUILD TOP REWARDS (REAL DATA ONLY)
+    // ==========================================
+    const topRewards = rewards
+      .map(r => ({
+        id: r.id,
+        title: r.title || 'Privilège',
+        pts: r.points_required || r.pts || 20,
+        icon: r.icon || '🎁',
+        useCount: parseInt(r.use_count || r.redemptions_count || 0, 10)
+      }))
+      .filter(r => r.useCount > 0)
+      .sort((a, b) => b.useCount - a.useCount)
+      .slice(0, 5);
+
+    // ==========================================
+    // BUILD TOP CLIENTS (PRIVACY-FRIENDLY)
+    // ==========================================
+    const topClients = clients
+      .map(c => {
+        const rawPhone = (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.phone || ''));
+        let maskedPhone = rawPhone;
+        if (rawPhone.length >= 6) {
+          maskedPhone = rawPhone.substring(0, 4) + ' •• •• ' + rawPhone.slice(-2);
+        }
+        return {
+          id: c.id,
+          name: c.full_name || c.name || 'Client Nexa',
+          maskedPhone: maskedPhone,
+          visits: typeof c.visits_count === 'number' ? c.visits_count : (c.visits || 1),
+          points: typeof c.points_balance === 'number' ? c.points_balance : (c.points || 0),
+          tier: c.tier || ((c.points_balance || c.points || 0) >= 200 ? 'VIP' : 'Silver')
+        };
+      })
+      .sort((a, b) => (b.visits - a.visits) || (b.points - a.points))
+      .slice(0, 5);
+
+    const result = {
+      period,
+      restoName,
+      kpis: {
+        totalCustomers,
+        newCustomersPeriod,
+        totalScans: totalScansPeriod,
+        totalPoints: totalPointsAwardedPeriod,
+        avgPointsPerVisit,
+        rewardsRedeemed: totalRewardsRedeemed,
+        activeOffers: activeOffersCount,
+        expiredOffers: expiredOffersCount,
+        scheduledOffers: scheduledOffersCount
+      },
+      timeSeries,
+      hasActivityData: scansInPeriod.length > 0,
+      topRewards,
+      topClients
+    };
+
+    // Save in local cache for instant fast response
+    try {
+      localStorage.setItem(`nexa_analytics_cache_${slug}_${period}`, JSON.stringify(result));
+    } catch (e) {}
+
+    return result;
+  }
 }
 
 // Global Singleton Instance
