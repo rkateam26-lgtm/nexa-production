@@ -7,6 +7,31 @@ const SUPABASE_CONFIG = {
   anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlhaHpueXVlaWlocmF4YWhodWpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY0MDQ4MzIsImV4cCI6MjEwMTk4MDgzMn0.OslLjXNWSEwNTlYtoUD4eXgc19I9Py5FF2vn3T8NIpw'
 };
 
+// ==========================================================================
+// CENTRALIZED NEXA COMMERCIAL PRICING & SUBSCRIPTION CONFIG (ÉTAPE R12)
+// ==========================================================================
+const NEXA_SUBSCRIPTION_CONFIG = {
+  planId: 'nexa-restaurant',
+  planName: 'Nexa Restaurant',
+  price: 25000,
+  currency: 'XOF',
+  currencySymbol: 'FCFA',
+  billingPeriod: 'month',
+  formattedPrice: '25,000 FCFA / month',
+  formattedPriceFr: '25 000 FCFA / mois',
+  features: [
+    'Customer loyalty (Fidélité client 100% web)',
+    'Points system (Attribution de points par scan)',
+    'Rewards (Catalogue de cadeaux et privilèges)',
+    'Offers (Offres et promotions commerciales)',
+    'QR Code (Studio de génération Table & Comptoir)',
+    'Customer analytics (Statistiques d\'activité en direct)'
+  ]
+};
+if (typeof window !== 'undefined') {
+  window.NEXA_SUBSCRIPTION_CONFIG = NEXA_SUBSCRIPTION_CONFIG;
+}
+
 // EXPLICIT PROMISE TIMEOUT WRAPPER (PREVENTS INFINITE LOADING / HANGING REQUESTS)
 function withTimeout(promise, ms = 8000, label = 'Operation') {
   return new Promise((resolve, reject) => {
@@ -348,26 +373,27 @@ class NexaProductionBackend {
         console.warn('[DIAGNOSTIC R5 REWARDS REDEEMED WARN]', err);
       }
 
-      // 3. Query restaurant record for subscription status & creation date
-      let subscriptionStatus = 'Actif - Période d\'Essai';
-      let startDateStr = new Date().toISOString().split('T')[0];
-      let expireDateStr = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
+      // 3. Query restaurant subscription status & real dates (Étape R12)
+      let subInfo = {
+        status: 'Active',
+        startDate: new Date().toISOString().split('T')[0],
+        expireDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        daysRemaining: 30
+      };
       try {
-        const { data: restoData } = await client
-          .from('restaurants')
-          .select('*')
-          .eq('email', userEmail)
-          .maybeSingle();
-
-        if (restoData && restoData.created_at) {
-          const createdDate = new Date(restoData.created_at);
-          startDateStr = createdDate.toISOString().split('T')[0];
-          const expDate = new Date(createdDate.getTime() + 30 * 24 * 60 * 60 * 1000);
-          expireDateStr = expDate.toISOString().split('T')[0];
+        const fullSub = await this.getRestaurantSubscription(restoName, userEmail);
+        if (fullSub) {
+          subInfo = {
+            status: fullSub.status,
+            startDate: fullSub.startDate,
+            expireDate: fullSub.endDate,
+            daysRemaining: fullSub.daysRemaining,
+            isExpired: fullSub.isExpired,
+            isExpiringSoon: fullSub.isExpiringSoon
+          };
         }
       } catch (err) {
-        console.warn('[DIAGNOSTIC R5 RESTO INFO WARN]', err);
+        console.warn('[DIAGNOSTIC R5/R12 RESTO SUB WARN]', err);
       }
 
       return {
@@ -376,11 +402,7 @@ class NexaProductionBackend {
         totalPoints: totalPointsDistributed,
         rewardsRedeemed: rewardsRedeemedCount,
         activeOffers: activeOffersCount,
-        subscription: {
-          status: subscriptionStatus,
-          startDate: startDateStr,
-          expireDate: expireDateStr
-        }
+        subscription: subInfo
       };
     } catch (err) {
       console.error('[DIAGNOSTIC R5 METRICS EXCEPTION]', err);
@@ -2023,6 +2045,113 @@ class NexaProductionBackend {
     // Save in local cache for instant fast response
     try {
       localStorage.setItem(`nexa_analytics_cache_${slug}_${period}`, JSON.stringify(result));
+    } catch (e) {}
+
+    return result;
+  }
+
+  // 14. ÉTAPE R12: Fetch Restaurant Subscription & Access Status (Strict Read-Only & Real Data)
+  async getRestaurantSubscription(restoName, userEmail) {
+    const slug = this.getSlug(restoName || 'savane');
+    const client = this.getClient();
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+
+    let resto = null;
+    if (client) {
+      try {
+        let query = client.from('restaurants').select('*');
+        if (userEmail && userEmail.includes('@') && !userEmail.includes('owner@restaurant.com')) {
+          query = query.eq('email', userEmail);
+        } else {
+          query = query.or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
+        }
+        const { data: rows } = await query.limit(1);
+        if (Array.isArray(rows) && rows.length > 0) {
+          resto = rows[0];
+        }
+      } catch (err) {
+        console.warn('[R12 SUB RESTO FETCH WARN]', err.message);
+      }
+    }
+
+    // Default dates derived strictly from real creation date
+    const now = new Date();
+    let createdAtDate = now;
+    if (resto && resto.created_at) {
+      createdAtDate = new Date(resto.created_at);
+    } else {
+      const storedCreated = localStorage.getItem(`nexa_sub_created_${slug}`);
+      if (storedCreated) {
+        createdAtDate = new Date(storedCreated);
+      } else {
+        localStorage.setItem(`nexa_sub_created_${slug}`, now.toISOString());
+      }
+    }
+
+    const startDate = createdAtDate;
+    // Standard monthly subscription cycle: 30 days
+    let endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    // Check if custom admin-controlled subscription data is present in city metadata
+    let adminCustomStatus = null;
+    if (resto && resto.city) {
+      try {
+        const parsedCity = JSON.parse(resto.city);
+        if (parsedCity && parsedCity.subscription) {
+          if (parsedCity.subscription.end_date) {
+            endDate = new Date(parsedCity.subscription.end_date);
+          }
+          if (parsedCity.subscription.status) {
+            adminCustomStatus = parsedCity.subscription.status;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // Compute real days remaining
+    const diffMs = endDate.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+
+    // Calculate real status
+    let computedStatus = 'Active';
+    if (adminCustomStatus === 'Suspended') {
+      computedStatus = 'Suspended';
+    } else if (adminCustomStatus === 'Pending') {
+      computedStatus = 'Pending';
+    } else if (daysRemaining < 0) {
+      computedStatus = 'Expired';
+    } else if (daysRemaining <= 5) {
+      computedStatus = 'Expiring soon';
+    } else {
+      computedStatus = 'Active';
+    }
+
+    const result = {
+      restaurantId: resto ? resto.id : `sub_${slug}`,
+      restaurantName: resto ? resto.name : restoName,
+      plan: NEXA_SUBSCRIPTION_CONFIG.planName,
+      planId: NEXA_SUBSCRIPTION_CONFIG.planId,
+      price: NEXA_SUBSCRIPTION_CONFIG.price,
+      currency: NEXA_SUBSCRIPTION_CONFIG.currency,
+      currencySymbol: NEXA_SUBSCRIPTION_CONFIG.currencySymbol,
+      formattedPrice: NEXA_SUBSCRIPTION_CONFIG.formattedPrice,
+      formattedPriceFr: NEXA_SUBSCRIPTION_CONFIG.formattedPriceFr,
+      status: computedStatus,
+      startDate: startDate.toISOString().split('T')[0],
+      endDate: endDate.toISOString().split('T')[0],
+      formattedStartDate: startDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      formattedEndDate: endDate.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }),
+      daysRemaining: Math.max(0, daysRemaining),
+      actualDaysDiff: daysRemaining,
+      isExpired: daysRemaining < 0,
+      isExpiringSoon: daysRemaining >= 0 && daysRemaining <= 5,
+      features: NEXA_SUBSCRIPTION_CONFIG.features,
+      paymentHistory: []
+    };
+
+    // Cache locally for instant fast response
+    try {
+      localStorage.setItem(`nexa_sub_cache_${slug}`, JSON.stringify(result));
     } catch (e) {}
 
     return result;
