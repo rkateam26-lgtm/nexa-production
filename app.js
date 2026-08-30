@@ -123,8 +123,8 @@ function initNexaApp() {
         if (state.clientSession.whatsapp) {
           const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
           if (profile) {
-            state.clientSession.points = profile.points;
-            localStorage.setItem('nexa_client_points', profile.points);
+            state.clientSession.points = Math.max(state.clientSession.points || 0, profile.points || 0);
+            localStorage.setItem('nexa_client_points', state.clientSession.points);
           }
         }
 
@@ -593,25 +593,23 @@ function initNexaApp() {
 
       // 2. IMMEDIATELY TRIGGER TABLE SCAN IF DIRECT QR SCAN (0ms)
       if (isDirectTableScan) {
-        triggerQRScanSuccess(`Table #${tableParam}`);
-      }
-
-      // 3. ASYNCHRONOUS BACKGROUND SUPABASE SYNC (TRULY NON-BLOCKING)
-      if (window.nexaBackend) {
+        await triggerQRScanSuccess(`Table #${tableParam}`);
+      } else if (window.nexaBackend) {
+        // Only run background sync if this is NOT a direct table scan (e.g. standalone profile login)
         (async () => {
           try {
             console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
             const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
             if (profile) {
               console.log('[DIAGNOSTIC FRONTEND] Profil Supabase existant trouvé:', profile);
-              state.clientSession.points = Math.max(state.clientSession.points, profile.points || 0);
+              state.clientSession.points = Math.max(state.clientSession.points || 0, profile.points || 0);
               state.clientSession.name = profile.name || name;
               localStorage.setItem('nexa_client_points', state.clientSession.points);
               localStorage.setItem('nexa_client_name', state.clientSession.name);
               renderClientUI();
             } else {
               console.log('[DIAGNOSTIC FRONTEND] Création nouveau profil dans Supabase...');
-              await window.nexaBackend.registerClientIdentity(targetResto, phone, name);
+              await window.nexaBackend.registerClientIdentity(targetResto, phone, name, state.clientSession.points || 0);
             }
           } catch (err) {
             console.warn('[DIAGNOSTIC FRONTEND WARN] Échec de synchronisation arrière-plan Supabase:', err);

@@ -421,7 +421,7 @@ class NexaProductionBackend {
     // 1. Immediately read locally cached clients
     let clients = this.getLocalClients(slug);
 
-    // 2. Fast non-blocking sync with Supabase Cloud (max 1.5s timeout)
+    // 2. Fast non-blocking sync with Supabase Cloud (6s timeout)
     if (client) {
       try {
         const queryPromise = client
@@ -431,7 +431,7 @@ class NexaProductionBackend {
           .order('created_at', { ascending: false });
 
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 1500)
+          setTimeout(() => reject(new Error('timeout')), 6000)
         );
 
         const { data: clientRows, error } = await Promise.race([queryPromise, timeoutPromise]);
@@ -439,7 +439,22 @@ class NexaProductionBackend {
         if (!error && Array.isArray(clientRows) && clientRows.length > 0) {
           const mergedMap = new Map();
           clients.forEach(c => mergedMap.set(c.rawKey || c.whatsapp_phone || c.id, c));
-          clientRows.forEach(row => mergedMap.set(row.whatsapp_phone || row.id, row));
+          clientRows.forEach(row => {
+            mergedMap.set(row.whatsapp_phone || row.id, {
+              id: row.id,
+              rawKey: row.whatsapp_phone,
+              whatsapp_phone: row.whatsapp_phone,
+              phone: row.whatsapp_phone ? row.whatsapp_phone.split('_')[0] : '',
+              full_name: row.full_name || 'Client Nexa',
+              name: row.full_name || 'Client Nexa',
+              points_balance: row.points_balance || 0,
+              points: row.points_balance || 0,
+              visits_count: row.visits_count || 1,
+              visits: row.visits_count || 1,
+              lastVisit: row.last_scan_at ? new Date(row.last_scan_at).toLocaleDateString('fr-FR') : 'Récemment',
+              last_scan_at: row.last_scan_at
+            });
+          });
           clients = Array.from(mergedMap.values());
           this.saveLocalClients(slug, clients);
         }
@@ -1393,8 +1408,9 @@ class NexaProductionBackend {
   }
 
   // 8. Register Client Identity (WITH DIAGNOSTICS & TIMEOUT & UPSERT)
-  async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa') {
-    console.log(`[DIAGNOSTIC] registerClientIdentity start. Resto: "${restoName}", Phone: "${whatsappPhone}", Name: "${clientName}"`);
+  // 8. Register Single Client Identity (SAFE & PRESERVES POINTS)
+  async registerClientIdentity(restoName, whatsappPhone, clientName = 'Client Nexa', initialPoints = 0) {
+    console.log(`[DIAGNOSTIC] registerClientIdentity start. Resto: "${restoName}", Phone: "${whatsappPhone}", Name: "${clientName}", initialPts: ${initialPoints}`);
     
     const slug = this.getSlug(restoName || 'savane');
     const compositeKey = `${whatsappPhone}_${slug}`;
@@ -1403,18 +1419,24 @@ class NexaProductionBackend {
     try {
       let localClients = this.getLocalClients(slug);
       const existingIndex = localClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      const prevPoints = existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0;
+      const prevVisits = existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 0) : 0;
+
+      const effectivePoints = Math.max(prevPoints, initialPoints || 0);
+      const effectiveVisits = Math.max(prevVisits, effectivePoints > 0 ? 1 : 0);
+
       const clientObj = {
         rawKey: compositeKey,
         whatsapp_phone: compositeKey,
         phone: whatsappPhone,
         full_name: clientName,
         name: clientName,
-        points_balance: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
-        points: existingIndex >= 0 ? (localClients[existingIndex].points_balance || localClients[existingIndex].points || 0) : 0,
-        visits_count: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 0) : 0,
-        visits: existingIndex >= 0 ? (localClients[existingIndex].visits_count || localClients[existingIndex].visits || 0) : 0,
+        points_balance: effectivePoints,
+        points: effectivePoints,
+        visits_count: effectiveVisits,
+        visits: effectiveVisits,
         lastVisit: existingIndex >= 0 ? (localClients[existingIndex].lastVisit || 'Nouveau client') : 'Nouveau client',
-        last_scan_at: existingIndex >= 0 ? localClients[existingIndex].last_scan_at : null
+        last_scan_at: existingIndex >= 0 ? localClients[existingIndex].last_scan_at : (effectivePoints > 0 ? new Date().toISOString() : null)
       };
       if (existingIndex >= 0) {
         localClients[existingIndex] = { ...localClients[existingIndex], ...clientObj };
@@ -1432,31 +1454,50 @@ class NexaProductionBackend {
       return { whatsapp_phone: compositeKey, full_name: clientName };
     }
 
-    const payload = { 
-      whatsapp_phone: compositeKey, 
-      full_name: clientName,
-      points_balance: 0,
-      visits_count: 0,
-      last_scan_at: null
-    };
-
     try {
-      const queryPromise = client
+      // Check existing client in Supabase first - NEVER blindly overwrite points to 0!
+      const { data: existingClient } = await client
         .from('clients')
-        .upsert(payload, { onConflict: 'whatsapp_phone' })
-        .select();
+        .select('*')
+        .eq('whatsapp_phone', compositeKey)
+        .maybeSingle();
 
-      const response = await withTimeout(queryPromise, 6000, 'Enregistrement Supabase Client');
+      if (existingClient) {
+        // Preserve existing points & visits!
+        const updatedPoints = Math.max(existingClient.points_balance || 0, initialPoints || 0);
+        const updatedVisits = Math.max(existingClient.visits_count || 0, updatedPoints > 0 ? 1 : 0);
+        
+        await client
+          .from('clients')
+          .update({
+            full_name: clientName && clientName !== 'Client Nexa' ? clientName : existingClient.full_name,
+            points_balance: updatedPoints,
+            visits_count: updatedVisits
+          })
+          .eq('id', existingClient.id);
 
-      if (response.error) {
-        console.warn('[DIAGNOSTIC NOTICE] Supabase cloud notice:', response.error.message);
+        return { ...existingClient, full_name: clientName, points_balance: updatedPoints, visits_count: updatedVisits };
       } else {
-        console.log('[DIAGNOSTIC] Profil client inséré avec succès dans Supabase Cloud !');
+        // Insert new client with initialPoints (if any)
+        const newPayload = { 
+          whatsapp_phone: compositeKey, 
+          full_name: clientName,
+          points_balance: initialPoints || 0,
+          visits_count: (initialPoints > 0 ? 1 : 0),
+          last_scan_at: initialPoints > 0 ? new Date().toISOString() : null
+        };
+
+        const { data: createdRow } = await client
+          .from('clients')
+          .insert(newPayload)
+          .select()
+          .single();
+
+        return createdRow || newPayload;
       }
-      return response.data || payload;
     } catch (e) {
       console.warn('[DIAGNOSTIC NOTICE] Client cloud sync deferred:', e.message);
-      return payload;
+      return { whatsapp_phone: compositeKey, full_name: clientName };
     }
   }
 

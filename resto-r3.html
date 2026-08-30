@@ -433,7 +433,7 @@
         <div>Statut Cloud : <strong style="color: #10B981;">● Connecté & Prêt</strong></div>
       </div>
 
-      <a href="resto-r5.html" class="btn-create-account" style="text-decoration: none;">
+      <a href="resto-r5.html" id="link-access-dashboard" class="btn-create-account" style="text-decoration: none;">
         <span>Accéder à mon Tableau de Bord Restaurant</span>
         <i data-lucide="arrow-right" style="width: 18px; height: 18px;"></i>
       </a>
@@ -552,6 +552,7 @@
           });
 
           // Save B2B Merchant Session
+          localStorage.setItem('nexa_resto_name', restoName);
           localStorage.setItem('nexa_merchant_b2b_session', JSON.stringify({
             email: ownerEmail,
             restoName: restoName,
@@ -562,6 +563,9 @@
           // SUCCESS RESPONSE: DISPLAY SUCCESS CONFIRMATION VIEW
           document.getElementById('success-resto-name').textContent = restoName;
           document.getElementById('success-owner-email').textContent = ownerEmail;
+
+          const linkDash = document.getElementById('link-access-dashboard');
+          if (linkDash) linkDash.href = `resto-r5.html?resto=${encodeURIComponent(restoName)}`;
 
           document.getElementById('view-r3-form').style.display = 'none';
           document.getElementById('view-r3-success').style.display = 'block';
