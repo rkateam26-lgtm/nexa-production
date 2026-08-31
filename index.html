@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_01">
+  <link rel="stylesheet" href="styles.css?v=20260831_02">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,7 +113,7 @@
 
         <div class="phone-content">
 
-          <!-- Curved Red Restaurant Header (Mockup Style) -->
+          <!-- Clean Minimalist Restaurant Header (Pure Branding: Logo + Name only) -->
           <div class="client-curved-hero">
             <div class="client-curved-topbar">
               <div class="client-resto-brand-mini">
@@ -127,16 +127,6 @@
                 <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
                 <span id="mobile-table-badge">Table #4</span>
               </button>
-            </div>
-
-            <!-- Incoming Pink Notification Alert Banner (Requested by user) -->
-            <div class="loyalty-notif-banner" id="client-incoming-notif-banner" onclick="switchMobileTab('notifs')">
-              <div class="loyalty-notif-bell-box">🔔</div>
-              <div class="loyalty-notif-body">
-                <div class="loyalty-notif-title" id="notif-banner-title">Votre Fidélité Chitir Chicken</div>
-                <div class="loyalty-notif-sub" id="notif-banner-sub">-20% sur votre prochain repas !</div>
-              </div>
-              <div style="font-size: 0.8rem; color: #DC2626; font-weight: 800;">›</div>
             </div>
           </div>
 
@@ -172,119 +162,127 @@
             </button>
           </div>
 
-          <!-- SCREEN 1: LOYALTY HOME (MATCHING MOCKUP) -->
+          <!-- SCREEN 1: ULTRA-SIMPLE CLIENT ACCUEIL -->
           <div class="client-screen active" id="screen-home">
             
-            <!-- Featured Floating Offer Card (from mockup) -->
-            <div class="featured-offer-floating-card" id="featured-hero-offer-card">
-              <div class="featured-offer-content">
-                <div class="featured-offer-headline" id="featured-offer-title">Nouvelle offre de -20% sur votre prochain repas</div>
-                <div class="featured-offer-details" id="featured-offer-desc">Présentez ce coupon au comptoir lors de votre commande.</div>
-                <button class="featured-offer-cta-link" onclick="showPassModalFirst()">
-                  <span>Échanger</span>
-                  <span>&gt;</span>
+            <div class="home-pure-container">
+              
+              <!-- 2. Solde de Points (My points) -->
+              <div class="home-card-points">
+                <div class="home-section-eyebrow">My points</div>
+                <div class="home-points-number" id="home-points-val">⭐ 0 points</div>
+              </div>
+
+              <!-- 3. Statut du Client & Progression vers Prochain Statut -->
+              <div class="home-card-status">
+                <div class="home-section-eyebrow">Your status</div>
+                <div class="home-status-name" id="home-tier-badge">🥉 BRONZE</div>
+                
+                <!-- Progress Bar to NEXT STATUS -->
+                <div class="home-progress-container">
+                  <div class="home-progress-track">
+                    <div class="home-progress-fill" id="home-tier-progress-bar" style="width: 0%;"></div>
+                  </div>
+                  <div class="home-progress-caption" id="home-tier-progress-caption">
+                    50 points to unlock SILVER
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. Accès Rapide aux Récompenses (Zone Unique) -->
+              <div class="home-card-rewards-access">
+                <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.85rem;">
+                  <div class="home-reward-icon-box">🎁</div>
+                  <div>
+                    <div class="home-reward-title">Reward available</div>
+                    <div class="home-reward-desc">You have rewards available.</div>
+                  </div>
+                </div>
+                <button class="home-btn-view-rewards" onclick="switchMobileTab('rewards')">
+                  <span>View rewards</span>
+                  <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
                 </button>
               </div>
-              <div class="featured-offer-photo-container">
-                <img id="featured-offer-img" src="./assets/chicken_combo.jpg" alt="Offre Spéciale">
-                <span class="featured-offer-tag-badge">-20%</span>
-              </div>
-            </div>
 
-            <!-- Quick Points & Scan Bar -->
-            <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.6rem 1rem; margin: 0 1rem 1rem 1rem; background: #FFFFFF; border-radius: 14px; border: 1px solid #F3F4F6; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
-              <div>
-                <span style="font-size: 0.7rem; color: #6B7280; font-weight: 700; text-transform: uppercase;">Vos Points :</span>
-                <strong style="font-size: 1.15rem; color: #DC2626; font-weight: 900; margin-left: 4px;" id="user-points-val">0</strong>
-                <span style="font-size: 0.72rem; color: #9CA3AF; margin-left: 2px;">pts</span>
-              </div>
-              <button class="btn-scan-main" id="btn-trigger-scan" style="width: auto; margin: 0; padding: 0.45rem 0.85rem; font-size: 0.75rem; border-radius: 20px; background: #DC2626; color: white;">
-                <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
-                <span>Scanner ma Table</span>
-              </button>
-            </div>
-
-            <!-- Section: Échangez vos points (Horizontal Cards like Mockup) -->
-            <div class="mockup-section-heading">
-              <span>Échangez vos points</span>
-              <button onclick="switchMobileTab('rewards')" style="font-size: 0.75rem; color: #DC2626; font-weight: 700; text-decoration: none;">
-                Voir tout &gt;
-              </button>
-            </div>
-
-            <!-- Horizontal Reward Cards List -->
-            <div id="mockup-rewards-container">
-              <!-- Rendered dynamically by app.js -->
-            </div>
-
-            <!-- Carousel Pagination Dots -->
-            <div class="mockup-carousel-indicator">
-              <div class="mockup-indicator-dot active"></div>
-              <div class="mockup-indicator-dot"></div>
-              <div class="mockup-indicator-dot"></div>
-            </div>
-
-            <!-- Section: Vos favoris (From Mockup) -->
-            <div class="mockup-section-heading">
-              <span>Vos favoris</span>
-            </div>
-
-            <!-- Favorites Horizontal Scroller -->
-            <div class="mockup-favorites-scroller" id="mockup-favorites-list">
-              <div class="mockup-fav-card">
-                <img src="./assets/chicken_combo.jpg" class="mockup-fav-img" alt="Chicken Combo">
-                <div class="mockup-fav-body">
-                  <div class="mockup-fav-title">Chicken Combo Box</div>
-                  <div class="mockup-fav-tag">★ Coup de cœur</div>
-                </div>
-              </div>
-              <div class="mockup-fav-card">
-                <img src="./assets/pizza_toubel.jpg" class="mockup-fav-img" alt="Pizza de l'école">
-                <div class="mockup-fav-body">
-                  <div class="mockup-fav-title">Pizza Spéciale</div>
-                  <div class="mockup-fav-tag">Populaire</div>
-                </div>
-              </div>
-              <div class="mockup-fav-card">
-                <img src="./assets/burger_favori.jpg" class="mockup-fav-img" alt="Gourmet Burger">
-                <div class="mockup-fav-body">
-                  <div class="mockup-fav-title">Burger Braisé</div>
-                  <div class="mockup-fav-tag">Recommandé</div>
-                </div>
-              </div>
             </div>
 
           </div>
 
-          <!-- SCREEN 2: DEDICATED REWARDS CATALOGUE (NEW 2nd TAB LIKE MOCKUP) -->
+          <!-- SCREEN 2: DEDICATED REWARDS CATALOGUE (ONGLET RÉCOMPENSES OFFICIEL) -->
           <div class="client-screen" id="screen-rewards">
             <div style="padding: 1.25rem 1rem 0.5rem 1rem;">
-              <h2 style="font-size: 1.15rem; font-weight: 800; color: #111827; margin-bottom: 0.2rem;">Catalogue des Récompenses</h2>
-              <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 1rem;">Échangez vos points contre des menus et boissons offertes.</p>
-              
+              <h2 style="font-size: 1.2rem; font-weight: 900; color: #111827; margin-bottom: 0.2rem;">Catalogue des Récompenses</h2>
+              <p style="font-size: 0.8rem; color: #6B7280; margin-bottom: 1.25rem;">Échangez vos points contre des menus, boissons et privilèges offerts.</p>
+
               <!-- Full Rewards List -->
-              <div id="full-rewards-catalogue-list" style="display: flex; flex-direction: column; gap: 0.85rem;">
+              <div id="full-rewards-catalogue-list" style="display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 1.5rem;">
                 <!-- Dynamically populated by app.js -->
               </div>
+
+              <!-- Section Favoris & Coups de Cœur -->
+              <div style="margin-top: 1.5rem;">
+                <h3 style="font-size: 1rem; font-weight: 800; color: #111827; margin-bottom: 0.6rem;">⭐ Spécialités & Coups de Cœur</h3>
+                <div class="mockup-favorites-scroller" id="mockup-favorites-list" style="padding-left: 0; padding-right: 0;">
+                  <div class="mockup-fav-card">
+                    <img src="./assets/chicken_combo.jpg" class="mockup-fav-img" alt="Chicken Combo">
+                    <div class="mockup-fav-body">
+                      <div class="mockup-fav-title">Chicken Combo Box</div>
+                      <div class="mockup-fav-tag">★ Coup de cœur</div>
+                    </div>
+                  </div>
+                  <div class="mockup-fav-card">
+                    <img src="./assets/pizza_toubel.jpg" class="mockup-fav-img" alt="Pizza de l'école">
+                    <div class="mockup-fav-body">
+                      <div class="mockup-fav-title">Pizza Spéciale</div>
+                      <div class="mockup-fav-tag">Populaire</div>
+                    </div>
+                  </div>
+                  <div class="mockup-fav-card">
+                    <img src="./assets/burger_favori.jpg" class="mockup-fav-img" alt="Gourmet Burger">
+                    <div class="mockup-fav-body">
+                      <div class="mockup-fav-title">Burger Braisé</div>
+                      <div class="mockup-fav-tag">Recommandé</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <!-- SCREEN 3: NOTIFICATIONS CENTER -->
+          <!-- SCREEN 3: NOTIFICATIONS CENTER (COMMUNICATIONS & OFFRES DU RESTAURANT) -->
           <div class="client-screen" id="screen-notifs">
             <div style="padding: 1.25rem 1rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h2 style="font-size: 1.15rem; font-weight: 800; color: #111827;">Offres & Notifications</h2>
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                <h2 style="font-size: 1.2rem; font-weight: 900; color: #111827;">Notifications & Offres</h2>
                 <span style="background: #FEE2E2; color: #DC2626; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 12px;">5 nouvelles</span>
               </div>
-              <p style="font-size: 0.78rem; color: #6B7280; margin-bottom: 1rem;">Vos promotions actives, remises au comptoir et alertes fidélité.</p>
+              <p style="font-size: 0.8rem; color: #6B7280; margin-bottom: 1.25rem;">Annonces exclusives, réductions et communications de votre restaurant.</p>
               
+              <!-- Featured Floating Offer Card relocated cleanly inside Notifications tab -->
+              <div class="featured-offer-floating-card" id="featured-hero-offer-card" style="margin: 0 0 1.25rem 0;">
+                <div class="featured-offer-content">
+                  <div class="featured-offer-headline" id="featured-offer-title">Nouvelle offre de -20% sur votre prochain repas</div>
+                  <div class="featured-offer-details" id="featured-offer-desc">Présentez ce coupon au comptoir lors de votre commande.</div>
+                  <button class="featured-offer-cta-link" onclick="showPassModalFirst()">
+                    <span>Échanger</span>
+                    <span>&gt;</span>
+                  </button>
+                </div>
+                <div class="featured-offer-photo-container">
+                  <img id="featured-offer-img" src="./assets/chicken_combo.jpg" alt="Offre Spéciale">
+                  <span class="featured-offer-tag-badge">-20%</span>
+                </div>
+              </div>
+
+              <!-- Notifications Feed -->
               <div class="rewards-list-clean" id="client-notifs-feed">
                 <!-- Rendered dynamically -->
               </div>
             </div>
           </div>
 
-          <!-- SCREEN 4: CLIENT PROFILE & ACTIVITY -->
+          <!-- SCREEN 4: CLIENT PROFILE (MOI) -->
           <div class="client-screen" id="screen-profile">
             <div style="padding: 1.25rem 1rem; text-align: center;">
               <div style="width: 72px; height: 72px; background: #DC2626; color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);" id="client-avatar-letters">
@@ -305,7 +303,7 @@
                 </div>
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
                   <span style="color: var(--text-muted); font-size: 0.85rem;">Statut Fidélité</span>
-                  <strong style="color: #DC2626; font-size: 0.85rem;" id="profile-display-tier">Membre Silver</strong>
+                  <strong style="color: #DC2626; font-size: 0.85rem;" id="profile-display-tier">Membre Bronze</strong>
                 </div>
               </div>
 
@@ -343,7 +341,7 @@
 
         </div>
 
-        <!-- Mobile Bottom Navigation (Client App - Exact 4 Tabs from Mockup) -->
+        <!-- Mobile Bottom Navigation (Client App - Exact 4 Tabs: Accueil, Récompenses, Notifications, Moi) -->
         <nav class="mobile-nav">
           <button class="nav-tab active" data-tab="home" onclick="switchMobileTab('home')">
             <i data-lucide="home"></i>
@@ -360,7 +358,7 @@
           </button>
           <button class="nav-tab" data-tab="profile" onclick="switchMobileTab('profile')">
             <i data-lucide="user"></i>
-            <span>Profil</span>
+            <span>Moi</span>
           </button>
         </nav>
 
@@ -1151,10 +1149,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_01"></script>
+  <script src="supabase.js?v=20260831_02"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_01"></script>
+  <script src="app.js?v=20260831_02"></script>
 
 </body>
 </html>

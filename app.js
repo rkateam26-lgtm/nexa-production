@@ -996,6 +996,85 @@ function initNexaApp() {
       }
     }
 
+    // ----------------------------------------------------
+    // TIER & STATUS LOGIC (BRONZE -> SILVER -> GOLD -> VIP)
+    // ----------------------------------------------------
+    function calculateClientTier(points) {
+      const pts = Math.max(0, parseInt(points || '0', 10));
+      if (pts >= 200) {
+        return {
+          tierName: 'VIP',
+          tierBadge: '👑 VIP',
+          nextTier: null,
+          pointsToNext: 0,
+          progressPercent: 100,
+          statusMessage: 'Highest status reached'
+        };
+      } else if (pts >= 100) {
+        const nextTarget = 200;
+        const currentBase = 100;
+        const pointsNeeded = nextTarget - pts;
+        const progress = Math.min(100, Math.max(0, Math.round(((pts - currentBase) / (nextTarget - currentBase)) * 100)));
+        return {
+          tierName: 'GOLD',
+          tierBadge: '🥇 GOLD',
+          nextTier: 'VIP',
+          pointsToNext: pointsNeeded,
+          progressPercent: progress,
+          statusMessage: `${pointsNeeded} points to unlock VIP`
+        };
+      } else if (pts >= 50) {
+        const nextTarget = 100;
+        const currentBase = 50;
+        const pointsNeeded = nextTarget - pts;
+        const progress = Math.min(100, Math.max(0, Math.round(((pts - currentBase) / (nextTarget - currentBase)) * 100)));
+        return {
+          tierName: 'SILVER',
+          tierBadge: '🥈 SILVER',
+          nextTier: 'GOLD',
+          pointsToNext: pointsNeeded,
+          progressPercent: progress,
+          statusMessage: `${pointsNeeded} points to unlock GOLD`
+        };
+      } else {
+        const nextTarget = 50;
+        const currentBase = 0;
+        const pointsNeeded = nextTarget - pts;
+        const progress = Math.min(100, Math.max(0, Math.round((pts / nextTarget) * 100)));
+        return {
+          tierName: 'BRONZE',
+          tierBadge: '🥉 BRONZE',
+          nextTier: 'SILVER',
+          pointsToNext: pointsNeeded,
+          progressPercent: progress,
+          statusMessage: `${pointsNeeded} points to unlock SILVER`
+        };
+      }
+    }
+
+    const clientTierInfo = calculateClientTier(state.clientSession.points);
+
+    // Update Accueil Elements (Ultra Simple: Points, Tier, Progress)
+    const homePointsEl = document.getElementById('home-points-val');
+    if (homePointsEl) {
+      homePointsEl.textContent = `⭐ ${state.clientSession.points} points`;
+    }
+
+    const homeTierBadgeEl = document.getElementById('home-tier-badge');
+    if (homeTierBadgeEl) {
+      homeTierBadgeEl.textContent = clientTierInfo.tierBadge;
+    }
+
+    const homeTierProgressBar = document.getElementById('home-tier-progress-bar');
+    if (homeTierProgressBar) {
+      homeTierProgressBar.style.width = `${clientTierInfo.progressPercent}%`;
+    }
+
+    const homeTierProgressCaption = document.getElementById('home-tier-progress-caption');
+    if (homeTierProgressCaption) {
+      homeTierProgressCaption.textContent = clientTierInfo.statusMessage;
+    }
+
     const userPtsEl = document.getElementById('user-points-val');
     if (userPtsEl) userPtsEl.textContent = state.clientSession.points;
 
@@ -1025,12 +1104,12 @@ function initNexaApp() {
     if (profRestoEl) profRestoEl.textContent = state.restaurant.name;
 
     const profTierEl = document.getElementById('profile-display-tier');
-    if (profTierEl) profTierEl.textContent = state.clientSession.points >= 200 ? 'Membre VIP' : 'Membre Silver';
+    if (profTierEl) profTierEl.textContent = `Membre ${clientTierInfo.tierName}`;
 
     const avatarLetEl = document.getElementById('client-avatar-letters');
     if (avatarLetEl) avatarLetEl.textContent = (state.clientSession.name || 'MC').substring(0, 2).toUpperCase();
 
-    // MOCKUP REDESIGN: UPDATE INCOMING NOTIFICATION BANNER & FEATURED OFFER
+    // UPDATE INCOMING NOTIFICATION BANNER & FEATURED OFFER (Relocated to Tab Notifications)
     const notifBannerTitle = document.getElementById('notif-banner-title');
     if (notifBannerTitle) {
       notifBannerTitle.textContent = `Votre Fidélité ${state.restaurant.name}`;
@@ -1045,7 +1124,7 @@ function initNexaApp() {
       }
     }
 
-    // Featured Offer Floating Card
+    // Featured Offer Floating Card (Tab Notifications)
     const featOfferTitle = document.getElementById('featured-offer-title');
     const featOfferDesc = document.getElementById('featured-offer-desc');
     const featOfferImg = document.getElementById('featured-offer-img');
@@ -1060,7 +1139,7 @@ function initNexaApp() {
       if (featOfferImg) featOfferImg.src = './assets/chicken_combo.jpg';
     }
 
-    // Ensure sample rewards exist for the restaurant if empty so the mockup look is instant!
+    // Ensure sample rewards exist for the restaurant if empty
     if (!state.rewards || state.rewards.length === 0) {
       state.rewards = [
         {
@@ -1088,39 +1167,6 @@ function initNexaApp() {
           image: './assets/burger_favori.jpg'
         }
       ];
-    }
-
-    // MOCKUP REDESIGN: RENDER HORIZONTAL CARDS IN "Échangez vos points" (SCREEN-HOME)
-    const mockupRewardsContainer = document.getElementById('mockup-rewards-container');
-    if (mockupRewardsContainer) {
-      mockupRewardsContainer.innerHTML = state.rewards.slice(0, 3).map(reward => {
-        const canClaim = state.clientSession.points >= reward.pts;
-        const titleEscaped = reward.title.replace(/'/g, "\\'");
-        const descEscaped = (reward.desc || '').replace(/'/g, "\\'");
-        const imgSrc = reward.image || './assets/chicken_combo.jpg';
-        const imgEscaped = imgSrc.replace(/'/g, "\\'");
-
-        return `
-          <div class="mockup-reward-horizontal-card">
-            <div class="mockup-reward-image-wrap">
-              <img src="${imgSrc}" alt="${escapeHtml(reward.title)}">
-              <span class="mockup-reward-badge-pts">${reward.pts} pts</span>
-            </div>
-            <div class="mockup-reward-text-zone">
-              <div class="mockup-reward-name">${escapeHtml(reward.title)}</div>
-              <div class="mockup-reward-subtext">${escapeHtml(reward.desc || 'Récompense fidélité exclusive.')}</div>
-              <div class="mockup-reward-buttons">
-                <button class="btn-pill-info" onclick="openRewardDetailModal('${titleEscaped}', '${descEscaped}', ${reward.pts}, '${imgEscaped}', '${reward.id}')">
-                  En savoir plus
-                </button>
-                <button class="btn-pill-reserve" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
-                  ${canClaim ? 'Échanger' : 'Réserver'}
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join('');
     }
 
     // MOCKUP REDESIGN: RENDER FULL CATALOGUE ON DEDICATED SCREEN-REWARDS (TAB 2)
