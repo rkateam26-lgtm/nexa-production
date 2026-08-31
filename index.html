@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_03">
+  <link rel="stylesheet" href="styles.css?v=20260831_04">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,19 +113,23 @@
 
         <div class="phone-content">
 
-          <!-- Clean Minimalist Restaurant Header (Pure Branding: Logo + Name only) -->
-          <div class="client-curved-hero">
-            <div class="client-curved-topbar">
-              <div class="client-resto-brand-mini">
-                <img id="mobile-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="client-resto-logo-mini">
-                <div>
-                  <div class="client-resto-name-mini" id="mobile-resto-name">CHITIR CHICKEN</div>
-                  <div style="font-size: 0.65rem; color: rgba(255,255,255,0.85); font-weight: 600;" id="mobile-resto-type">Fast Food & Poulet Braisé</div>
-                </div>
+          <!-- Minimalist Reference Header (Restaurant Avatar with Green Online Dot + Brand + Notification Bell) -->
+          <div class="mockup-header-bar">
+            <div class="mockup-header-brand">
+              <div class="mockup-avatar-wrap">
+                <img id="mobile-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="mockup-header-avatar">
+                <span class="mockup-online-dot"></span>
               </div>
-              <button class="client-scan-pill-btn" onclick="startRealCameraScanner()">
-                <i data-lucide="camera" style="width: 14px; height: 14px;"></i>
-                <span id="mobile-table-badge">Table #4</span>
+              <div class="mockup-header-text">
+                <div class="mockup-resto-title" id="mobile-resto-name">Chez X</div>
+                <div class="mockup-resto-sub" id="mobile-resto-type">Restaurant & Lounge</div>
+              </div>
+            </div>
+            
+            <div class="mockup-header-actions">
+              <button class="mockup-header-bell-btn" onclick="switchMobileTab('notifs')" title="Notifications">
+                <i data-lucide="bell" style="width: 20px; height: 20px; color: #111827;"></i>
+                <span class="mockup-bell-badge">2</span>
               </button>
             </div>
           </div>
@@ -162,36 +166,71 @@
             </button>
           </div>
 
-          <!-- SCREEN 1: ULTRA-SIMPLE CLIENT ACCUEIL -->
+          <!-- SCREEN 1: CLIENT ACCUEIL (EXACT REPRODUCTION OF USER MOCKUP) -->
           <div class="client-screen active" id="screen-home">
             
-            <div class="home-pure-container">
+            <div class="mockup-home-body">
               
-              <!-- SECTION FIDÉLITÉ (Ordre obligatoire strict 1 -> 5) -->
-              <div class="home-loyalty-card">
-                
-                <!-- 1. Solde de points -->
-                <div class="home-points-number" id="home-points-val">⭐ 0 points</div>
-                
-                <!-- 2. Statut actuel (directement sous les points) -->
-                <div class="home-status-name" id="home-tier-badge">BRONZE 🥉</div>
-                
-                <!-- 3. Barre de progression vers le prochain statut -->
-                <div class="home-progress-track">
-                  <div class="home-progress-fill" id="home-tier-progress-bar" style="width: 0%;"></div>
+              <!-- CARD 1: CRIMSON RED HERO "Mes points" WITH 3D GOLD STAR TROPHY -->
+              <div class="mockup-red-hero-card">
+                <div class="mockup-red-hero-left">
+                  <div class="mockup-red-hero-label">
+                    <span>Mes points</span>
+                    <span class="mockup-sparkle-icon">✨</span>
+                  </div>
+                  <div class="mockup-red-hero-pts" id="home-points-val">120</div>
+                  <div class="mockup-red-hero-unit">points</div>
+                </div>
+                <div class="mockup-red-hero-right">
+                  <img src="./assets/star_trophy_3d.jpg" alt="Trophée Étoile Dorée" class="mockup-star-trophy-img">
+                </div>
+              </div>
+
+              <!-- CARD 2: WHITE STATUS CARD "Mon statut" WITH SEGMENTED PROGRESS & VIP PILL -->
+              <div class="mockup-status-card">
+                <div class="mockup-status-card-inner">
+                  <div class="mockup-status-left">
+                    <div class="mockup-status-label">Mon statut</div>
+                    <div class="mockup-status-tier-row">
+                      <span class="mockup-status-tier-name" id="home-tier-name">GOLD</span>
+                      <span class="mockup-status-medal-icon" id="home-tier-medal">🏅</span>
+                    </div>
+                    
+                    <!-- Segmented Progress Bar (4 Segments) -->
+                    <div class="mockup-segmented-track" id="home-segmented-track">
+                      <div class="mockup-segment filled" id="seg-1"></div>
+                      <div class="mockup-segment filled" id="seg-2"></div>
+                      <div class="mockup-segment" id="seg-3"></div>
+                      <div class="mockup-segment" id="seg-4"></div>
+                    </div>
+
+                    <div class="mockup-status-footer-text" id="home-tier-progress-caption">
+                      30 points pour débloquer <strong style="color: #B91C1C;">VIP</strong>
+                    </div>
+                  </div>
+
+                  <!-- VIP Crown Badge Pill on the Right -->
+                  <div class="mockup-vip-pill-box">
+                    <div class="mockup-vip-crown-icon">👑</div>
+                    <div class="mockup-vip-pill-label">VIP</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- CARD 3: SOFT PINK BANNER "Des récompenses vous attendent !" -->
+              <div class="mockup-rewards-banner" onclick="switchMobileTab('rewards')">
+                <div class="mockup-gift-box-wrap">
+                  <img src="./assets/gift_box_3d.jpg" alt="Cadeau" class="mockup-gift-box-img">
                 </div>
                 
-                <!-- 4. Nombre de points nécessaires pour atteindre le prochain statut -->
-                <div class="home-progress-caption" id="home-tier-progress-caption">
-                  50 points pour débloquer SILVER
+                <div class="mockup-rewards-banner-text">
+                  <div class="mockup-rewards-banner-title">Des récompenses vous attendent !</div>
+                  <div class="mockup-rewards-banner-sub">Découvrez toutes les récompenses disponibles pour vous.</div>
                 </div>
 
-                <!-- 5. Accès rapide aux récompenses -->
-                <button class="home-btn-view-rewards" onclick="switchMobileTab('rewards')">
-                  <span>Voir mes récompenses</span>
-                  <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
-                </button>
-
+                <div class="mockup-rewards-round-btn">
+                  <i data-lucide="gift" style="width: 20px; height: 20px; color: white;"></i>
+                </div>
               </div>
 
             </div>
@@ -1139,10 +1178,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_03"></script>
+  <script src="supabase.js?v=20260831_04"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_03"></script>
+  <script src="app.js?v=20260831_04"></script>
 
 </body>
 </html>

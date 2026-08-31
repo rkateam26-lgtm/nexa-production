@@ -564,99 +564,337 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   ULTRA-SIMPLE CLIENT ACCUEIL STYLES (White background, red accent, clear hierarchy)
+   EXACT REFERENCE MOCKUP STYLES (Identical to reference screenshot)
    ========================================================================== */
-.home-pure-container {
-  padding: 1.25rem 1rem 2rem 1rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
 
-/* Single clean Loyalty Card with exact vertical sequence 1 -> 5 */
-.home-loyalty-card {
-  background: #FFFFFF;
-  border-radius: 20px;
-  padding: 1.5rem 1.25rem;
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.05);
-  border: 1px solid #F1F5F9;
+/* 1. Minimalist White Header Bar */
+.mockup-header-bar {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  text-align: center;
+  padding: 0.85rem 1.15rem;
+  background: #FFFFFF;
 }
 
-/* 1. Solde de points */
-.home-points-number {
-  font-size: 2.1rem;
-  font-weight: 900;
-  color: #DC2626;
-  letter-spacing: -0.5px;
-  line-height: 1.1;
-  margin-bottom: 0.5rem;
+.mockup-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
-/* 2. Statut actuel (directement sous les points) */
-.home-status-name {
-  font-size: 1.15rem;
+.mockup-avatar-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+}
+
+.mockup-header-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #E5E7EB;
+  background: #FFFFFF;
+}
+
+.mockup-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  background: #22C55E;
+  border: 2px solid #FFFFFF;
+  border-radius: 50%;
+}
+
+.mockup-header-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.mockup-resto-title {
+  font-size: 1.05rem;
   font-weight: 900;
   color: #111827;
-  letter-spacing: 0.5px;
-  margin-bottom: 1.2rem;
-  display: inline-flex;
+  letter-spacing: -0.2px;
+  line-height: 1.2;
+}
+
+.mockup-resto-sub {
+  font-size: 0.76rem;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.mockup-header-actions {
+  display: flex;
   align-items: center;
-  gap: 0.35rem;
-  background: #F8FAFC;
-  padding: 0.35rem 0.85rem;
-  border-radius: 999px;
-  border: 1px solid #E2E8F0;
 }
 
-/* 3. Barre de progression vers le prochain statut */
-.home-progress-track {
-  width: 100%;
-  max-width: 320px;
-  height: 12px;
-  background: #E5E7EB;
-  border-radius: 999px;
-  overflow: hidden;
-  position: relative;
-  margin-bottom: 0.65rem;
-}
-
-.home-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #DC2626 0%, #EF4444 100%);
-  border-radius: 999px;
-  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-/* 4. Nombre de points nécessaires pour atteindre le prochain statut */
-.home-progress-caption {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: #4B5563;
-  margin-bottom: 1.4rem;
-}
-
-/* 5. Accès rapide aux récompenses */
-.home-btn-view-rewards {
-  width: 100%;
-  max-width: 320px;
-  padding: 0.85rem 1.25rem;
-  background: #DC2626;
-  color: #FFFFFF;
+.mockup-header-bell-btn {
+  background: none;
   border: none;
-  border-radius: 14px;
-  font-size: 0.92rem;
-  font-weight: 800;
   cursor: pointer;
-  display: inline-flex;
+  position: relative;
+  padding: 6px;
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.25);
-  transition: all 0.15s ease;
+}
+
+.mockup-bell-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: #DC2626;
+  color: #FFFFFF;
+  font-size: 0.62rem;
+  font-weight: 900;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid #FFFFFF;
+}
+
+/* Container for Home Screen */
+.mockup-home-body {
+  padding: 0.5rem 1rem 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  background: #FAFAFA;
+}
+
+/* CARD 1: CRIMSON RED HERO "Mes points" */
+.mockup-red-hero-card {
+  background: linear-gradient(135deg, #8B0000 0%, #A30808 30%, #800000 100%);
+  border-radius: 26px;
+  padding: 1.5rem 1.4rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #FFFFFF;
+  box-shadow: 0 10px 24px rgba(139, 0, 0, 0.28);
+  position: relative;
+  overflow: hidden;
+  min-height: 175px;
+}
+
+.mockup-red-hero-left {
+  display: flex;
+  flex-direction: column;
+  z-index: 2;
+}
+
+.mockup-red-hero-label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #FDE8E8;
+  margin-bottom: 0.25rem;
+}
+
+.mockup-sparkle-icon {
+  font-size: 0.9rem;
+}
+
+.mockup-red-hero-pts {
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -1px;
+  color: #FFFFFF;
+}
+
+.mockup-red-hero-unit {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #FECACA;
+  margin-top: 0.2rem;
+}
+
+.mockup-red-hero-right {
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.mockup-star-trophy-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 20px;
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.3));
+}
+
+/* CARD 2: WHITE STATUS CARD "Mon statut" */
+.mockup-status-card {
+  background: #FFFFFF;
+  border-radius: 24px;
+  padding: 1.35rem 1.35rem 1.25rem 1.35rem;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.04);
+  border: 1px solid #F1F5F9;
+}
+
+.mockup-status-card-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.mockup-status-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-status-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #6B7280;
+  margin-bottom: 0.35rem;
+}
+
+.mockup-status-tier-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.95rem;
+}
+
+.mockup-status-tier-name {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #D97706; /* Warm Gold */
+  letter-spacing: 0.5px;
+}
+
+.mockup-status-medal-icon {
+  font-size: 1.25rem;
+}
+
+/* Segmented Progress Track (4 parts) */
+.mockup-segmented-track {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  margin-bottom: 0.85rem;
+}
+
+.mockup-segment {
+  flex: 1;
+  height: 7px;
+  background: #F1F5F9;
+  border-radius: 999px;
+  transition: all 0.3s ease;
+}
+
+.mockup-segment.filled {
+  background: #D97706; /* Rich Orange/Gold matching mockup */
+}
+
+.mockup-status-footer-text {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+/* VIP Pill Capsule on Right of Status Card */
+.mockup-vip-pill-box {
+  width: 54px;
+  padding: 0.65rem 0.3rem;
+  border-radius: 20px;
+  background: #FFF1F2;
+  border: 1px solid #FFE4E6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.mockup-vip-crown-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.mockup-vip-pill-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #E11D48;
+}
+
+/* CARD 3: SOFT PINK BANNER "Des récompenses vous attendent !" */
+.mockup-rewards-banner {
+  background: linear-gradient(135deg, #FFF5F5 0%, #FEF2F2 100%);
+  border-radius: 20px;
+  padding: 1rem 1.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  box-shadow: 0 3px 12px rgba(225, 29, 72, 0.05);
+  border: 1px solid #FFE4E6;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.mockup-rewards-banner:active {
+  transform: scale(0.98);
+}
+
+.mockup-gift-box-wrap {
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+}
+
+.mockup-gift-box-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.08));
+}
+
+.mockup-rewards-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-rewards-banner-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.15rem;
+  line-height: 1.25;
+}
+
+.mockup-rewards-banner-sub {
+  font-size: 0.72rem;
+  color: #4B5563;
+  line-height: 1.35;
+}
+
+.mockup-rewards-round-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #DC2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.28);
 }
 
 .home-btn-view-rewards:hover {

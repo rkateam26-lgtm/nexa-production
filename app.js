@@ -1054,25 +1054,51 @@ function initNexaApp() {
 
     const clientTierInfo = calculateClientTier(state.clientSession.points);
 
-    // Update Accueil Elements (Ultra Simple: Points, Tier, Progress)
+    // Update Accueil Elements (Exact Reference Mockup Layout)
     const homePointsEl = document.getElementById('home-points-val');
     if (homePointsEl) {
-      homePointsEl.textContent = `⭐ ${state.clientSession.points} points`;
+      homePointsEl.textContent = state.clientSession.points;
     }
 
-    const homeTierBadgeEl = document.getElementById('home-tier-badge');
-    if (homeTierBadgeEl) {
-      homeTierBadgeEl.textContent = clientTierInfo.tierBadge;
+    const homeTierNameEl = document.getElementById('home-tier-name');
+    if (homeTierNameEl) {
+      homeTierNameEl.textContent = clientTierInfo.tierName;
     }
 
-    const homeTierProgressBar = document.getElementById('home-tier-progress-bar');
-    if (homeTierProgressBar) {
-      homeTierProgressBar.style.width = `${clientTierInfo.progressPercent}%`;
+    const homeTierMedalEl = document.getElementById('home-tier-medal');
+    if (homeTierMedalEl) {
+      if (clientTierInfo.tierName === 'VIP') {
+        homeTierMedalEl.textContent = '👑';
+      } else if (clientTierInfo.tierName === 'GOLD') {
+        homeTierMedalEl.textContent = '🏅';
+      } else if (clientTierInfo.tierName === 'SILVER') {
+        homeTierMedalEl.textContent = '🥈';
+      } else {
+        homeTierMedalEl.textContent = '🥉';
+      }
+    }
+
+    // Update Segmented Progress Bar (4 segments like mockup)
+    const segCount = 4;
+    const filledSegments = Math.min(segCount, Math.max(0, Math.round((clientTierInfo.progressPercent / 100) * segCount)));
+    for (let s = 1; s <= 4; s++) {
+      const segEl = document.getElementById(`seg-${s}`);
+      if (segEl) {
+        if (s <= filledSegments || (filledSegments === 0 && s === 1 && state.clientSession.points > 0)) {
+          segEl.classList.add('filled');
+        } else {
+          segEl.classList.remove('filled');
+        }
+      }
     }
 
     const homeTierProgressCaption = document.getElementById('home-tier-progress-caption');
     if (homeTierProgressCaption) {
-      homeTierProgressCaption.textContent = clientTierInfo.statusMessage;
+      if (clientTierInfo.nextTier) {
+        homeTierProgressCaption.innerHTML = `${clientTierInfo.pointsToNext} points pour débloquer <strong style="color: #B91C1C;">${clientTierInfo.nextTier}</strong>`;
+      } else {
+        homeTierProgressCaption.innerHTML = `<strong>Statut maximum atteint 🎉</strong>`;
+      }
     }
 
     const userPtsEl = document.getElementById('user-points-val');
