@@ -897,12 +897,563 @@ input, select, textarea {
   box-shadow: 0 4px 10px rgba(220, 38, 38, 0.28);
 }
 
-.home-btn-view-rewards:hover {
+/* ==========================================================================
+   MOCKUP REDESIGN FOR TABS: RÉCOMPENSES, NOTIFICATIONS, MOI
+   ========================================================================== */
+
+/* Sub-Tab Content Wrapper */
+.mockup-tab-content {
+  padding: 0.85rem 1.15rem 2.5rem 1.15rem;
+  background: #FAFAFA;
+  min-height: 100%;
+}
+
+/* Common Minimal Header for Sub-Tabs */
+.mockup-sub-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.15rem;
+}
+
+.mockup-sub-title {
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #111827;
+  letter-spacing: -0.3px;
+  margin: 0;
+}
+
+.mockup-sub-action-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #FFF1F2;
+  border: 1px solid #FFE4E6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Section Headings */
+.mockup-section-heading {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.75rem;
+}
+
+/* ------------------- ONGLET 2: RÉCOMPENSES ------------------- */
+.mockup-rewards-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+/* Single Reward Item Card */
+.mockup-reward-item-row {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.mockup-reward-item-left {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-reward-thumb {
+  width: 50px;
+  height: 50px;
+  border-radius: 12px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid #F1F5F9;
+}
+
+.mockup-reward-item-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mockup-reward-item-name {
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.15rem;
+}
+
+.mockup-reward-item-pts {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #DC2626;
+}
+
+.mockup-reward-item-action {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+}
+
+.mockup-btn-claim {
+  background: #DC2626;
+  color: #FFFFFF;
+  border: none;
+  border-radius: 8px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.76rem;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+  transition: all 0.15s ease;
+}
+
+.mockup-btn-claim:hover {
   background: #B91C1C;
 }
 
-.home-btn-view-rewards:active {
-  transform: scale(0.98);
+.mockup-lock-box {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94A3B8;
+  font-size: 0.85rem;
+}
+
+.mockup-lock-pts-needed {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: #94A3B8;
+  white-space: nowrap;
+}
+
+/* Mes récompenses: Active Claimed Card */
+.mockup-claimed-reward-card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  padding: 1.15rem;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.mockup-claimed-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+.mockup-claimed-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #DC2626;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(220, 38, 38, 0.2);
+}
+
+.mockup-claimed-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-claimed-title {
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.1rem;
+}
+
+.mockup-claimed-date {
+  font-size: 0.72rem;
+  color: #6B7280;
+  margin-bottom: 0.25rem;
+}
+
+.mockup-claimed-status-badge {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #16A34A;
+}
+
+.mockup-claimed-chevron {
+  font-size: 1.4rem;
+  color: #9CA3AF;
+  line-height: 1;
+}
+
+.mockup-btn-show-qr {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 12px;
+  background: #FFFFFF;
+  border: 1.5px solid #FCA5A5;
+  color: #DC2626;
+  font-size: 0.85rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mockup-btn-show-qr:active {
+  background: #FFF1F2;
+  transform: scale(0.99);
+}
+
+/* Historique Column */
+.mockup-history-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.mockup-history-card {
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 0.75rem 0.95rem;
+  display: flex;
+  align-items: center;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  gap: 0.85rem;
+}
+
+.mockup-history-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.mockup-history-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-history-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 0.15rem;
+}
+
+.mockup-history-date {
+  font-size: 0.72rem;
+  color: #9CA3AF;
+}
+
+.mockup-history-badge {
+  background: #F0FDF4;
+  color: #16A34A;
+  border: 1px solid #DCFCE7;
+  font-size: 0.7rem;
+  font-weight: 800;
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* ------------------- ONGLET 3: NOTIFICATIONS ------------------- */
+.mockup-filters-bar {
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 1.15rem;
+}
+
+.mockup-filter-btn {
+  padding: 0.5rem 1.15rem;
+  border-radius: 999px;
+  border: none;
+  font-size: 0.82rem;
+  font-weight: 700;
+  background: #F1F5F9;
+  color: #4B5563;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transition: all 0.15s ease;
+}
+
+.mockup-filter-btn.active {
+  background: #DC2626;
+  color: #FFFFFF;
+  font-weight: 800;
+  box-shadow: 0 3px 8px rgba(220, 38, 38, 0.25);
+}
+
+.mockup-filter-pill-badge {
+  background: #DC2626;
+  color: #FFFFFF;
+  font-size: 0.65rem;
+  font-weight: 900;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockup-filter-btn.active .mockup-filter-pill-badge {
+  background: #FFFFFF;
+  color: #DC2626;
+}
+
+.mockup-notifs-stream {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mockup-notif-card {
+  background: #FFFFFF;
+  border-radius: 18px;
+  padding: 0.95rem 1rem;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+}
+
+.mockup-notif-icon-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.bg-red-soft { background: #FEE2E2; }
+.bg-orange-soft { background: #FFEDD5; }
+.bg-purple-soft { background: #F3E8FF; }
+.bg-blue-soft { background: #DBEAFE; }
+.bg-green-soft { background: #DCFCE7; }
+
+.mockup-notif-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-notif-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.25rem;
+}
+
+.mockup-notif-title {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.25;
+}
+
+.mockup-notif-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.mockup-notif-time {
+  font-size: 0.72rem;
+  color: #9CA3AF;
+  font-weight: 600;
+}
+
+.mockup-notif-unread-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #DC2626;
+}
+
+.mockup-notif-body {
+  font-size: 0.75rem;
+  color: #6B7280;
+  line-height: 1.35;
+}
+
+/* ------------------- ONGLET 4: MOI ------------------- */
+.mockup-profile-hero-card {
+  background: linear-gradient(135deg, #8B0000 0%, #A30808 40%, #7F1D1D 100%);
+  border-radius: 24px;
+  padding: 1.4rem;
+  color: #FFFFFF;
+  box-shadow: 0 8px 24px rgba(139, 0, 0, 0.25);
+  margin-bottom: 1.5rem;
+}
+
+.mockup-profile-top-row {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.mockup-profile-avatar-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #FFFFFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  flex-shrink: 0;
+}
+
+.mockup-profile-info-block {
+  flex: 1;
+  min-width: 0;
+}
+
+.mockup-profile-name {
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #FFFFFF;
+  margin-bottom: 0.2rem;
+}
+
+.mockup-profile-loyalty-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #FECACA;
+}
+
+.mockup-star-small {
+  color: #FBBF24;
+}
+
+.mockup-profile-chevron {
+  font-size: 1.6rem;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  line-height: 1;
+}
+
+.mockup-profile-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 1.1rem 0;
+}
+
+.mockup-profile-contact-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.mockup-profile-contact-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-size: 0.8rem;
+  color: #FDE8E8;
+  font-weight: 600;
+}
+
+/* Profile Menu Groups */
+.mockup-menu-group {
+  background: #FFFFFF;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  margin-bottom: 1.35rem;
+}
+
+.mockup-menu-row {
+  display: flex;
+  align-items: center;
+  padding: 0.95rem 1.15rem;
+  border-bottom: 1px solid #F8FAFC;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mockup-menu-row:last-child {
+  border-bottom: none;
+}
+
+.mockup-menu-row:hover {
+  background: #F8FAFC;
+}
+
+.mockup-menu-icon-col {
+  width: 24px;
+  display: flex;
+  align-items: center;
+  color: #374151;
+  margin-right: 0.75rem;
+  flex-shrink: 0;
+}
+
+.mockup-menu-label {
+  flex: 1;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #1F2937;
+}
+
+.mockup-menu-arrow {
+  font-size: 1.25rem;
+  color: #9CA3AF;
+  line-height: 1;
+}
+
+/* Logout Button */
+.mockup-btn-logout-clean {
+  width: 100%;
+  padding: 0.85rem 1.25rem;
+  border-radius: 16px;
+  background: #FFFFFF;
+  border: 1.5px solid #FCA5A5;
+  color: #DC2626;
+  font-size: 0.9rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.05);
+  margin-top: 0.5rem;
+}
+
+.mockup-btn-logout-clean:active {
+  background: #FFF1F2;
+  transform: scale(0.99);
 }
 
 /* Featured Floating Offer Card */

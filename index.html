@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_04">
+  <link rel="stylesheet" href="styles.css?v=20260831_05">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -237,133 +237,329 @@
 
           </div>
 
-          <!-- SCREEN 2: DEDICATED REWARDS CATALOGUE (ONGLET RÉCOMPENSES OFFICIEL) -->
+          <!-- SCREEN 2: DEDICATED REWARDS CATALOGUE (ONGLET RÉCOMPENSES OFFICIEL - EXACT MOCKUP) -->
           <div class="client-screen" id="screen-rewards">
-            <div style="padding: 1.25rem 1rem 0.5rem 1rem;">
-              <h2 style="font-size: 1.2rem; font-weight: 900; color: #111827; margin-bottom: 0.2rem;">Catalogue des Récompenses</h2>
-              <p style="font-size: 0.8rem; color: #6B7280; margin-bottom: 1.25rem;">Échangez vos points contre des menus, boissons et privilèges offerts.</p>
-
-              <!-- Full Rewards List -->
-              <div id="full-rewards-catalogue-list" style="display: flex; flex-direction: column; gap: 0.85rem; margin-bottom: 1.5rem;">
-                <!-- Dynamically populated by app.js -->
-              </div>
-
-              <!-- Section Favoris & Coups de Cœur -->
-              <div style="margin-top: 1.5rem;">
-                <h3 style="font-size: 1rem; font-weight: 800; color: #111827; margin-bottom: 0.6rem;">⭐ Spécialités & Coups de Cœur</h3>
-                <div class="mockup-favorites-scroller" id="mockup-favorites-list" style="padding-left: 0; padding-right: 0;">
-                  <div class="mockup-fav-card">
-                    <img src="./assets/chicken_combo.jpg" class="mockup-fav-img" alt="Chicken Combo">
-                    <div class="mockup-fav-body">
-                      <div class="mockup-fav-title">Chicken Combo Box</div>
-                      <div class="mockup-fav-tag">★ Coup de cœur</div>
-                    </div>
-                  </div>
-                  <div class="mockup-fav-card">
-                    <img src="./assets/pizza_toubel.jpg" class="mockup-fav-img" alt="Pizza de l'école">
-                    <div class="mockup-fav-body">
-                      <div class="mockup-fav-title">Pizza Spéciale</div>
-                      <div class="mockup-fav-tag">Populaire</div>
-                    </div>
-                  </div>
-                  <div class="mockup-fav-card">
-                    <img src="./assets/burger_favori.jpg" class="mockup-fav-img" alt="Gourmet Burger">
-                    <div class="mockup-fav-body">
-                      <div class="mockup-fav-title">Burger Braisé</div>
-                      <div class="mockup-fav-tag">Recommandé</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          <!-- SCREEN 3: NOTIFICATIONS CENTER (COMMUNICATIONS & OFFRES DU RESTAURANT) -->
-          <div class="client-screen" id="screen-notifs">
-            <div style="padding: 1.25rem 1rem;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
-                <h2 style="font-size: 1.2rem; font-weight: 900; color: #111827;">Notifications & Offres</h2>
-                <span style="background: #FEE2E2; color: #DC2626; font-size: 0.72rem; font-weight: 800; padding: 2px 8px; border-radius: 12px;">5 nouvelles</span>
-              </div>
-              <p style="font-size: 0.8rem; color: #6B7280; margin-bottom: 1.25rem;">Annonces exclusives, réductions et communications de votre restaurant.</p>
+            <div class="mockup-tab-content">
               
-              <!-- Featured Floating Offer Card relocated cleanly inside Notifications tab -->
-              <div class="featured-offer-floating-card" id="featured-hero-offer-card" style="margin: 0 0 1.25rem 0;">
-                <div class="featured-offer-content">
-                  <div class="featured-offer-headline" id="featured-offer-title">Nouvelle offre de -20% sur votre prochain repas</div>
-                  <div class="featured-offer-details" id="featured-offer-desc">Présentez ce coupon au comptoir lors de votre commande.</div>
-                  <button class="featured-offer-cta-link" onclick="showPassModalFirst()">
-                    <span>Échanger</span>
-                    <span>&gt;</span>
-                  </button>
-                </div>
-                <div class="featured-offer-photo-container">
-                  <img id="featured-offer-img" src="./assets/chicken_combo.jpg" alt="Offre Spéciale">
-                  <span class="featured-offer-tag-badge">-20%</span>
+              <!-- Tab Header: Récompenses + Gift Action Icon Button -->
+              <div class="mockup-sub-header">
+                <h1 class="mockup-sub-title">Récompenses</h1>
+                <div class="mockup-sub-action-box">
+                  <i data-lucide="gift" style="width: 18px; height: 18px; color: #DC2626;"></i>
                 </div>
               </div>
 
-              <!-- Notifications Feed -->
-              <div class="rewards-list-clean" id="client-notifs-feed">
-                <!-- Rendered dynamically -->
+              <!-- CARD 1: CRIMSON RED HERO "Mes points" WITH 3D GIFT BOX -->
+              <div class="mockup-red-hero-card" style="margin-bottom: 1.5rem;">
+                <div class="mockup-red-hero-left">
+                  <div class="mockup-red-hero-label">
+                    <span>Mes points</span>
+                    <span class="mockup-sparkle-icon">✨</span>
+                  </div>
+                  <div class="mockup-red-hero-pts" id="rewards-hero-pts-val">120</div>
+                  <div class="mockup-red-hero-unit">points</div>
+                </div>
+                <div class="mockup-red-hero-right">
+                  <img src="./assets/gift_box_3d.jpg" alt="Cadeau Récompense" class="mockup-star-trophy-img" style="filter: drop-shadow(0 10px 20px rgba(0,0,0,0.35));">
+                </div>
               </div>
+
+              <!-- SECTION: Récompenses disponibles -->
+              <div class="mockup-section-heading">Récompenses disponibles</div>
+              <div id="full-rewards-catalogue-list" class="mockup-rewards-column">
+                <!-- Dynamically populated by app.js with exact buttons (Réclamer / Cadenas + points requis) -->
+              </div>
+
+              <!-- SECTION: Mes récompenses -->
+              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Mes récompenses</div>
+              <div class="mockup-claimed-reward-card">
+                <div class="mockup-claimed-top-row">
+                  <div class="mockup-claimed-icon-wrap">
+                    <i data-lucide="gift" style="width: 22px; height: 22px; color: white;"></i>
+                  </div>
+                  <div class="mockup-claimed-details">
+                    <div class="mockup-claimed-title" id="claimed-reward-name">Boisson offerte</div>
+                    <div class="mockup-claimed-date" id="claimed-reward-date">Réclamée aujourd'hui</div>
+                    <div class="mockup-claimed-status-badge">Prête à utiliser</div>
+                  </div>
+                  <div class="mockup-claimed-chevron">›</div>
+                </div>
+
+                <button class="mockup-btn-show-qr" onclick="showPassModalFirst()">
+                  <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
+                  <span>Afficher mon QR</span>
+                </button>
+              </div>
+
+              <!-- SECTION: Historique -->
+              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Historique</div>
+              <div class="mockup-history-column">
+                <div class="mockup-history-card">
+                  <img src="./assets/savane_dish.jpg" alt="Dessert offert" class="mockup-history-thumb">
+                  <div class="mockup-history-info">
+                    <div class="mockup-history-title">Dessert offert</div>
+                    <div class="mockup-history-date">Utilisée le 15 août 2026</div>
+                  </div>
+                  <div class="mockup-history-badge">Utilisée</div>
+                  <div class="mockup-claimed-chevron">›</div>
+                </div>
+
+                <div class="mockup-history-card">
+                  <img src="./assets/chicken_combo.jpg" alt="Boisson offerte" class="mockup-history-thumb">
+                  <div class="mockup-history-info">
+                    <div class="mockup-history-title">Boisson offerte</div>
+                    <div class="mockup-history-date">Utilisée le 02 août 2026</div>
+                  </div>
+                  <div class="mockup-history-badge">Utilisée</div>
+                  <div class="mockup-claimed-chevron">›</div>
+                </div>
+              </div>
+
             </div>
           </div>
 
-          <!-- SCREEN 4: CLIENT PROFILE (MOI) -->
+          <!-- SCREEN 3: NOTIFICATIONS CENTER (EXACT MOCKUP REPRODUCTION) -->
+          <div class="client-screen" id="screen-notifs">
+            <div class="mockup-tab-content">
+              
+              <!-- Tab Header: Notifications + Bell Action Icon Button -->
+              <div class="mockup-sub-header">
+                <h1 class="mockup-sub-title">Notifications</h1>
+                <div class="mockup-sub-action-box">
+                  <i data-lucide="bell" style="width: 18px; height: 18px; color: #DC2626;"></i>
+                </div>
+              </div>
+
+              <!-- Filter Pills (Toutes / Non lues 2) -->
+              <div class="mockup-filters-bar">
+                <button class="mockup-filter-btn active" onclick="filterClientNotifs('all', this)">
+                  <span>Toutes</span>
+                </button>
+                <button class="mockup-filter-btn" onclick="filterClientNotifs('unread', this)">
+                  <span>Non lues</span>
+                  <span class="mockup-filter-pill-badge">2</span>
+                </button>
+              </div>
+
+              <!-- Notifications Feed List matching exact cards -->
+              <div class="mockup-notifs-stream" id="client-notifs-feed">
+                
+                <!-- Notification 1: -20% sur tous les plats (unread) -->
+                <div class="mockup-notif-card is-unread" data-read="false">
+                  <div class="mockup-notif-icon-circle bg-red-soft">
+                    <i data-lucide="tag" style="width: 18px; height: 18px; color: #DC2626;"></i>
+                  </div>
+                  <div class="mockup-notif-main">
+                    <div class="mockup-notif-top">
+                      <div class="mockup-notif-title">-20% sur tous les plats</div>
+                      <div class="mockup-notif-meta">
+                        <span class="mockup-notif-time">10:30</span>
+                        <span class="mockup-notif-unread-dot"></span>
+                      </div>
+                    </div>
+                    <div class="mockup-notif-body">
+                      Profitez de 20% de réduction sur tous nos plats aujourd'hui jusqu'à 20h !
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notification 2: Nouvelle offre disponible (unread) -->
+                <div class="mockup-notif-card is-unread" data-read="false">
+                  <div class="mockup-notif-icon-circle bg-orange-soft">
+                    <i data-lucide="megaphone" style="width: 18px; height: 18px; color: #EA580C;"></i>
+                  </div>
+                  <div class="mockup-notif-main">
+                    <div class="mockup-notif-top">
+                      <div class="mockup-notif-title">Nouvelle offre disponible</div>
+                      <div class="mockup-notif-meta">
+                        <span class="mockup-notif-time">Hier</span>
+                        <span class="mockup-notif-unread-dot"></span>
+                      </div>
+                    </div>
+                    <div class="mockup-notif-body">
+                      Un dessert offert pour tout menu acheté.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notification 3: Soirée spéciale ce week-end -->
+                <div class="mockup-notif-card" data-read="true">
+                  <div class="mockup-notif-icon-circle bg-purple-soft">
+                    <i data-lucide="calendar" style="width: 18px; height: 18px; color: #7C3AED;"></i>
+                  </div>
+                  <div class="mockup-notif-main">
+                    <div class="mockup-notif-top">
+                      <div class="mockup-notif-title">Soirée spéciale ce week-end</div>
+                      <div class="mockup-notif-meta">
+                        <span class="mockup-notif-time">Hier</span>
+                      </div>
+                    </div>
+                    <div class="mockup-notif-body">
+                      Ambiance live et menu spécial ce samedi à partir de 19h.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notification 4: Une récompense vous attend ! -->
+                <div class="mockup-notif-card" data-read="true">
+                  <div class="mockup-notif-icon-circle bg-blue-soft">
+                    <i data-lucide="gift" style="width: 18px; height: 18px; color: #2563EB;"></i>
+                  </div>
+                  <div class="mockup-notif-main">
+                    <div class="mockup-notif-top">
+                      <div class="mockup-notif-title">Une récompense vous attend !</div>
+                      <div class="mockup-notif-meta">
+                        <span class="mockup-notif-time">2 j</span>
+                      </div>
+                    </div>
+                    <div class="mockup-notif-body">
+                      Vous avez suffisamment de points pour réclamer une récompense.
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Notification 5: Merci pour votre fidélité -->
+                <div class="mockup-notif-card" data-read="true">
+                  <div class="mockup-notif-icon-circle bg-green-soft">
+                    <i data-lucide="party-popper" style="width: 18px; height: 18px; color: #16A34A;"></i>
+                  </div>
+                  <div class="mockup-notif-main">
+                    <div class="mockup-notif-top">
+                      <div class="mockup-notif-title">Merci pour votre fidélité</div>
+                      <div class="mockup-notif-meta">
+                        <span class="mockup-notif-time">5 j</span>
+                      </div>
+                    </div>
+                    <div class="mockup-notif-body">
+                      Nous apprécions votre confiance et votre fidélité.
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+
+          <!-- SCREEN 4: CLIENT PROFILE (MOI - EXACT MOCKUP REPRODUCTION) -->
           <div class="client-screen" id="screen-profile">
-            <div style="padding: 1.25rem 1rem; text-align: center;">
-              <div style="width: 72px; height: 72px; background: #DC2626; color: white; border-radius: 50%; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; border: 3px solid white; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);" id="client-avatar-letters">
-                NC
-              </div>
-              <h2 style="color: var(--marron-dark); font-size: 1.2rem; font-weight: 800; margin-bottom: 0.1rem;" id="profile-display-name">Client Nexa</h2>
-              <p style="color: var(--text-muted); font-size: 0.82rem; margin-bottom: 1rem;" id="profile-display-phone">Non enregistré</p>
-
-              <!-- Real Supabase Profile Details Card -->
-              <div style="background: #FFFFFF; border: 1px solid var(--dash-border); border-radius: 14px; padding: 1rem; text-align: left; box-shadow: var(--shadow-sm); margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Solde Actuel de Points</span>
-                  <strong style="color: #DC2626; font-size: 0.95rem; font-weight: 800;" id="profile-display-points">0 points ⭐</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--bg-subtle);">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Restaurant Associé</span>
-                  <strong style="color: var(--marron-dark); font-size: 0.85rem;" id="profile-display-resto">Chitir Chicken</strong>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0;">
-                  <span style="color: var(--text-muted); font-size: 0.85rem;">Statut Fidélité</span>
-                  <strong style="color: #DC2626; font-size: 0.85rem;" id="profile-display-tier">Membre Bronze</strong>
+            <div class="mockup-tab-content">
+              
+              <!-- Tab Header: Moi + Settings Gear Action Icon Button -->
+              <div class="mockup-sub-header">
+                <h1 class="mockup-sub-title">Moi</h1>
+                <div class="mockup-sub-action-box" onclick="openClientAuthModal()" style="cursor: pointer;">
+                  <i data-lucide="settings" style="width: 18px; height: 18px; color: #DC2626;"></i>
                 </div>
               </div>
 
-              <!-- Quick Client Navigation Shortcuts -->
-              <div style="display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1rem;">
-                <button class="btn-secondary" onclick="openClientHistoryModal()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
-                  <span>📜 Consulter mon Historique de Scans</span>
-                  <span>➔</span>
-                </button>
-                <button class="btn-secondary" onclick="showPassModalFirst()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700;">
-                  <span>💳 Afficher mon Pass QR de Caisse</span>
-                  <span>➔</span>
-                </button>
-                <button class="btn-secondary" onclick="openClientSupportWhatsApp()" style="width: 100%; justify-content: space-between; padding: 0.75rem 1rem; font-weight: 700; border-color: #25D366; color: #16A34A;">
-                  <span>💬 Aide & Support WhatsApp</span>
-                  <span>💬</span>
-                </button>
-                <button class="btn-secondary" id="btn-pwa-install" onclick="installNexaPWA()" style="width: 100%; justify-content: center; padding: 0.75rem 1rem; font-weight: 700; border-color: #DC2626; color: #DC2626;">
-                  <span>📲 Ajouter NEXA à l'Écran d'Accueil</span>
-                </button>
+              <!-- CARD 1: CRIMSON RED PROFILE CARD -->
+              <div class="mockup-profile-hero-card">
+                <div class="mockup-profile-top-row">
+                  <div class="mockup-profile-avatar-circle">
+                    <i data-lucide="user" style="width: 26px; height: 26px; color: #DC2626;"></i>
+                  </div>
+                  <div class="mockup-profile-info-block">
+                    <div class="mockup-profile-name" id="profile-display-name">Ismaël K.</div>
+                    <div class="mockup-profile-loyalty-tag">
+                      <span class="mockup-star-small">★</span>
+                      <span>Client fidèle</span>
+                    </div>
+                  </div>
+                  <div class="mockup-profile-chevron" onclick="openClientAuthModal()">›</div>
+                </div>
+
+                <div class="mockup-profile-divider"></div>
+
+                <div class="mockup-profile-contact-list">
+                  <div class="mockup-profile-contact-row">
+                    <i data-lucide="phone" style="width: 14px; height: 14px; color: #FCA5A5;"></i>
+                    <span id="profile-display-phone">+226 70 12 34 56</span>
+                  </div>
+                  <div class="mockup-profile-contact-row">
+                    <i data-lucide="mail" style="width: 14px; height: 14px; color: #FCA5A5;"></i>
+                    <span id="profile-display-email">ismael.kabore@email.com</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Account Actions: Edit Phone & Logout -->
-              <div style="display: flex; gap: 0.6rem;">
-                <button class="btn-secondary" onclick="openClientAuthModal()" style="flex: 1; font-size: 0.8rem;">
-                  ⚙️ Mon Compte
-                </button>
-                <button class="btn-secondary" onclick="logoutClient()" style="flex: 1; font-size: 0.8rem; background: #FEE2E2; color: #DC2626; border-color: #FCA5A5;">
-                  🔴 Se Déconnecter
-                </button>
+              <!-- SECTION: Mon compte -->
+              <div class="mockup-section-heading" style="margin-top: 1.5rem;">Mon compte</div>
+              <div class="mockup-menu-group">
+                <div class="mockup-menu-row" onclick="openClientAuthModal()">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="user" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Informations personnelles</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="showToast('Sécurité', 'Votre session est sécurisée par QR Code et mot de passe.')">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="shield-check" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Sécurité</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="showToast('Préférences', 'Préférences d\'alertes et notifications actives.')">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="sliders" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Préférences</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="openClientAuthModal()">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="phone-call" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Moyens de contact</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
               </div>
+
+              <!-- SECTION: Informations -->
+              <div class="mockup-section-heading" style="margin-top: 1.5rem;">Informations</div>
+              <div class="mockup-menu-group">
+                <div class="mockup-menu-row" onclick="showToast('Nexa', 'Nexa Fidélité v2.4 — Plateforme de fidélisation intelligente.')">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">À propos de Nexa</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="showToast('CGU', 'Conditions Générales d\'Utilisation acceptées.')">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="file-text" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Conditions d'utilisation</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="showToast('Confidentialité', 'Vos données sont chiffrées et confidentielles.')">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="lock" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Politique de confidentialité</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+
+                <div class="mockup-menu-row" onclick="openClientSupportWhatsApp()">
+                  <div class="mockup-menu-icon-col">
+                    <i data-lucide="help-circle" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <span class="mockup-menu-label">Aide et support</span>
+                  <span class="mockup-menu-arrow">›</span>
+                </div>
+              </div>
+
+              <!-- Logout Button (White with red border and icon) -->
+              <button class="mockup-btn-logout-clean" onclick="logoutClient()">
+                <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                <span>Se déconnecter</span>
+              </button>
 
             </div>
           </div>
@@ -1178,10 +1374,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_04"></script>
+  <script src="supabase.js?v=20260831_05"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_04"></script>
+  <script src="app.js?v=20260831_05"></script>
 
 </body>
 </html>

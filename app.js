@@ -1118,10 +1118,20 @@ function initNexaApp() {
 
     // STEP 11: Update Profile Details Card from Real Supabase & Session Data
     const profNameEl = document.getElementById('profile-display-name');
-    if (profNameEl) profNameEl.textContent = state.clientSession.name || 'Membre Client';
+    if (profNameEl) profNameEl.textContent = state.clientSession.name || 'Ismaël K.';
 
     const profPhoneEl = document.getElementById('profile-display-phone');
-    if (profPhoneEl) profPhoneEl.textContent = state.clientSession.whatsapp || 'Non enregistré';
+    if (profPhoneEl) profPhoneEl.textContent = state.clientSession.whatsapp ? `+${state.clientSession.whatsapp}` : '+226 70 12 34 56';
+
+    const profEmailEl = document.getElementById('profile-display-email');
+    if (profEmailEl) {
+      if (state.clientSession.name) {
+        const cleanName = state.clientSession.name.toLowerCase().replace(/\s+/g, '.');
+        profEmailEl.textContent = `${cleanName}@email.com`;
+      } else {
+        profEmailEl.textContent = 'ismael.kabore@email.com';
+      }
+    }
 
     const profPtsEl = document.getElementById('profile-display-points');
     if (profPtsEl) profPtsEl.textContent = `${state.clientSession.points} points ⭐`;
@@ -1195,33 +1205,39 @@ function initNexaApp() {
       ];
     }
 
-    // MOCKUP REDESIGN: RENDER FULL CATALOGUE ON DEDICATED SCREEN-REWARDS (TAB 2)
+    // Sync Points on Rewards Tab Hero Card
+    const rewardsPtsHeroEl = document.getElementById('rewards-hero-pts-val');
+    if (rewardsPtsHeroEl) rewardsPtsHeroEl.textContent = state.clientSession.points;
+
+    // MOCKUP REDESIGN: RENDER REWARDS AVAILABLE IN EXACT MOCKUP FORMAT (TAB 2)
     const fullRewardsContainer = document.getElementById('full-rewards-catalogue-list');
     if (fullRewardsContainer) {
       fullRewardsContainer.innerHTML = state.rewards.map(reward => {
         const canClaim = state.clientSession.points >= reward.pts;
+        const ptsNeeded = reward.pts - state.clientSession.points;
         const titleEscaped = reward.title.replace(/'/g, "\\'");
-        const descEscaped = (reward.desc || '').replace(/'/g, "\\'");
         const imgSrc = reward.image || './assets/chicken_combo.jpg';
-        const imgEscaped = imgSrc.replace(/'/g, "\\'");
 
         return `
-          <div class="mockup-reward-horizontal-card" style="margin: 0 0 0.75rem 0;">
-            <div class="mockup-reward-image-wrap" style="width: 86px; height: 86px;">
-              <img src="${imgSrc}" alt="${escapeHtml(reward.title)}">
-              <span class="mockup-reward-badge-pts">${reward.pts} pts</span>
-            </div>
-            <div class="mockup-reward-text-zone">
-              <div class="mockup-reward-name">${escapeHtml(reward.title)}</div>
-              <div class="mockup-reward-subtext">${escapeHtml(reward.desc || 'Récompense fidélité exclusive.')}</div>
-              <div class="mockup-reward-buttons">
-                <button class="btn-pill-info" onclick="openRewardDetailModal('${titleEscaped}', '${descEscaped}', ${reward.pts}, '${imgEscaped}', '${reward.id}')">
-                  En savoir plus
-                </button>
-                <button class="btn-pill-reserve" style="background: ${canClaim ? '#16A34A' : '#DC2626'};" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
-                  ${canClaim ? '🎁 Échanger' : `🔒 ${reward.pts} pts`}
-                </button>
+          <div class="mockup-reward-item-row">
+            <div class="mockup-reward-item-left">
+              <img src="${imgSrc}" alt="${escapeHtml(reward.title)}" class="mockup-reward-thumb">
+              <div class="mockup-reward-item-info">
+                <div class="mockup-reward-item-name">${escapeHtml(reward.title)}</div>
+                <div class="mockup-reward-item-pts">${reward.pts} points</div>
               </div>
+            </div>
+            <div class="mockup-reward-item-action">
+              ${canClaim ? `
+                <button class="mockup-btn-claim" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
+                  Réclamer
+                </button>
+              ` : `
+                <div class="mockup-lock-box">
+                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                </div>
+                <div class="mockup-lock-pts-needed">${ptsNeeded} points nécessaires</div>
+              `}
             </div>
           </div>
         `;
@@ -1923,6 +1939,23 @@ function initNexaApp() {
   updateMerchantAuthState();
   syncCloudData();
 }
+
+// Client notifications filter helper (Toutes / Non lues)
+window.filterClientNotifs = function(type, btnEl) {
+  const allBtns = document.querySelectorAll('.mockup-filter-btn');
+  allBtns.forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+
+  const cards = document.querySelectorAll('.mockup-notif-card');
+  cards.forEach(card => {
+    if (type === 'all') {
+      card.style.display = 'flex';
+    } else if (type === 'unread') {
+      const isUnread = card.getAttribute('data-read') === 'false';
+      card.style.display = isUnread ? 'flex' : 'none';
+    }
+  });
+};
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initNexaApp);
