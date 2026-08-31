@@ -78,7 +78,10 @@ function initNexaApp() {
     }
   };
 
-  state.stats.totalClients = state.clientsList.length;  window.__nexaState = state;
+  state.stats.totalClients = state.clientsList.length;
+  state.activeTab = 'home';
+  window.__nexaState = state;
+  window.state = state;
 
   if (window.lucide) {
     try { lucide.createIcons(); } catch (e) {}
@@ -986,11 +989,26 @@ function initNexaApp() {
     isScanProcessing = false;
   };
 
+  // Global bridge for QR scan success & table points credit
+  window.triggerQRScanSuccess = async function(qrContent) {
+    const effectivePayload = (qrContent && (qrContent.includes('resto=') || qrContent.includes('http')))
+      ? qrContent
+      : `https://nexa-production.vercel.app/?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`;
+    return await handleScannedRawText(effectivePayload);
+  };
+
   if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
   if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
-  if (btnSimulateScanOk) btnSimulateScanOk.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+
+  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
+  if (btnSimulateScanOk) {
+    btnSimulateScanOk.addEventListener('click', () => window.triggerQRScanSuccess(`Table #${tableParam}`));
+  }
+
   const btnFastScan = document.getElementById('btn-fast-scan');
-  if (btnFastScan) btnFastScan.addEventListener('click', () => triggerQRScanSuccess(`Table #${tableParam}`));
+  if (btnFastScan) {
+    btnFastScan.addEventListener('click', () => window.triggerQRScanSuccess(`Table #${tableParam}`));
+  }
 
   /* ==========================================================================
      5. MOBILE NAVIGATION & MERCHANT 1-CLICK VALIDATION ENGINE
@@ -1000,13 +1018,20 @@ function initNexaApp() {
   const clientScreens = document.querySelectorAll('.client-screen');
 
   window.switchMobileTab = function(targetTab) {
-    clientScreens.forEach(s => s.classList.remove('active'));
+    state.activeTab = targetTab || 'home';
+    clientScreens.forEach(s => {
+      s.classList.remove('active');
+      s.style.display = 'none';
+    });
     navTabs.forEach(t => t.classList.remove('active'));
 
     const targetScreen = document.getElementById(`screen-${targetTab}`);
     const matchTab = document.querySelector(`.mobile-nav .nav-tab[data-tab="${targetTab}"]`);
 
-    if (targetScreen) targetScreen.classList.add('active');
+    if (targetScreen) {
+      targetScreen.classList.add('active');
+      targetScreen.style.display = 'block';
+    }
     if (matchTab) matchTab.classList.add('active');
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1143,9 +1168,16 @@ function initNexaApp() {
       if (!shouldShowHome && (roleParam === 'client' || !roleParam)) {
         noRestoScreen.style.display = 'block';
         homeScreen.style.display = 'none';
+        homeScreen.classList.remove('active');
       } else {
         noRestoScreen.style.display = 'none';
-        homeScreen.style.display = 'block';
+        if (!state.activeTab || state.activeTab === 'home') {
+          homeScreen.style.display = 'block';
+          homeScreen.classList.add('active');
+        } else {
+          homeScreen.style.display = 'none';
+          homeScreen.classList.remove('active');
+        }
       }
     }
 

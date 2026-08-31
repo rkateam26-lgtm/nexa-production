@@ -1154,7 +1154,7 @@
 
       <!-- Footer Fast Simulator / Assistance -->
       <div class="scanner-bottom-actions">
-        <button class="scanner-btn-simulate" id="btn-simulate-scan-ok" onclick="handleScannedRawText(`https://nexa-production.vercel.app/?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`)">
+        <button class="scanner-btn-simulate" id="btn-simulate-scan-ok" onclick="window.triggerQRScanSuccess && window.triggerQRScanSuccess()">
           ⚡ Valider manuellement Table #${tableParam}
         </button>
       </div>
@@ -1453,10 +1453,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_08"></script>
+  <script src="supabase.js?v=20260831_09"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_08"></script>
+  <script src="app.js?v=20260831_09"></script>
 
 </body>
 </html>
