@@ -1004,11 +1004,11 @@ function initNexaApp() {
       if (pts >= 200) {
         return {
           tierName: 'VIP',
-          tierBadge: '👑 VIP',
+          tierBadge: 'VIP 👑',
           nextTier: null,
           pointsToNext: 0,
           progressPercent: 100,
-          statusMessage: 'Highest status reached'
+          statusMessage: 'Statut maximum atteint'
         };
       } else if (pts >= 100) {
         const nextTarget = 200;
@@ -1017,11 +1017,11 @@ function initNexaApp() {
         const progress = Math.min(100, Math.max(0, Math.round(((pts - currentBase) / (nextTarget - currentBase)) * 100)));
         return {
           tierName: 'GOLD',
-          tierBadge: '🥇 GOLD',
+          tierBadge: 'GOLD 🥇',
           nextTier: 'VIP',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
-          statusMessage: `${pointsNeeded} points to unlock VIP`
+          statusMessage: `${pointsNeeded} points pour débloquer VIP`
         };
       } else if (pts >= 50) {
         const nextTarget = 100;
@@ -1030,11 +1030,11 @@ function initNexaApp() {
         const progress = Math.min(100, Math.max(0, Math.round(((pts - currentBase) / (nextTarget - currentBase)) * 100)));
         return {
           tierName: 'SILVER',
-          tierBadge: '🥈 SILVER',
+          tierBadge: 'SILVER 🥈',
           nextTier: 'GOLD',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
-          statusMessage: `${pointsNeeded} points to unlock GOLD`
+          statusMessage: `${pointsNeeded} points pour débloquer GOLD`
         };
       } else {
         const nextTarget = 50;
@@ -1043,11 +1043,11 @@ function initNexaApp() {
         const progress = Math.min(100, Math.max(0, Math.round((pts / nextTarget) * 100)));
         return {
           tierName: 'BRONZE',
-          tierBadge: '🥉 BRONZE',
+          tierBadge: 'BRONZE 🥉',
           nextTier: 'SILVER',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
-          statusMessage: `${pointsNeeded} points to unlock SILVER`
+          statusMessage: `${pointsNeeded} points pour débloquer SILVER`
         };
       }
     }

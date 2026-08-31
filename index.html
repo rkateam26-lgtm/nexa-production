@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_02">
+  <link rel="stylesheet" href="styles.css?v=20260831_03">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -167,41 +167,31 @@
             
             <div class="home-pure-container">
               
-              <!-- 2. Solde de Points (My points) -->
-              <div class="home-card-points">
-                <div class="home-section-eyebrow">My points</div>
-                <div class="home-points-number" id="home-points-val">⭐ 0 points</div>
-              </div>
-
-              <!-- 3. Statut du Client & Progression vers Prochain Statut -->
-              <div class="home-card-status">
-                <div class="home-section-eyebrow">Your status</div>
-                <div class="home-status-name" id="home-tier-badge">🥉 BRONZE</div>
+              <!-- SECTION FIDÉLITÉ (Ordre obligatoire strict 1 -> 5) -->
+              <div class="home-loyalty-card">
                 
-                <!-- Progress Bar to NEXT STATUS -->
-                <div class="home-progress-container">
-                  <div class="home-progress-track">
-                    <div class="home-progress-fill" id="home-tier-progress-bar" style="width: 0%;"></div>
-                  </div>
-                  <div class="home-progress-caption" id="home-tier-progress-caption">
-                    50 points to unlock SILVER
-                  </div>
+                <!-- 1. Solde de points -->
+                <div class="home-points-number" id="home-points-val">⭐ 0 points</div>
+                
+                <!-- 2. Statut actuel (directement sous les points) -->
+                <div class="home-status-name" id="home-tier-badge">BRONZE 🥉</div>
+                
+                <!-- 3. Barre de progression vers le prochain statut -->
+                <div class="home-progress-track">
+                  <div class="home-progress-fill" id="home-tier-progress-bar" style="width: 0%;"></div>
                 </div>
-              </div>
+                
+                <!-- 4. Nombre de points nécessaires pour atteindre le prochain statut -->
+                <div class="home-progress-caption" id="home-tier-progress-caption">
+                  50 points pour débloquer SILVER
+                </div>
 
-              <!-- 5. Accès Rapide aux Récompenses (Zone Unique) -->
-              <div class="home-card-rewards-access">
-                <div style="display: flex; align-items: center; gap: 0.85rem; margin-bottom: 0.85rem;">
-                  <div class="home-reward-icon-box">🎁</div>
-                  <div>
-                    <div class="home-reward-title">Reward available</div>
-                    <div class="home-reward-desc">You have rewards available.</div>
-                  </div>
-                </div>
+                <!-- 5. Accès rapide aux récompenses -->
                 <button class="home-btn-view-rewards" onclick="switchMobileTab('rewards')">
-                  <span>View rewards</span>
+                  <span>Voir mes récompenses</span>
                   <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
                 </button>
+
               </div>
 
             </div>
@@ -1149,10 +1139,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_02"></script>
+  <script src="supabase.js?v=20260831_03"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_02"></script>
+  <script src="app.js?v=20260831_03"></script>
 
 </body>
 </html>
