@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_07">
+  <link rel="stylesheet" href="styles.css?v=20260831_08">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -151,7 +151,11 @@
                 </div>
               </div>
               
-              <div class="mockup-header-actions">
+              <div class="mockup-header-actions" style="display: flex; align-items: center; gap: 0.5rem;">
+                <button class="mockup-header-scan-btn" onclick="startRealCameraScanner()" title="Scanner un QR Code">
+                  <i data-lucide="qr-code" style="width: 17px; height: 17px; color: #DC2626;"></i>
+                  <span>Scanner</span>
+                </button>
                 <button class="mockup-header-bell-btn" onclick="switchMobileTab('notifs')" title="Notifications">
                   <i data-lucide="bell" style="width: 20px; height: 20px; color: #111827;"></i>
                   <span class="mockup-bell-badge">2</span>
@@ -1064,22 +1068,97 @@
        MODALS
        ========================================================================== -->
 
-  <!-- REAL CAMERA QR CODE SCANNER MODAL -->
+  <!-- REAL CAMERA QR CODE SCANNER MODAL (PROFESSIONAL MULTI-TENANT BRANDED) -->
   <div class="scanner-modal" id="scanner-modal">
-    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 0.5rem;">
-      <h3 style="color: white; font-size: 1.1rem; margin: 0;">📷 Scanner le QR Code de votre Table</h3>
-      <button id="btn-close-scanner" style="color: white; font-size: 1.5rem; background: none; border: none; cursor: pointer;">✕</button>
-    </div>
+    <div class="scanner-dialog-box">
+      
+      <!-- Scanner Top Bar with Restaurant Branding -->
+      <div class="scanner-top-bar">
+        <div class="scanner-resto-badge">
+          <img id="scanner-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="scanner-resto-avatar">
+          <div class="scanner-resto-meta">
+            <span class="scanner-resto-name" id="scanner-resto-title">Mon Restaurant</span>
+            <span class="scanner-badge-status">● Scanner Fidélité Officiel</span>
+          </div>
+        </div>
+        <button id="btn-close-scanner" class="scanner-btn-close" title="Fermer">✕</button>
+      </div>
 
-    <p style="color: #D6C8BC; font-size: 0.8rem; text-align: center; margin-bottom: 1rem;">Accordez l'accès à la caméra pour lire le QR Code sur votre table</p>
+      <!-- State 1: Permission Guide (Shown when camera requires user interaction) -->
+      <div id="scanner-state-permission" class="scanner-state-card" style="display: none;">
+        <div class="scanner-state-icon">📷</div>
+        <h4 style="font-size: 1.05rem; font-weight: 800; color: #111827; margin: 0 0 0.4rem 0;">Autoriser l'appareil photo</h4>
+        <p style="font-size: 0.82rem; color: #6B7280; line-height: 1.45; margin: 0 0 1.25rem 0;">
+          Pour enregistrer votre visite et créditer vos points chez <strong id="scanner-perm-resto-name" style="color: #DC2626;">ce restaurant</strong>, veuillez autoriser l'accès à la caméra de votre smartphone.
+        </p>
+        <button class="btn-primary" onclick="initCameraStream()" style="width: 100%; justify-content: center; background: #DC2626; color: white; font-weight: 800; padding: 0.75rem; border-radius: 12px;">
+          Activer la Caméra
+        </button>
+      </div>
 
-    <!-- LIVE CAMERA STREAM CONTAINER -->
-    <div id="html5-qr-reader" style="width: 100%; max-width: 320px; border-radius: 16px; overflow: hidden; background: #000; margin: 0 auto 1.5rem auto;"></div>
+      <!-- State 2: Camera Active with Laser Scanner Frame -->
+      <div id="scanner-state-active" class="scanner-active-wrapper">
+        <div class="scanner-viewfinder-container">
+          <!-- LIVE HTML5 QR CODE STREAM ELEMENT -->
+          <div id="html5-qr-reader" class="scanner-video-feed"></div>
+          
+          <!-- Animated Target Viewfinder -->
+          <div class="scanner-reticle">
+            <div class="scanner-laser-line"></div>
+            <div class="reticle-corner top-left"></div>
+            <div class="reticle-corner top-right"></div>
+            <div class="reticle-corner bottom-left"></div>
+            <div class="reticle-corner bottom-right"></div>
+          </div>
+        </div>
+        <div class="scanner-caption-tip">
+          <i data-lucide="scan" style="width: 16px; height: 16px; color: #DC2626;"></i>
+          <span>Visez le QR Code posé sur votre table</span>
+        </div>
+      </div>
 
-    <div style="text-align: center; margin-bottom: 1rem;">
-      <button class="btn-primary" id="btn-simulate-scan-ok" style="padding: 0.75rem 1.5rem; background: var(--gold-accent); color: #2A1D15; font-weight: 800;">
-        ⚡ Valider le Scan Table #4
-      </button>
+      <!-- State 3: Validating Spinner -->
+      <div id="scanner-state-validating" class="scanner-state-card" style="display: none;">
+        <div class="scanner-spinner"></div>
+        <h4 style="font-size: 1.05rem; font-weight: 800; color: #111827; margin: 0.75rem 0 0.25rem 0;">Validation en cours...</h4>
+        <p style="font-size: 0.82rem; color: #6B7280; margin: 0;">Vérification de l'établissement et des points fidélité.</p>
+      </div>
+
+      <!-- State 4: Success Card -->
+      <div id="scanner-state-success" class="scanner-state-card success" style="display: none;">
+        <div class="scanner-success-badge">✓</div>
+        <h3 style="font-size: 1.25rem; font-weight: 900; color: #15803D; margin: 0.5rem 0 0.2rem 0;">Visite enregistrée ✓</h3>
+        <div id="scanner-success-pts-gained" class="scanner-pts-pill">+20 points</div>
+        <div id="scanner-success-balance" style="font-size: 0.92rem; font-weight: 800; color: #1F2937; margin-bottom: 0.4rem;">
+          Votre solde : 140 points
+        </div>
+        <p id="scanner-success-resto-info" style="font-size: 0.76rem; color: #6B7280; margin: 0 0 1.25rem 0;">
+          Points crédités avec succès sur votre compte.
+        </p>
+        <button class="btn-primary" onclick="stopCameraScanner()" style="width: 100%; justify-content: center; background: #16A34A; color: white; font-weight: 800; padding: 0.75rem; border-radius: 12px;">
+          Génial, merci !
+        </button>
+      </div>
+
+      <!-- State 5: Error Card (Invalid QR, Wrong Restaurant, or Anti-Cheat) -->
+      <div id="scanner-state-error" class="scanner-state-card error" style="display: none;">
+        <div class="scanner-error-badge">⚠️</div>
+        <h3 id="scanner-error-title" style="font-size: 1.1rem; font-weight: 800; color: #991B1B; margin: 0.5rem 0 0.35rem 0;">QR Code Invalide</h3>
+        <p id="scanner-error-msg" style="font-size: 0.82rem; color: #4B5563; line-height: 1.45; margin: 0 0 1.25rem 0;">
+          Ce QR Code ne correspond pas à cet établissement ou n'est pas reconnu.
+        </p>
+        <button class="btn-primary" onclick="resumeScanningFromError()" style="width: 100%; justify-content: center; background: #DC2626; color: white; font-weight: 800; padding: 0.75rem; border-radius: 12px;">
+          Réessayer
+        </button>
+      </div>
+
+      <!-- Footer Fast Simulator / Assistance -->
+      <div class="scanner-bottom-actions">
+        <button class="scanner-btn-simulate" id="btn-simulate-scan-ok" onclick="handleScannedRawText(`https://nexa-production.vercel.app/?role=client&resto=${encodeURIComponent(state.restaurant.name)}&table=${tableParam}`)">
+          ⚡ Valider manuellement Table #${tableParam}
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -1374,10 +1453,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_07"></script>
+  <script src="supabase.js?v=20260831_08"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_07"></script>
+  <script src="app.js?v=20260831_08"></script>
 
 </body>
 </html>

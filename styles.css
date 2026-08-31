@@ -630,6 +630,30 @@ input, select, textarea {
 .mockup-header-actions {
   display: flex;
   align-items: center;
+  gap: 0.45rem;
+}
+
+.mockup-header-scan-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: #FFF1F2;
+  border: 1px solid #FFE4E6;
+  color: #DC2626;
+  font-size: 0.76rem;
+  font-weight: 800;
+  padding: 0.38rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.mockup-header-scan-btn:hover {
+  background: #FFE4E6;
+}
+
+.mockup-header-scan-btn:active {
+  transform: scale(0.96);
 }
 
 .mockup-header-bell-btn {
@@ -1982,28 +2006,285 @@ input, select, textarea {
   border: 1px solid var(--dash-border);
 }
 
-/* Modals & Toast */
+/* Modals & Toast - Professional Branded Scanner Experience */
 .scanner-modal {
   position: fixed;
   inset: 0;
-  background: rgba(42, 29, 21, 0.92);
-  backdrop-filter: blur(6px);
-  z-index: 200;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 9999;
   display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+.scanner-modal.active { display: flex; animation: fadeIn 0.25s ease; }
+
+.scanner-dialog-box {
+  background: #FFFFFF;
+  border-radius: 24px;
+  width: 100%;
+  max-width: 380px;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.scanner-top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  background: #FFFFFF;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.scanner-resto-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.scanner-resto-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #FEE2E2;
+}
+
+.scanner-resto-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.scanner-resto-name {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+.scanner-badge-status {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #16A34A;
+}
+
+.scanner-btn-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #F1F5F9;
+  border: none;
+  font-size: 1.1rem;
+  color: #64748B;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scanner-btn-close:hover {
+  background: #E2E8F0;
+  color: #0F172A;
+}
+
+/* Scanner Active Wrapper & Video */
+.scanner-active-wrapper {
+  padding: 1rem 1.25rem 0.5rem 1.25rem;
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  padding: 2rem 1.5rem;
 }
-.scanner-modal.active { display: flex; }
 
-.scanner-target {
-  width: 230px;
-  height: 230px;
-  border: 2px solid var(--gold-accent);
-  border-radius: 24px;
+.scanner-viewfinder-container {
   position: relative;
-  margin-top: 3rem;
+  width: 100%;
+  max-width: 300px;
+  height: 300px;
+  border-radius: 20px;
+  overflow: hidden;
+  background: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8);
+}
+
+.scanner-video-feed {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.scanner-video-feed video {
+  object-fit: cover !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Reticle with Corner Accents and Laser Scan Line */
+.scanner-reticle {
+  position: absolute;
+  width: 210px;
+  height: 210px;
+  pointer-events: none;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.45);
+  border-radius: 16px;
+}
+
+.reticle-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-color: #DC2626;
+  border-style: solid;
+}
+
+.reticle-corner.top-left {
+  top: -2px;
+  left: -2px;
+  border-width: 3.5px 0 0 3.5px;
+  border-top-left-radius: 12px;
+}
+
+.reticle-corner.top-right {
+  top: -2px;
+  right: -2px;
+  border-width: 3.5px 3.5px 0 0;
+  border-top-right-radius: 12px;
+}
+
+.reticle-corner.bottom-left {
+  bottom: -2px;
+  left: -2px;
+  border-width: 0 0 3.5px 3.5px;
+  border-bottom-left-radius: 12px;
+}
+
+.reticle-corner.bottom-right {
+  bottom: -2px;
+  right: -2px;
+  border-width: 0 3.5px 3.5px 0;
+  border-bottom-right-radius: 12px;
+}
+
+.scanner-laser-line {
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  height: 2.5px;
+  background: linear-gradient(90deg, transparent, #DC2626, #EF4444, transparent);
+  box-shadow: 0 0 10px #DC2626;
+  animation: laserScan 2s infinite ease-in-out;
+}
+
+@keyframes laserScan {
+  0% { top: 10%; opacity: 0.2; }
+  50% { top: 90%; opacity: 1; }
+  100% { top: 10%; opacity: 0.2; }
+}
+
+.scanner-caption-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: #64748B;
+  font-weight: 700;
+  margin-top: 0.85rem;
+  text-align: center;
+}
+
+/* State Cards (Permission, Validating, Success, Error) */
+.scanner-state-card {
+  padding: 2rem 1.5rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.scanner-state-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.scanner-spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid #FEE2E2;
+  border-top-color: #DC2626;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.scanner-success-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: #DCFCE7;
+  color: #16A34A;
+  font-size: 1.8rem;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 15px rgba(22, 163, 74, 0.2);
+}
+
+.scanner-pts-pill {
+  display: inline-block;
+  background: #DCFCE7;
+  color: #15803D;
+  font-size: 1.1rem;
+  font-weight: 900;
+  padding: 0.35rem 1.1rem;
+  border-radius: 999px;
+  margin: 0.4rem 0 0.65rem 0;
+}
+
+.scanner-error-badge {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: #FEE2E2;
+  color: #DC2626;
+  font-size: 1.6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.scanner-bottom-actions {
+  padding: 0.85rem 1.25rem 1.25rem 1.25rem;
+  background: #FAFAFA;
+  border-top: 1px solid #F1F5F9;
+  text-align: center;
+}
+
+.scanner-btn-simulate {
+  background: none;
+  border: 1px dashed #CBD5E1;
+  border-radius: 10px;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #64748B;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.scanner-btn-simulate:hover {
+  background: #F1F5F9;
+  color: #0F172A;
 }
 
 .nexa-modal-backdrop {

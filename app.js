@@ -658,158 +658,333 @@ function initNexaApp() {
   }
 
   /* ==========================================================================
-     4. ABSOLUTE 2-HOUR ANTI-CHEAT SCANNER ENGINE
+     4. PROFESSIONAL MULTI-TENANT BRANDED CAMERA SCANNER ENGINE
      ========================================================================== */
   const scannerModal = document.getElementById('scanner-modal');
   const btnTriggerScan = document.getElementById('btn-trigger-scan');
   const btnCloseScanner = document.getElementById('btn-close-scanner');
-  const btnSimulateScanOk = document.getElementById('btn-simulate-scan-ok');
   let html5QrCode = null;
+  let isScanProcessing = false;
 
-  async function triggerQRScanSuccess(qrContent = `Table #${tableParam}`) {
-    if (!state.clientSession.whatsapp) {
-      openClientAuthModal();
-      return;
-    }
+  // Sync Branding on Scanner Modal Elements
+  function updateScannerBranding() {
+    const titleEl = document.getElementById('scanner-resto-title');
+    if (titleEl) titleEl.textContent = state.restaurant.name;
 
-    const now = Date.now();
-    const twoHoursMs = 2 * 60 * 60 * 1000;
-    const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
-    const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
+    const permRestoEl = document.getElementById('scanner-perm-resto-name');
+    if (permRestoEl) permRestoEl.textContent = state.restaurant.name;
 
-    let lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
-
-    // FETCH VERIFIED LAST SCAN TIMESTAMP FROM CLOUD SUPABASE POSTGRESQL (FAST 1S TIMEOUT)!
-    if (window.nexaBackend) {
-      try {
-        const checkPromise = window.nexaBackend.checkClientCooldownCloud(state.restaurant.name, state.clientSession.whatsapp);
-        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000));
-        const cloudLastScan = await Promise.race([checkPromise, timeoutPromise]);
-        if (cloudLastScan > 0) {
-          lastScanTime = Math.max(lastScanTime, cloudLastScan);
-        }
-      } catch (err) {
-        // Fast fallback to local anti-cheat
+    const logoEl = document.getElementById('scanner-resto-logo');
+    if (logoEl) {
+      const activeLogo = document.getElementById('mobile-resto-logo');
+      if (activeLogo && activeLogo.src) {
+        logoEl.src = activeLogo.src;
       }
     }
+  }
 
-    // ⛔ ABSOLUTE 2-HOUR ANTI-CHEAT PRE-CHECK BEFORE ADDING ANY POINTS!
-    if (lastScanTime > 0 && (now - lastScanTime < twoHoursMs)) {
-      const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
-      
-      showToast('⚠️ Anti-Triche NEXA', `Prochain scan disponible dans ${remainingMinutes} min.`);
-      
-      const clientWarningBox = document.getElementById('client-login-banner');
-      if (clientWarningBox) {
-        clientWarningBox.style.display = 'block';
-        clientWarningBox.style.background = '#FEE2E2';
-        clientWarningBox.style.borderColor = '#EF4444';
-        clientWarningBox.style.color = '#991B1B';
-        clientWarningBox.innerHTML = `
-          <strong>⚠️ Anti-Triche NEXA : 0 point attribué</strong><br/>
-          Vous avez déjà crédité vos points pour ce repas chez <strong>${escapeHtml(state.restaurant.name)}</strong>.<br/>
-          Prochain scan disponible dans <strong>${remainingMinutes} minutes</strong>.
-        `;
-        setTimeout(() => {
-          if (clientWarningBox && state.clientSession.whatsapp) {
-            clientWarningBox.style.display = 'none';
-          }
-        }, 5000);
-      }
-
-      stopCameraScanner();
-      return; // STOP EXECUTION COMPLETELY! ZERO POINTS GRANTED!
-    }
-
-    // REACHED ONLY IF > 2 HOURS!
-    const localConfiguredPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
-    const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 20);
-
-    state.clientSession.points += scanEarned;
-    localStorage.setItem('nexa_client_points', state.clientSession.points);
-    localStorage.setItem(lastScanStorageKey, now.toString());
-    renderClientUI();
-
-    // Update CRM clients locally on scan (instant 0ms visibility in resto-r5)
-    const scanTargetResto = (hasRestaurantContext && state.restaurant.name !== 'Aucun Restaurant') 
-      ? state.restaurant.name 
-      : (localStorage.getItem('nexa_resto_name') || 'Le Savane');
-    const scanTargetSlug = scanTargetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
-    const scanCompositeKey = `${state.clientSession.whatsapp}_${scanTargetSlug}`;
-    try {
-      let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${scanTargetSlug}`) || localStorage.getItem(`nexa_clients_cache_${scanTargetSlug}`) || '[]');
-      const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === scanCompositeKey || c.phone === state.clientSession.whatsapp);
-      const updatedVisits = existIdx >= 0 ? ((currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) + 1) : 1;
-      const clientEntry = {
-        rawKey: scanCompositeKey,
-        whatsapp_phone: scanCompositeKey,
-        phone: state.clientSession.whatsapp,
-        name: state.clientSession.name || 'Client Nexa',
-        full_name: state.clientSession.name || 'Client Nexa',
-        points: state.clientSession.points,
-        points_balance: state.clientSession.points,
-        visits: updatedVisits,
-        visits_count: updatedVisits,
-        lastVisit: 'À l\'instant',
-        last_scan_at: new Date().toISOString()
-      };
-      if (existIdx >= 0) {
-        currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
-      } else {
-        currentCrmClients.unshift(clientEntry);
-      }
-      localStorage.setItem(`nexa_clients_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
-      localStorage.setItem(`nexa_clients_cache_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
-    } catch (e) {}
-
-    // Record Single scan event on Cloud PostgreSQL
-    if (window.nexaBackend) {
-      try {
-        const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, tableParam, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
-        if (res && res.currentPoints) {
-          state.clientSession.points = res.currentPoints;
-          localStorage.setItem('nexa_client_points', res.currentPoints);
-        }
-      } catch (err) {
-        console.log('Local scan saved:', err);
-      }
-    }
-
-    // Add Scan Entry to History Feed
-    state.clientSession.history.unshift({
-      id: Date.now(),
-      title: `Scan Table #${tableParam} (+${scanEarned} pts)`,
-      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-      date: new Date().toLocaleDateString('fr-FR'),
-      pts: `+${scanEarned}`
+  // Switch between states inside the scanner dialog
+  window.setScannerState = function(stateName) {
+    const states = ['permission', 'active', 'validating', 'success', 'error'];
+    states.forEach(s => {
+      const el = document.getElementById(`scanner-state-${s}`);
+      if (el) el.style.display = (s === stateName) ? (s === 'active' ? 'flex' : 'flex') : 'none';
     });
-    localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
+  };
 
-    stopCameraScanner();
-
-    if (window.confetti) {
-      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 }, colors: ['#F59E0B', '#D97706', '#2A1D15'] });
-    }
-
-    await syncCloudData();
-    renderClientUI();
-    showToast(`✨ +${scanEarned} Points Crédités !`, `Bienvenue chez ${state.restaurant.name} (Table #${tableParam}). Solde: ${state.clientSession.points} pts.`);
-  }
-
-  async function startRealCameraScanner() {
+  // Start Real Camera Scanner (Called when user clicks "Scanner" on Accueil)
+  window.startRealCameraScanner = async function() {
+    // If client is not yet registered/logged in, open quick registration modal first
     if (!state.clientSession.whatsapp) {
       openClientAuthModal();
       return;
     }
-    triggerQRScanSuccess(`Table #${tableParam}`);
+
+    updateScannerBranding();
+    if (scannerModal) scannerModal.classList.add('active');
+    isScanProcessing = false;
+
+    // Check camera permission
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permStatus = await navigator.permissions.query({ name: 'camera' });
+        if (permStatus.state === 'denied') {
+          showScannerError('Autorisation Caméra Refusée', 'L\'accès à l\'appareil photo a été refusé. Veuillez l\'autoriser dans les réglages de votre navigateur pour scanner votre QR Code.');
+          return;
+        }
+      } catch (e) {
+        // Permissions API not universally supported for camera, continue smoothly
+      }
+    }
+
+    initCameraStream();
+  };
+
+  // Initialize Real HTML5 Camera Stream
+  window.initCameraStream = async function() {
+    setScannerState('active');
+    updateScannerBranding();
+
+    if (typeof Html5Qrcode === 'undefined') {
+      console.warn('Html5Qrcode library not loaded, using fallback');
+      return;
+    }
+
+    try {
+      if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("html5-qr-reader");
+      }
+
+      if (html5QrCode.isScanning) {
+        await html5QrCode.stop();
+      }
+
+      const qrConfig = {
+        fps: 15,
+        qrbox: { width: 220, height: 220 },
+        aspectRatio: 1.0
+      };
+
+      await html5QrCode.start(
+        { facingMode: "environment" },
+        qrConfig,
+        (decodedText) => {
+          if (!isScanProcessing) {
+            isScanProcessing = true;
+            handleScannedRawText(decodedText);
+          }
+        },
+        (errorMessage) => {
+          // Continuous scan frame evaluation - no action needed
+        }
+      );
+    } catch (err) {
+      console.error('Camera startup error:', err);
+      // If permission prompt was rejected or not found
+      const errMsg = err.message || err.toString();
+      if (errMsg.includes('Permission') || errMsg.includes('NotAllowedError')) {
+        showScannerError('Accès Caméra Requis', 'Veuillez autoriser l\'accès à l\'appareil photo de votre smartphone pour valider votre QR Code de table.');
+      } else {
+        // Device without camera or insecure context (HTTP instead of HTTPS)
+        setScannerState('permission');
+      }
+    }
+  };
+
+  // Process & Validate Scanned QR Code (Multi-tenant & Anti-cheat strict check)
+  window.handleScannedRawText = async function(qrRawText) {
+    if (!state.clientSession.whatsapp) {
+      stopCameraScanner();
+      openClientAuthModal();
+      return;
+    }
+
+    setScannerState('validating');
+
+    // Slight delay for smooth visual feedback
+    await new Promise(r => setTimeout(r, 450));
+
+    try {
+      // 1. Analyze and extract parameters from QR text
+      let scannedRestoName = '';
+      let scannedTableNum = tableParam || '1';
+
+      if (qrRawText.includes('http://') || qrRawText.includes('https://')) {
+        try {
+          const parsedUrl = new URL(qrRawText);
+          scannedRestoName = parsedUrl.searchParams.get('resto') || '';
+          if (parsedUrl.searchParams.get('table')) {
+            scannedTableNum = parsedUrl.searchParams.get('table');
+          }
+        } catch (urlErr) {
+          // Non-standard URL format
+        }
+      } else if (qrRawText.includes('resto=') || qrRawText.includes('table=')) {
+        const parts = qrRawText.split('&');
+        parts.forEach(p => {
+          if (p.startsWith('resto=')) scannedRestoName = decodeURIComponent(p.replace('resto=', ''));
+          if (p.startsWith('table=')) scannedTableNum = decodeURIComponent(p.replace('table=', ''));
+        });
+      } else if (qrRawText.toLowerCase().includes('table')) {
+        // Simple text like "Table #4" or "Chitir Chicken Table 4"
+        const matchedTable = qrRawText.match(/\d+/);
+        if (matchedTable) scannedTableNum = matchedTable[0];
+        scannedRestoName = state.restaurant.name;
+      }
+
+      // If no resto param found in QR URL or string, it's an unrecognized QR code!
+      if (!scannedRestoName) {
+        showScannerError(
+          'QR Code Invalide',
+          'Ce QR Code n\'est pas un QR Code de table officiel Nexa. Veuillez scanner le QR Code posé sur votre table.'
+        );
+        return;
+      }
+
+      // 2. STRICT MULTI-TENANT VERIFICATION:
+      // The scanned QR restaurant must match the restaurant the client is currently visiting!
+      const currentRestoClean = (state.restaurant.name || '').toLowerCase().trim();
+      const scannedRestoClean = scannedRestoName.toLowerCase().trim();
+
+      if (scannedRestoClean !== currentRestoClean && currentRestoClean !== 'aucun restaurant') {
+        showScannerError(
+          'Établissement Différent',
+          `⚠️ Ce QR Code appartient à <strong>${escapeHtml(scannedRestoName)}</strong>.<br/>Vous êtes actuellement sur l'espace de <strong>${escapeHtml(state.restaurant.name)}</strong>.<br/><br/>Les points de fidélité ne peuvent être crédités que pour l'établissement visité.`
+        );
+        return;
+      }
+
+      // 3. STRICT 2-HOUR ANTI-CHEAT CHECK
+      const now = Date.now();
+      const twoHoursMs = 2 * 60 * 60 * 1000;
+      const phoneClean = state.clientSession.whatsapp.replace(/[^0-9]/g, '');
+      const lastScanStorageKey = `nexa_last_scan_${slug}_${phoneClean}`;
+      let lastScanTime = parseInt(localStorage.getItem(lastScanStorageKey) || '0', 10);
+
+      // Check verified last scan on Supabase Cloud
+      if (window.nexaBackend) {
+        try {
+          const checkPromise = window.nexaBackend.checkClientCooldownCloud(state.restaurant.name, state.clientSession.whatsapp);
+          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 1000));
+          const cloudLastScan = await Promise.race([checkPromise, timeoutPromise]);
+          if (cloudLastScan > 0) {
+            lastScanTime = Math.max(lastScanTime, cloudLastScan);
+          }
+        } catch (err) {
+          // Local fallback
+        }
+      }
+
+      if (lastScanTime > 0 && (now - lastScanTime < twoHoursMs)) {
+        const remainingMinutes = Math.ceil((twoHoursMs - (now - lastScanTime)) / 60000);
+        showScannerError(
+          'Visite Déjà Enregistrée',
+          `Vous avez déjà crédité vos points pour ce repas chez <strong>${escapeHtml(state.restaurant.name)}</strong>.<br/><br/>⏳ Prochain scan autorisé dans <strong>${remainingMinutes} minutes</strong>.`
+        );
+        return;
+      }
+
+      // 4. CREDIT POINTS ACCORDING TO RESTAURANT RULES
+      const localConfiguredPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
+      const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 20);
+
+      state.clientSession.points += scanEarned;
+      localStorage.setItem('nexa_client_points', state.clientSession.points);
+      localStorage.setItem(lastScanStorageKey, now.toString());
+
+      // Update CRM client storage locally (0ms)
+      const scanTargetSlug = slug;
+      const scanCompositeKey = `${state.clientSession.whatsapp}_${scanTargetSlug}`;
+      try {
+        let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${scanTargetSlug}`) || localStorage.getItem(`nexa_clients_cache_${scanTargetSlug}`) || '[]');
+        const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === scanCompositeKey || c.phone === state.clientSession.whatsapp);
+        const updatedVisits = existIdx >= 0 ? ((currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) + 1) : 1;
+        const clientEntry = {
+          rawKey: scanCompositeKey,
+          whatsapp_phone: scanCompositeKey,
+          phone: state.clientSession.whatsapp,
+          name: state.clientSession.name || 'Client Nexa',
+          full_name: state.clientSession.name || 'Client Nexa',
+          points: state.clientSession.points,
+          points_balance: state.clientSession.points,
+          visits: updatedVisits,
+          visits_count: updatedVisits,
+          lastVisit: 'À l\'instant',
+          last_scan_at: new Date().toISOString()
+        };
+        if (existIdx >= 0) {
+          currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
+        } else {
+          currentCrmClients.unshift(clientEntry);
+        }
+        localStorage.setItem(`nexa_clients_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
+        localStorage.setItem(`nexa_clients_cache_${scanTargetSlug}`, JSON.stringify(currentCrmClients));
+      } catch (e) {}
+
+      // Record Scan on Supabase PostgreSQL Cloud
+      if (window.nexaBackend) {
+        try {
+          const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, scannedTableNum, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
+          if (res && res.currentPoints) {
+            state.clientSession.points = res.currentPoints;
+            localStorage.setItem('nexa_client_points', res.currentPoints);
+          }
+        } catch (cloudErr) {
+          console.warn('Cloud sync offline fallback:', cloudErr);
+        }
+      }
+
+      // Add to Client History
+      state.clientSession.history.unshift({
+        id: Date.now(),
+        title: `Visite Table #${scannedTableNum} (+${scanEarned} pts)`,
+        time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
+        date: new Date().toLocaleDateString('fr-FR'),
+        pts: `+${scanEarned}`
+      });
+      localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
+
+      // 5. DISPLAY ELEGANT SUCCESS STATE
+      const ptsGainedEl = document.getElementById('scanner-success-pts-gained');
+      if (ptsGainedEl) ptsGainedEl.textContent = `+${scanEarned} points`;
+
+      const balanceEl = document.getElementById('scanner-success-balance');
+      if (balanceEl) balanceEl.textContent = `Votre solde : ${state.clientSession.points} points`;
+
+      const restoInfoEl = document.getElementById('scanner-success-resto-info');
+      if (restoInfoEl) {
+        restoInfoEl.innerHTML = `Visite confirmée chez <strong>${escapeHtml(state.restaurant.name)}</strong> (Table #${scannedTableNum}).`;
+      }
+
+      setScannerState('success');
+
+      // Confetti celebration
+      if (window.confetti) {
+        confetti({ particleCount: 70, spread: 80, origin: { y: 0.6 }, colors: ['#16A34A', '#F59E0B', '#DC2626'] });
+      }
+
+      // Vibrate mobile phone if supported
+      if (navigator.vibrate) {
+        navigator.vibrate([100, 50, 100]);
+      }
+
+      // Immediately update points on Accueil screen
+      renderClientUI();
+      syncCloudData();
+
+    } catch (unexpectedErr) {
+      console.error('Scan processing error:', unexpectedErr);
+      showScannerError('Erreur de Traitement', 'Une anomalie est survenue lors de la lecture du QR code. Veuillez réessayer.');
+    }
+  };
+
+  // Helper to display errors inside scanner
+  function showScannerError(title, message) {
+    const errTitle = document.getElementById('scanner-error-title');
+    const errMsg = document.getElementById('scanner-error-msg');
+    if (errTitle) errTitle.innerHTML = title;
+    if (errMsg) errMsg.innerHTML = message;
+    setScannerState('error');
+
+    if (navigator.vibrate) {
+      navigator.vibrate([200]);
+    }
   }
 
-  function stopCameraScanner() {
+  // Resume scanning after error
+  window.resumeScanningFromError = function() {
+    isScanProcessing = false;
+    initCameraStream();
+  };
+
+  // Stop camera and close scanner modal
+  window.stopCameraScanner = function() {
     if (html5QrCode && html5QrCode.isScanning) {
       html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
     }
-    scannerModal.classList.remove('active');
-  }
+    if (scannerModal) scannerModal.classList.remove('active');
+    isScanProcessing = false;
+  };
 
   if (btnTriggerScan) btnTriggerScan.addEventListener('click', startRealCameraScanner);
   if (btnCloseScanner) btnCloseScanner.addEventListener('click', stopCameraScanner);
