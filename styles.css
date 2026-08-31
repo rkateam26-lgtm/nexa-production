@@ -335,8 +335,8 @@ input, select, textarea {
 .nav-tab i { font-size: 1.15rem; }
 .nav-tab.active { color: var(--primary-gold); font-weight: 800; }
 
-.client-screen { display: none; }
-.client-screen.active { display: block; animation: fadeIn 0.2s ease; }
+.client-screen { display: none !important; }
+.client-screen.active { display: block !important; animation: fadeIn 0.2s ease; }
 
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }

@@ -10,7 +10,7 @@
   <meta name="theme-color" content="#FAF8F5">
 
   <!-- CSS Stylesheet (Versioned for Instant Mobile Cache Refresh) -->
-  <link rel="stylesheet" href="styles.css?v=20260831_05">
+  <link rel="stylesheet" href="styles.css?v=20260831_06">
   
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -113,37 +113,6 @@
 
         <div class="phone-content">
 
-          <!-- Minimalist Reference Header (Restaurant Avatar with Green Online Dot + Brand + Notification Bell) -->
-          <div class="mockup-header-bar">
-            <div class="mockup-header-brand">
-              <div class="mockup-avatar-wrap">
-                <img id="mobile-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="mockup-header-avatar">
-                <span class="mockup-online-dot"></span>
-              </div>
-              <div class="mockup-header-text">
-                <div class="mockup-resto-title" id="mobile-resto-name">Chez X</div>
-                <div class="mockup-resto-sub" id="mobile-resto-type">Restaurant & Lounge</div>
-              </div>
-            </div>
-            
-            <div class="mockup-header-actions">
-              <button class="mockup-header-bell-btn" onclick="switchMobileTab('notifs')" title="Notifications">
-                <i data-lucide="bell" style="width: 20px; height: 20px; color: #111827;"></i>
-                <span class="mockup-bell-badge">2</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- CLIENT REGISTRATION BANNER (Visible if customer not logged in yet) -->
-          <div id="client-login-banner" style="background: linear-gradient(135deg, rgba(220,38,38,0.08), rgba(185,28,28,0.04)); border: 1.5px solid #FCA5A5; margin: 0.75rem 1rem 0 1rem; padding: 0.85rem; border-radius: 16px; text-align: center;">
-            <h3 style="font-size: 0.88rem; font-weight: 800; color: #991B1B; margin: 0 0 0.2rem 0;">📲 Inscription / Connexion Client</h3>
-            <p style="font-size: 0.75rem; color: #6B7280; margin: 0 0 0.6rem 0;">Entrez votre WhatsApp pour débloquer votre solde et cumuler vos points.</p>
-            <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; font-size: 0.82rem; font-weight: 800; background: #DC2626; color: #FFFFFF; padding: 0.6rem;">
-              <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
-              <span>Créer mon Compte Client (10 Sec)</span>
-            </button>
-          </div>
-
           <!-- CAS B: NO RESTAURANT SCANNED SCREEN (Visible when opening without QR code) -->
           <div id="screen-no-resto" style="display: none; padding: 2rem 1.25rem; text-align: center; background: white; border-radius: 16px; margin: 1rem; border: 1.5px dashed var(--dash-border);">
             <div style="font-size: 3rem; margin-bottom: 0.75rem;">📷</div>
@@ -168,6 +137,37 @@
 
           <!-- SCREEN 1: CLIENT ACCUEIL (EXACT REPRODUCTION OF USER MOCKUP) -->
           <div class="client-screen active" id="screen-home">
+            
+            <!-- Minimalist Reference Header for Accueil (Restaurant Avatar + Brand + Notification Bell) -->
+            <div class="mockup-header-bar">
+              <div class="mockup-header-brand">
+                <div class="mockup-avatar-wrap">
+                  <img id="mobile-resto-logo" src="./assets/savane_dish.jpg" alt="Logo" class="mockup-header-avatar">
+                  <span class="mockup-online-dot"></span>
+                </div>
+                <div class="mockup-header-text">
+                  <div class="mockup-resto-title" id="mobile-resto-name">Chez X</div>
+                  <div class="mockup-resto-sub" id="mobile-resto-type">Restaurant & Lounge</div>
+                </div>
+              </div>
+              
+              <div class="mockup-header-actions">
+                <button class="mockup-header-bell-btn" onclick="switchMobileTab('notifs')" title="Notifications">
+                  <i data-lucide="bell" style="width: 20px; height: 20px; color: #111827;"></i>
+                  <span class="mockup-bell-badge">2</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- CLIENT REGISTRATION BANNER (Visible if customer not logged in yet) -->
+            <div id="client-login-banner" style="background: linear-gradient(135deg, rgba(220,38,38,0.08), rgba(185,28,28,0.04)); border: 1.5px solid #FCA5A5; margin: 0.5rem 1rem 0.75rem 1rem; padding: 0.85rem; border-radius: 16px; text-align: center;">
+              <h3 style="font-size: 0.88rem; font-weight: 800; color: #991B1B; margin: 0 0 0.2rem 0;">📲 Inscription / Connexion Client</h3>
+              <p style="font-size: 0.75rem; color: #6B7280; margin: 0 0 0.6rem 0;">Entrez votre WhatsApp pour débloquer votre solde et cumuler vos points.</p>
+              <button class="btn-primary" onclick="openClientAuthModal()" style="width: 100%; justify-content: center; font-size: 0.82rem; font-weight: 800; background: #DC2626; color: #FFFFFF; padding: 0.6rem;">
+                <i data-lucide="user-plus" style="width: 14px; height: 14px;"></i>
+                <span>Créer mon Compte Client (10 Sec)</span>
+              </button>
+            </div>
             
             <div class="mockup-home-body">
               
@@ -1374,10 +1374,10 @@
   </div>
 
   <!-- Supabase Live Script -->
-  <script src="supabase.js?v=20260831_05"></script>
+  <script src="supabase.js?v=20260831_06"></script>
 
   <!-- Main JavaScript File (Versioned for Instant Mobile Cache Refresh) -->
-  <script src="app.js?v=20260831_05"></script>
+  <script src="app.js?v=20260831_06"></script>
 
 </body>
 </html>
