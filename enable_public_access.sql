@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS public.rewards (
   pts INTEGER DEFAULT 20,
   points_required INTEGER DEFAULT 20,
   icon TEXT DEFAULT '🎁',
+  image TEXT,
   category TEXT DEFAULT 'Général',
   active BOOLEAN DEFAULT true,
   use_count INTEGER DEFAULT 0,
@@ -61,6 +62,7 @@ ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS pts INTEGER DEFAULT 20;
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS points_required INTEGER DEFAULT 20;
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS icon TEXT DEFAULT '🎁';
+ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'Général';
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
 ALTER TABLE public.rewards ADD COLUMN IF NOT EXISTS use_count INTEGER DEFAULT 0;
@@ -74,6 +76,7 @@ CREATE TABLE IF NOT EXISTS public.offers (
   restaurant_name TEXT,
   title TEXT NOT NULL,
   description TEXT,
+  image TEXT,
   start_date DATE NOT NULL,
   end_date DATE NOT NULL,
   active BOOLEAN DEFAULT true,
@@ -83,6 +86,7 @@ ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS resto_id TEXT;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS restaurant_name TEXT;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS image TEXT;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS start_date DATE;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS end_date DATE;
 ALTER TABLE public.offers ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;

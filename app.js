@@ -22,6 +22,48 @@ function initNexaApp() {
     return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  // SMART REWARD CATEGORY IMAGE FALLBACK HELPER
+  function getSmartRewardFallbackImage(icon = '🎁', title = '', category = '') {
+    const combined = `${icon || ''} ${title || ''} ${category || ''}`.toLowerCase();
+    if (combined.includes('☕') || combined.includes('café') || combined.includes('cafe') || combined.includes('espresso') || combined.includes('cappuccino') || combined.includes('latte') || combined.includes('thé') || combined.includes('the') || combined.includes('petit déjeuner') || combined.includes('petit-dejeuner')) {
+      return './assets/coffee_cup.jpg';
+    }
+    if (combined.includes('🥤') || combined.includes('boisson') || combined.includes('jus') || combined.includes('soda') || combined.includes('cocktail') || combined.includes('smoothie') || combined.includes('eau') || combined.includes('fanta') || combined.includes('coca') || combined.includes('sprite')) {
+      return './assets/cold_drink.jpg';
+    }
+    if (combined.includes('🍕') || combined.includes('pizza')) {
+      return './assets/pizza_toubel.jpg';
+    }
+    if (combined.includes('🍔') || combined.includes('burger') || combined.includes('sandwich') || combined.includes('grillade') || combined.includes('steak') || combined.includes('viande') || combined.includes('chawarma') || combined.includes('shawarma')) {
+      return './assets/burger_favori.jpg';
+    }
+    if (combined.includes('🍰') || combined.includes('dessert') || combined.includes('gâteau') || combined.includes('gateau') || combined.includes('glace') || combined.includes('pâtisserie') || combined.includes('patisserie') || combined.includes('crêpe') || combined.includes('crepe') || combined.includes('chocolat')) {
+      return './assets/sweet_dessert.jpg';
+    }
+    if (combined.includes('🍗') || combined.includes('poulet') || combined.includes('chicken') || combined.includes('ailes') || combined.includes('wings') || combined.includes('nuggets')) {
+      return './assets/chicken_combo.jpg';
+    }
+    return './assets/gift_box_3d.jpg';
+  }
+
+  function resolveRewardImage(reward) {
+    if (!reward) return './assets/gift_box_3d.jpg';
+    const rawImg = (reward.image && typeof reward.image === 'string' && reward.image.trim()) ? reward.image.trim() : '';
+    const title = (reward.title || '').toLowerCase();
+    const isChicken = reward.icon === '🍗' || title.includes('poulet') || title.includes('chicken');
+    
+    // If rawImg points to chicken_combo but the reward is clearly NOT chicken (e.g. coffee, drink, dessert), fix it!
+    if (rawImg.includes('chicken_combo') && !isChicken) {
+      return getSmartRewardFallbackImage(reward.icon, reward.title, reward.category);
+    }
+    
+    if (rawImg && (rawImg.startsWith('data:image') || rawImg.startsWith('http') || rawImg.startsWith('./assets/') || rawImg.startsWith('/assets/'))) {
+      return rawImg;
+    }
+    
+    return getSmartRewardFallbackImage(reward.icon, reward.title, reward.category);
+  }
+
   // CAS A vs CAS B logic
   let currentRestoName = '';
   if (urlRestoName) {
@@ -63,7 +105,18 @@ function initNexaApp() {
       points: parseInt(localStorage.getItem('nexa_client_points') || '0', 10),
       history: JSON.parse(localStorage.getItem('nexa_client_history') || '[]')
     },
-    rewards: JSON.parse(localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`) || '[]'),
+    rewards: (function() {
+      try {
+        const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed.map(r => ({
+          ...r,
+          image: resolveRewardImage(r)
+        }));
+      } catch(e) { return []; }
+    })(),
     offers: JSON.parse(localStorage.getItem(`nexa_offers_cache_${slug}`) || localStorage.getItem(`nexa_offers_${slug}`) || '[]'),
     notifications: JSON.parse(localStorage.getItem('nexa_client_notifs') || '[]'),
     validatedProofs: JSON.parse(localStorage.getItem(`nexa_validated_proofs_${slug}`) || '[]'),
@@ -91,6 +144,37 @@ function initNexaApp() {
   async function syncCloudData() {
     if (window.nexaBackend) {
       try {
+        const activeRestoQuery = state.restaurant.name;
+
+        // 0. FIRST RESOLVE RESTAURANT PROFILE, LOGO & CUSTOM POINTS (CLIENT & MERCHANT)
+        try {
+          let cloudResto = null;
+          if (window.nexaBackend.getRestaurantByName) {
+            cloudResto = await window.nexaBackend.getRestaurantByName(activeRestoQuery);
+          }
+          if (!cloudResto && window.nexaBackend.getRestaurantByPublicId) {
+            cloudResto = await window.nexaBackend.getRestaurantByPublicId(urlRestoName || activeRestoQuery);
+          }
+          if (cloudResto && cloudResto.name) {
+            state.restaurant.name = cloudResto.name;
+            state.restaurant.id = window.nexaBackend.getSlug(cloudResto.name);
+            if (cloudResto.type) state.restaurant.type = cloudResto.type;
+            if (cloudResto.logo) state.restaurant.logo = cloudResto.logo;
+            const currentSlug = state.restaurant.id;
+            const localPts = localStorage.getItem(`nexa_pts_${currentSlug}`) || localStorage.getItem('nexa_pts_active');
+            if (localPts) {
+              state.restaurant.pointsPerScan = parseInt(localPts, 10);
+            } else if (cloudResto.pointsPerScan) {
+              state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
+            }
+            if (cloudResto.currency) state.restaurant.currency = cloudResto.currency;
+          }
+        } catch (restoFetchErr) {
+          console.warn('[RESTO PROFILE FETCH WARN]', restoFetchErr);
+        }
+
+        const currentSlug = state.restaurant.id || (window.nexaBackend ? window.nexaBackend.getSlug(state.restaurant.name) : slug);
+
         // 1. ALWAYS FETCH REWARDS CATALOGUE FOR CLIENT & MERCHANT (LOCAL-FIRST & CLOUD)!
         let cloudRewards = [];
         if (window.nexaBackend && window.nexaBackend.getRestaurantRewards) {
@@ -105,10 +189,11 @@ function initNexaApp() {
             pts: r.pts || r.points_required || 50,
             desc: r.desc || r.description || 'Valable sur présentation en caisse.',
             icon: r.icon || '🎁',
-            image: r.image || ''
+            image: resolveRewardImage(r),
+            category: r.category || 'Général'
           }));
-          localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(state.rewards));
-          localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(state.rewards));
+          localStorage.setItem(`nexa_rewards_${currentSlug}`, JSON.stringify(state.rewards));
+          localStorage.setItem(`nexa_rewards_cache_${currentSlug}`, JSON.stringify(state.rewards));
         }
 
         // 1b. ALWAYS FETCH ACTIVE COMMERCIAL OFFERS (ÉTAPE R9) FOR CLIENT!
@@ -116,9 +201,9 @@ function initNexaApp() {
           if (window.nexaBackend && window.nexaBackend.getRestaurantOffers) {
             const cloudOffers = await window.nexaBackend.getRestaurantOffers(state.restaurant.name);
             if (cloudOffers && Array.isArray(cloudOffers)) {
-              state.offers = cloudOffers.filter(o => o.active !== false && (o.computedStatus === 'ACTIVE' || !o.computedStatus));
-              localStorage.setItem(`nexa_offers_cache_${slug}`, JSON.stringify(state.offers));
-              localStorage.setItem(`nexa_offers_${slug}`, JSON.stringify(state.offers));
+              state.offers = cloudOffers.filter(o => o.active !== false && o.computedStatus !== 'DISABLED' && o.computedStatus !== 'EXPIRED');
+              localStorage.setItem(`nexa_offers_cache_${currentSlug}`, JSON.stringify(state.offers));
+              localStorage.setItem(`nexa_offers_${currentSlug}`, JSON.stringify(state.offers));
             }
           }
         } catch (offErr) {
@@ -134,39 +219,10 @@ function initNexaApp() {
           }
         }
 
-        // 3. FETCH RESTAURANT PROFILE, LOGO & CUSTOM POINTS PER SCAN FOR ALL USERS (CLIENT & MERCHANT)
-        try {
-          // Direct logo check from local settings cache for instantaneous display
-          const cachedLogo = localStorage.getItem(`nexa_resto_logo_${slug}`);
-          if (cachedLogo) {
-            state.restaurant.logo = cachedLogo;
-          }
-
-          if (window.nexaBackend && window.nexaBackend.getRestaurantByName) {
-            const cloudResto = await window.nexaBackend.getRestaurantByName(state.restaurant.name);
-            if (cloudResto) {
-              if (cloudResto.type) state.restaurant.type = cloudResto.type;
-              if (cloudResto.logo) state.restaurant.logo = cloudResto.logo;
-              const localPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
-              if (localPts) {
-                state.restaurant.pointsPerScan = parseInt(localPts, 10);
-              } else if (cloudResto.pointsPerScan) {
-                state.restaurant.pointsPerScan = cloudResto.pointsPerScan;
-              }
-              if (cloudResto.currency) state.restaurant.currency = cloudResto.currency;
-            }
-          }
-
-          // Fetch full settings if logo not yet resolved
-          if (!state.restaurant.logo && window.nexaBackend && window.nexaBackend.getRestaurantSettings) {
-            const settings = await window.nexaBackend.getRestaurantSettings(state.restaurant.name);
-            if (settings && settings.logo) {
-              state.restaurant.logo = settings.logo;
-              localStorage.setItem(`nexa_resto_logo_${slug}`, settings.logo);
-            }
-          }
-        } catch (restoFetchErr) {
-          console.warn('[RESTO PROFILE FETCH WARN]', restoFetchErr);
+        // 3. Direct logo check from local settings cache for instantaneous display
+        const cachedLogo = localStorage.getItem(`nexa_resto_logo_${currentSlug}`);
+        if (cachedLogo) {
+          state.restaurant.logo = cachedLogo;
         }
 
         // 4. FETCH MERCHANT DASHBOARD DATA ONLY IF MERCHANT LOGGED IN
@@ -566,7 +622,7 @@ function initNexaApp() {
   window.closeClientAuthModal = () => modalClientAuth && modalClientAuth.classList.remove('active');
 
   // DEMO RESTAURANT SWITCHER FOR TESTING
-  window.loadDemoRestaurant = function(demoName = 'Chitir Chicken') {
+  window.loadDemoRestaurant = function(demoName = 'Le Savane') {
     const encoded = encodeURIComponent(demoName);
     window.location.href = window.location.pathname + `?role=client&resto=${encoded}&table=4`;
   };
@@ -1063,7 +1119,7 @@ function initNexaApp() {
   };
 
   // MOCKUP REDESIGN: REWARD DETAIL MODAL CONTROLLERS
-  window.openRewardDetailModal = function(title, desc, pts, image, rewardId) {
+  window.openRewardDetailModal = function(title, desc, pts, image, rewardId, icon) {
     const modal = document.getElementById('modal-reward-detail');
     if (!modal) return;
 
@@ -1073,7 +1129,13 @@ function initNexaApp() {
     const descEl = document.getElementById('detail-reward-desc');
     const ctaBtn = document.getElementById('detail-reward-cta-btn');
 
-    if (imgEl) imgEl.src = image || './assets/chicken_combo.jpg';
+    const fallbackImg = getSmartRewardFallbackImage(icon, title);
+    const finalImg = resolveRewardImage({ image, title, icon });
+
+    if (imgEl) {
+      imgEl.onerror = function() { this.onerror = null; this.src = fallbackImg; };
+      imgEl.src = finalImg;
+    }
     if (titleEl) titleEl.textContent = title;
     if (ptsEl) ptsEl.textContent = `${pts} pts`;
     if (descEl) descEl.textContent = desc;
@@ -1183,7 +1245,7 @@ function initNexaApp() {
 
     // Default restaurant name when client is logged in without explicit URL param
     if (isClientAuthenticated && state.restaurant.name === 'Aucun Restaurant') {
-      state.restaurant.name = localStorage.getItem('nexa_resto_name') || 'Chitir Chicken';
+      state.restaurant.name = localStorage.getItem('nexa_resto_name') || 'Le Savane';
       state.restaurant.id = state.restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
     }
 
@@ -1384,37 +1446,7 @@ function initNexaApp() {
     } else {
       if (featOfferTitle) featOfferTitle.textContent = 'Nouvelle offre de -20% sur votre prochain repas';
       if (featOfferDesc) featOfferDesc.textContent = 'Validez au comptoir pour profiter de votre remise immédiate.';
-      if (featOfferImg) featOfferImg.src = './assets/chicken_combo.jpg';
-    }
-
-    // Ensure sample rewards exist for the restaurant if empty
-    if (!state.rewards || state.rewards.length === 0) {
-      state.rewards = [
-        {
-          id: 'rw_chicken_combo',
-          title: 'Frite Combo Chicken',
-          desc: '8 morceaux épicés et une frite croustillante',
-          pts: 50,
-          icon: '🍗',
-          image: './assets/chicken_combo.jpg'
-        },
-        {
-          id: 'rw_pizza_toubel',
-          title: 'Pizza de l\'école Toubel',
-          desc: 'Grande pizza fromage fondu et épices douces',
-          pts: 80,
-          icon: '🍕',
-          image: './assets/pizza_toubel.jpg'
-        },
-        {
-          id: 'rw_burger_braise',
-          title: 'Burger Braisé Gourmet',
-          desc: 'Steak façon grillade, sauce secrète du chef',
-          pts: 40,
-          icon: '🍔',
-          image: './assets/burger_favori.jpg'
-        }
-      ];
+      if (featOfferImg) featOfferImg.src = './assets/savane_dish.jpg';
     }
 
     // Sync Points on Rewards Tab Hero Card
@@ -1424,36 +1456,85 @@ function initNexaApp() {
     // MOCKUP REDESIGN: RENDER REWARDS AVAILABLE IN EXACT MOCKUP FORMAT (TAB 2)
     const fullRewardsContainer = document.getElementById('full-rewards-catalogue-list');
     if (fullRewardsContainer) {
-      fullRewardsContainer.innerHTML = state.rewards.map(reward => {
-        const canClaim = state.clientSession.points >= reward.pts;
-        const ptsNeeded = reward.pts - state.clientSession.points;
-        const titleEscaped = reward.title.replace(/'/g, "\\'");
-        const imgSrc = reward.image || './assets/chicken_combo.jpg';
-
-        return `
-          <div class="mockup-reward-item-row">
-            <div class="mockup-reward-item-left">
-              <img src="${imgSrc}" alt="${escapeHtml(reward.title)}" class="mockup-reward-thumb">
-              <div class="mockup-reward-item-info">
-                <div class="mockup-reward-item-name">${escapeHtml(reward.title)}</div>
-                <div class="mockup-reward-item-pts">${reward.pts} points</div>
-              </div>
-            </div>
-            <div class="mockup-reward-item-action">
-              ${canClaim ? `
-                <button class="mockup-btn-claim" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
-                  Réclamer
-                </button>
-              ` : `
-                <div class="mockup-lock-box">
-                  <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
-                </div>
-                <div class="mockup-lock-pts-needed">${ptsNeeded} points nécessaires</div>
-              `}
-            </div>
+      if (!state.rewards || state.rewards.length === 0) {
+        fullRewardsContainer.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem; background: #FFFFFF; border-radius: 16px; border: 1.5px dashed var(--dash-border); margin-top: 1rem;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🎁</div>
+            <div style="font-weight: 800; font-size: 1rem; color: var(--marron-dark); margin-bottom: 0.3rem;">Aucune récompense pour l'instant</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Le restaurant publiera ses privilèges de fidélité très prochainement !</p>
           </div>
         `;
-      }).join('');
+      } else {
+        fullRewardsContainer.innerHTML = state.rewards.map(reward => {
+          const canClaim = state.clientSession.points >= reward.pts;
+          const ptsNeeded = reward.pts - state.clientSession.points;
+          const titleEscaped = (reward.title || '').replace(/'/g, "\\'");
+          const descEscaped = (reward.desc || reward.description || 'Valable sur présentation en caisse.').replace(/'/g, "\\'");
+          const iconEscaped = (reward.icon || '🎁').replace(/'/g, "\\'");
+          const fallbackImg = getSmartRewardFallbackImage(reward.icon, reward.title, reward.category);
+          const imgSrc = (reward.image && reward.image.trim()) ? reward.image : fallbackImg;
+          const imgSafe = imgSrc.replace(/'/g, "\\'");
+
+          return `
+            <div class="mockup-reward-item-row" onclick="openRewardDetailModal('${titleEscaped}', '${descEscaped}', ${reward.pts}, '${imgSafe}', '${reward.id}', '${iconEscaped}')" style="cursor: pointer;">
+              <div class="mockup-reward-item-left">
+                <img src="${imgSrc}" alt="${escapeHtml(reward.title)}" class="mockup-reward-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';">
+                <div class="mockup-reward-item-info">
+                  <div class="mockup-reward-item-name">${escapeHtml(reward.title)}</div>
+                  <div class="mockup-reward-item-pts">${reward.pts} points</div>
+                </div>
+              </div>
+              <div class="mockup-reward-item-action" onclick="event.stopPropagation();">
+                ${canClaim ? `
+                  <button class="mockup-btn-claim" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
+                    Réclamer
+                  </button>
+                ` : `
+                  <div class="mockup-lock-box" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;" title="Nécessite ${reward.pts} pts">
+                    <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+                  </div>
+                  <div class="mockup-lock-pts-needed">${ptsNeeded} points nécessaires</div>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Render Active Commercial Offers on ACCUEIL (Screen Home)
+    const homeOffersSection = document.getElementById('home-active-offers-section');
+    const homeOffersFeed = document.getElementById('home-active-offers-feed');
+    if (homeOffersSection && homeOffersFeed) {
+      if (state.offers && state.offers.length > 0) {
+        homeOffersSection.style.display = 'block';
+        homeOffersFeed.innerHTML = state.offers.map(o => {
+          const offerDesc = o.desc || o.description || 'Offre spéciale valable en restaurant.';
+          const offerStart = o.startDate || o.start_date || 'Aujourd\'hui';
+          const offerEnd = o.endDate || o.end_date || 'Bientôt';
+          const offerImg = o.image ? `
+            <div style="width: 100%; height: 120px; border-radius: 12px; overflow: hidden; margin-bottom: 0.6rem; background: #F8FAFC;">
+              <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none';">
+            </div>
+          ` : '';
+
+          return `
+            <div style="background: #FFFFFF; border: 1.5px solid #FEE2E2; border-radius: 14px; padding: 1rem; margin-bottom: 0.75rem; box-shadow: 0 2px 8px rgba(220,38,38,0.04);">
+              ${offerImg}
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.35rem;">
+                <strong style="font-size: 0.95rem; font-weight: 800; color: #111827;">🏷️ ${escapeHtml(o.title)}</strong>
+                <span style="background: #DC2626; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">PROMO</span>
+              </div>
+              <p style="font-size: 0.8rem; color: #4B5563; line-height: 1.4; margin: 0 0 0.5rem 0;">${escapeHtml(offerDesc)}</p>
+              <div style="font-size: 0.72rem; color: #6B7280; font-weight: 600; display: flex; align-items: center; gap: 0.3rem;">
+                <span>📅 Valable du ${offerStart} au ${offerEnd}</span>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } else {
+        homeOffersSection.style.display = 'none';
+      }
     }
 
     // Render Offers & Notifications Feed in Client App (TAB 3)
@@ -1472,7 +1553,7 @@ function initNexaApp() {
               const offerEnd = o.endDate || o.end_date || 'Bientôt';
               const offerImg = o.image ? `
                 <div style="width: 100%; height: 110px; border-radius: 10px; overflow: hidden; margin-bottom: 0.5rem; background: #F8FAFC;">
-                  <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+                  <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none';">
                 </div>
               ` : '';
               return `
@@ -1714,8 +1795,9 @@ function initNexaApp() {
     }
     if (elCode) elCode.textContent = voucherCode;
 
-    const rewardImg = (voucher && voucher.rewardImage) || reward.image || '';
+    const rewardImg = resolveRewardImage(voucher ? { image: voucher.rewardImage, title: reward.title, icon: reward.icon } : reward);
     if (rewardImg && elImgBox && elImgPreview) {
+      elImgPreview.onerror = function() { this.onerror = null; this.src = getSmartRewardFallbackImage(reward.icon, reward.title); };
       elImgPreview.src = rewardImg;
       elImgBox.style.display = 'block';
     } else if (elImgBox) {

@@ -103,6 +103,34 @@ class NexaProductionBackend {
     return name.toLowerCase().trim().replace(/^nx[_-]/, '').replace(/[^a-z0-9]/g, '-');
   }
 
+  generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  getSmartRewardFallbackImage(icon = '🎁', title = '', category = '') {
+    const combined = `${icon || ''} ${title || ''} ${category || ''}`.toLowerCase();
+    if (combined.includes('☕') || combined.includes('café') || combined.includes('cafe') || combined.includes('espresso') || combined.includes('cappuccino') || combined.includes('latte') || combined.includes('thé') || combined.includes('the')) {
+      return './assets/coffee_cup.jpg';
+    }
+    if (combined.includes('🥤') || combined.includes('boisson') || combined.includes('jus') || combined.includes('soda') || combined.includes('cocktail') || combined.includes('smoothie')) {
+      return './assets/cold_drink.jpg';
+    }
+    if (combined.includes('🍕') || combined.includes('pizza')) {
+      return './assets/pizza_toubel.jpg';
+    }
+    if (combined.includes('🍔') || combined.includes('burger') || combined.includes('sandwich') || combined.includes('grillade') || combined.includes('steak') || combined.includes('viande')) {
+      return './assets/burger_favori.jpg';
+    }
+    if (combined.includes('🍰') || combined.includes('dessert') || combined.includes('gâteau') || combined.includes('gateau') || combined.includes('glace') || combined.includes('pâtisserie') || combined.includes('patisserie')) {
+      return './assets/sweet_dessert.jpg';
+    }
+    return './assets/gift_box_3d.jpg';
+  }
+
   // 1. Register or Login Merchant Profile
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
     const client = this.getClient();
@@ -458,6 +486,7 @@ class NexaProductionBackend {
   async getRestaurantClients(restoName) {
     console.log(`[DIAGNOSTIC R6 CLIENTS] Fetching clients for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
     const client = this.getClient();
 
     // 1. Immediately read locally cached clients
@@ -466,27 +495,68 @@ class NexaProductionBackend {
     // 2. Fast non-blocking sync with Supabase Cloud (6s timeout)
     if (client) {
       try {
-        const queryPromise = client
-          .from('clients')
-          .select('*')
-          .ilike('whatsapp_phone', `%_${slug}`)
-          .order('created_at', { ascending: false });
+        let clientRows = [];
 
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 6000)
-        );
+        // First resolve restaurant UUID if available
+        let restoDbId = null;
+        try {
+          const { data: rData } = await client
+            .from('restaurants')
+            .select('id, name')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+            .limit(1)
+            .maybeSingle();
+          if (rData && rData.id) restoDbId = rData.id;
+        } catch(e) {}
 
-        const { data: clientRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+        // Primary query: check whatsapp_phone suffix or restaurant_id
+        try {
+          const orFilter = restoDbId 
+            ? `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%,restaurant_id.eq.${restoDbId}`
+            : `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%`;
 
-        if (!error && Array.isArray(clientRows) && clientRows.length > 0) {
+          const queryPromise = client
+            .from('clients')
+            .select('*')
+            .or(orFilter)
+            .order('created_at', { ascending: false });
+
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          );
+
+          const { data: rows, error: qErr } = await Promise.race([queryPromise, timeoutPromise]);
+          if (!qErr && Array.isArray(rows) && rows.length > 0) {
+            clientRows = rows;
+          }
+        } catch (queryErr) {
+          console.warn('[CLIENTS PRIMARY QUERY NOTICE]', queryErr.message);
+        }
+
+        // Secondary fallback: select all clients and filter in memory
+        if (clientRows.length === 0) {
+          try {
+            const { data: allRows } = await client.from('clients').select('*');
+            if (Array.isArray(allRows) && allRows.length > 0) {
+              clientRows = allRows.filter(c => {
+                const wp = (c.whatsapp_phone || '').toLowerCase();
+                return wp.endsWith('_' + slug) || wp.includes(slug) || (restoDbId && c.restaurant_id === restoDbId);
+              });
+            }
+          } catch (fErr) {}
+        }
+
+        if (clientRows.length > 0) {
           const mergedMap = new Map();
-          clients.forEach(c => mergedMap.set(c.rawKey || c.whatsapp_phone || c.id, c));
+          clients.forEach(c => mergedMap.set(c.rawKey || c.whatsapp_phone || c.id || c.phone, c));
           clientRows.forEach(row => {
-            mergedMap.set(row.whatsapp_phone || row.id, {
+            const rowKey = row.whatsapp_phone || String(row.id);
+            const cleanPhone = row.whatsapp_phone ? row.whatsapp_phone.split('_')[0] : (row.phone || '');
+            mergedMap.set(rowKey, {
               id: row.id,
               rawKey: row.whatsapp_phone,
               whatsapp_phone: row.whatsapp_phone,
-              phone: row.whatsapp_phone ? row.whatsapp_phone.split('_')[0] : '',
+              phone: cleanPhone,
               full_name: row.full_name || 'Client Nexa',
               name: row.full_name || 'Client Nexa',
               points_balance: row.points_balance || 0,
@@ -783,30 +853,61 @@ class NexaProductionBackend {
     // 2. Fast non-blocking sync with Supabase Cloud (6s timeout)
     if (client) {
       try {
-        const queryPromise = client
-          .from('rewards')
-          .select('*')
-          .or(`description.ilike.%${slug}%,description.ilike.%${cleanSearch}%,description.ilike.%${restoName}%`)
-          .order('created_at', { ascending: false });
+        let rewardRows = [];
 
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 6000)
-        );
+        // Primary query: check resto_id, restaurant_name, description
+        try {
+          const queryPromise = client
+            .from('rewards')
+            .select('*')
+            .or(`resto_id.eq.${slug},resto_id.ilike.%${slug}%,restaurant_name.ilike.%${cleanSearch}%,restaurant_name.ilike.%${restoName}%,description.ilike.%${slug}%,desc.ilike.%${slug}%`)
+            .order('created_at', { ascending: false });
 
-        const { data: rewardRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          );
 
-        if (!error && Array.isArray(rewardRows) && rewardRows.length > 0) {
+          const { data: rows, error: qErr } = await Promise.race([queryPromise, timeoutPromise]);
+          if (!qErr && Array.isArray(rows) && rows.length > 0) {
+            rewardRows = rows;
+          }
+        } catch (queryErr) {
+          console.warn('[REWARDS PRIMARY QUERY NOTICE]', queryErr.message);
+        }
+
+        // Secondary fallback: fetch all rewards and filter in-memory if primary query returned nothing
+        if (rewardRows.length === 0) {
+          try {
+            const { data: allRows } = await client.from('rewards').select('*');
+            if (Array.isArray(allRows) && allRows.length > 0) {
+              rewardRows = allRows.filter(r => {
+                const rSlug = r.resto_id ? this.getSlug(r.resto_id) : '';
+                const rNameSlug = r.restaurant_name ? this.getSlug(r.restaurant_name) : '';
+                const rDesc = (r.description || r.desc || '').toLowerCase();
+                return rSlug === slug || rNameSlug === slug || rDesc === slug || rDesc.includes(slug);
+              });
+            }
+          } catch (fallbackErr) {}
+        }
+
+        if (rewardRows.length > 0) {
           const mergedMap = new Map();
           // Index existing local rewards
-          rewards.forEach(r => mergedMap.set(r.id, r));
+          rewards.forEach(r => mergedMap.set(String(r.id), r));
           // Merge incoming cloud rows, retaining existing image if cloud row doesn't have it
           rewardRows.forEach(row => {
-            const existing = mergedMap.get(row.id);
-            mergedMap.set(row.id, {
+            const rowId = String(row.id);
+            const existing = mergedMap.get(rowId);
+            mergedMap.set(rowId, {
               ...row,
-              image: (existing && existing.image) || row.image || '',
-              category: (existing && existing.category) || row.category || 'Général',
-              active: row.active !== undefined ? row.active : (existing ? existing.active : true)
+              id: rowId,
+              title: row.title,
+              pts: row.points_required || row.pts || (existing && existing.pts) || 20,
+              desc: row.description || row.desc || (existing && existing.desc) || 'Valable sur présentation en caisse.',
+              image: row.image || (existing && existing.image) || '',
+              category: row.category || (existing && existing.category) || 'Général',
+              active: row.active !== undefined ? row.active : (existing ? existing.active : true),
+              useCount: row.redemptions_count || row.use_count || (existing && existing.useCount) || 0
             });
           });
           rewards = Array.from(mergedMap.values());
@@ -820,15 +921,16 @@ class NexaProductionBackend {
     // 3. Format rewards cleanly
     const formattedRewards = rewards.map(r => {
       const isLegacyDescResto = r.description === slug || r.description === restoName;
+      const smartImg = (r.image && r.image.trim()) ? r.image.trim() : this.getSmartRewardFallbackImage(r.icon, r.title, r.category);
       return {
-        id: r.id,
+        id: String(r.id),
         restoId: r.resto_id || slug,
         restoName: r.restaurant_name || restoName,
         title: r.title || 'Récompense',
         desc: (r.desc && r.desc !== slug) ? r.desc : (isLegacyDescResto ? 'Valable sur présentation en caisse.' : (r.description || 'Valable sur présentation en caisse.')),
         pts: r.points_required || r.pts || r.points_cost || 20,
         icon: r.icon || '🎁',
-        image: r.image || '',
+        image: smartImg,
         category: r.category || 'Général',
         active: r.active !== false && r.is_active !== false,
         useCount: r.redemptions_count || r.use_count || 0,
@@ -877,7 +979,9 @@ class NexaProductionBackend {
       throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
     }
 
-    const rewardId = rewardData.id || `rew_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+    const rewardId = rewardData.id || this.generateUUID();
+    const smartImg = (rewardData.image && rewardData.image.trim()) ? rewardData.image.trim() : this.getSmartRewardFallbackImage(rewardData.icon, rewardData.title, rewardData.category);
+
     let list = this.getLocalRewards(slug);
     const existingIdx = list.findIndex(r => r.id === rewardId);
 
@@ -892,7 +996,7 @@ class NexaProductionBackend {
       points_required: ptsVal,
       points_cost: ptsVal,
       icon: rewardData.icon || '🎁',
-      image: rewardData.image || '',
+      image: smartImg,
       category: rewardData.category || 'Général',
       active: rewardData.active !== false,
       is_active: rewardData.active !== false,
@@ -912,23 +1016,40 @@ class NexaProductionBackend {
     // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
     if (client) {
       const dbPayload = {
+        id: rewardId,
         title: rewardData.title.trim(),
-        description: slug,
+        description: (rewardData.desc || '').trim() || slug,
+        desc: (rewardData.desc || '').trim() || slug,
         points_required: ptsVal,
-        icon: rewardData.icon || '🎁'
+        pts: ptsVal,
+        icon: rewardData.icon || '🎁',
+        image: smartImg,
+        category: rewardData.category || 'Général',
+        active: rewardData.active !== false,
+        resto_id: slug,
+        restaurant_name: restoName
       };
 
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rewardId);
-      if (isUUID) {
-        dbPayload.id = rewardId;
-      }
-
       const syncPromise = client.from('rewards').upsert(dbPayload);
-      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000));
+      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500));
       Promise.race([syncPromise, syncTimeout])
         .then(({ error }) => {
-          if (!error) console.log(`[DIAGNOSTIC R8 CLOUD SUCCESS] Synced reward: ${rewardId}`);
-          else console.warn('[DIAGNOSTIC R8 CLOUD NOTICE]:', error.message);
+          if (!error) {
+            console.log(`[DIAGNOSTIC R8 CLOUD SUCCESS] Synced reward with image: ${rewardId}`);
+          } else {
+            console.warn('[DIAGNOSTIC R8 CLOUD NOTICE - RETRYING WITH BASE PAYLOAD]:', error.message);
+            // Fallback retry with base columns
+            client.from('rewards').upsert({
+              id: rewardId,
+              title: rewardData.title.trim(),
+              description: slug,
+              points_required: ptsVal,
+              icon: rewardData.icon || '🎁',
+              image: smartImg,
+              resto_id: slug,
+              restaurant_name: restoName
+            }).catch(() => {});
+          }
         })
         .catch(err => console.warn('[DIAGNOSTIC R8 CLOUD NOTICE]:', err.message));
     }
@@ -998,58 +1119,128 @@ class NexaProductionBackend {
     // 2. Fast non-blocking sync with Supabase Cloud (6s timeout)
     if (client) {
       try {
-        const queryPromise = client
-          .from('restaurants')
-          .select('logo_url, name')
-          .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
+        let cloudOffers = [];
+        
+        // A. Primary query: dedicated offers table
+        try {
+          const queryPromise = client
+            .from('offers')
+            .select('*')
+            .or(`resto_id.eq.${slug},restaurant_name.ilike.%${cleanSearch}%,restaurant_name.ilike.%${slug}%,restaurant_name.ilike.%${restoName}%`)
+            .order('created_at', { ascending: false });
 
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 6000)
-        );
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('timeout')), 5000)
+          );
 
-        const { data: restoRows, error } = await Promise.race([queryPromise, timeoutPromise]);
+          const { data: offersRows, error: offersErr } = await Promise.race([queryPromise, timeoutPromise]);
+          if (!offersErr && Array.isArray(offersRows) && offersRows.length > 0) {
+            cloudOffers = offersRows.map(r => ({
+              id: r.id,
+              restoId: r.resto_id || slug,
+              restoName: r.restaurant_name || restoName,
+              title: r.title,
+              desc: r.description || r.desc || '',
+              image: r.image || '',
+              startDate: r.start_date ? r.start_date.split('T')[0] : '',
+              endDate: r.end_date ? r.end_date.split('T')[0] : '',
+              active: r.active !== false,
+              createdAt: r.created_at || new Date().toISOString()
+            }));
+          }
+        } catch (tblErr) {
+          console.warn('[OFFERS TABLE FETCH NOTICE]', tblErr.message);
+        }
 
-        if (!error && restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
+        // Secondary fallback: check all rows in offers table if primary query returned empty
+        if (cloudOffers.length === 0) {
           try {
-            const raw = JSON.parse(restoRows[0].logo_url);
-            const cloudOffers = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-            if (cloudOffers.length > 0) {
-              const mergedMap = new Map();
-              offers.forEach(o => mergedMap.set(o.id, o));
-              cloudOffers.forEach(r => mergedMap.set(r.id, r));
-              offers = Array.from(mergedMap.values());
-              this.saveLocalOffers(slug, offers);
+            const { data: allOffers } = await client.from('offers').select('*');
+            if (Array.isArray(allOffers) && allOffers.length > 0) {
+              cloudOffers = allOffers
+                .filter(o => {
+                  const rSlug = o.resto_id ? this.getSlug(o.resto_id) : '';
+                  const rNameSlug = o.restaurant_name ? this.getSlug(o.restaurant_name) : '';
+                  return rSlug === slug || rNameSlug === slug || (o.restaurant_name && o.restaurant_name.toLowerCase().includes(cleanSearch.toLowerCase()));
+                })
+                .map(r => ({
+                  id: r.id,
+                  restoId: r.resto_id || slug,
+                  restoName: r.restaurant_name || restoName,
+                  title: r.title,
+                  desc: r.description || r.desc || '',
+                  image: r.image || '',
+                  startDate: r.start_date ? r.start_date.split('T')[0] : '',
+                  endDate: r.end_date ? r.end_date.split('T')[0] : '',
+                  active: r.active !== false,
+                  createdAt: r.created_at || new Date().toISOString()
+                }));
+            }
+          } catch (fErr) {}
+        }
+
+        // B. Secondary fallback: check restaurants.logo_url JSON if offers table was empty
+        if (cloudOffers.length === 0) {
+          try {
+            const queryResto = client
+              .from('restaurants')
+              .select('logo_url, name')
+              .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`);
+
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('timeout')), 3000)
+            );
+
+            const { data: restoRows, error: restoErr } = await Promise.race([queryResto, timeoutPromise]);
+            if (!restoErr && restoRows && restoRows.length > 0 && restoRows[0].logo_url) {
+              const raw = JSON.parse(restoRows[0].logo_url);
+              if (Array.isArray(raw) && raw.length > 0) {
+                cloudOffers = raw;
+              }
             }
           } catch (jsonErr) {}
+        }
+
+        if (cloudOffers.length > 0) {
+          const mergedMap = new Map();
+          offers.forEach(o => mergedMap.set(String(o.id), o));
+          cloudOffers.forEach(r => {
+            const rId = String(r.id);
+            const existing = mergedMap.get(rId);
+            mergedMap.set(rId, {
+              ...r,
+              id: rId,
+              image: (existing && existing.image) || r.image || '',
+              active: r.active !== undefined ? r.active : (existing ? existing.active : true)
+            });
+          });
+          offers = Array.from(mergedMap.values());
+          this.saveLocalOffers(slug, offers);
         }
       } catch (cloudErr) {
         console.warn('[DIAGNOSTIC R9 OFFERS NOTICE] Serving from fast local cache:', cloudErr.message);
       }
     }
 
-    // 3. Compute dynamic time-aware status for each offer
-    const now = new Date();
+    // 3. Compute dynamic time-aware status for each offer (Timezone-safe string comparison)
+    const todayStr = new Date().toISOString().split('T')[0];
     const formattedOffers = offers.map(o => {
-      const startDateStr = o.startDate || (o.start_date ? o.start_date.split('T')[0] : new Date().toISOString().split('T')[0]);
+      const startDateStr = o.startDate || (o.start_date ? o.start_date.split('T')[0] : todayStr);
       const endDateStr = o.endDate || (o.end_date ? o.end_date.split('T')[0] : new Date(Date.now() + 30*86400000).toISOString().split('T')[0]);
-
-      const start = new Date(startDateStr);
-      const end = new Date(endDateStr);
-      end.setHours(23, 59, 59, 999);
 
       let computedStatus = o.computedStatus || 'ACTIVE';
       if (o.active === false || o.is_active === false) {
         computedStatus = 'DISABLED';
-      } else if (now > end) {
+      } else if (endDateStr && todayStr > endDateStr) {
         computedStatus = 'EXPIRED';
-      } else if (now < start) {
+      } else if (startDateStr && todayStr < startDateStr) {
         computedStatus = 'SCHEDULED';
       } else {
         computedStatus = 'ACTIVE';
       }
 
       return {
-        id: o.id,
+        id: String(o.id),
         restoId: o.restoId || o.resto_id || slug,
         restoName: o.restoName || o.restaurant_name || restoName,
         title: o.title || 'Offre Spéciale',
@@ -1218,16 +1409,20 @@ class NexaProductionBackend {
         if (data) {
           let parsedType = '★ 4.9 • Bistro & Grillades';
           let parsedScanPts = 20;
+          let parsedLogo = '';
 
           try {
             if (data.city && data.city.startsWith('{')) {
               const meta = JSON.parse(data.city);
               parsedType = meta.type || parsedType;
               parsedScanPts = parseInt(meta.scanPts || '20', 10);
+              parsedLogo = meta.logo || '';
             } else if (data.city) {
               parsedType = data.city;
             }
           } catch (e) {}
+
+          const cachedLogo = localStorage.getItem(`nexa_resto_logo_${slug}`) || '';
 
           return {
             id: data.id,
@@ -1236,7 +1431,8 @@ class NexaProductionBackend {
             type: parsedType,
             pointsPerScan: parsedScanPts,
             whatsappContact: data.whatsapp_contact || '',
-            currency: data.currency || 'FCFA'
+            currency: data.currency || 'FCFA',
+            logo: parsedLogo || cachedLogo || ''
           };
         }
       } catch (err) {
@@ -1308,15 +1504,19 @@ class NexaProductionBackend {
           if (matched) {
             let parsedType = '★ 4.9 • Bistro & Grillades';
             let parsedScanPts = 20;
+            let parsedLogo = '';
             try {
               if (matched.city && matched.city.startsWith('{')) {
                 const meta = JSON.parse(matched.city);
                 parsedType = meta.type || parsedType;
                 parsedScanPts = parseInt(meta.scanPts || '20', 10);
+                parsedLogo = meta.logo || '';
               } else if (matched.city) {
                 parsedType = matched.city;
               }
             } catch (e) {}
+
+            const cachedLogo = localStorage.getItem(`nexa_resto_logo_${this.getSlug(matched.name)}`) || '';
 
             return {
               id: matched.id,
@@ -1325,7 +1525,8 @@ class NexaProductionBackend {
               type: parsedType,
               pointsPerScan: parsedScanPts,
               whatsappContact: matched.whatsapp_contact || '',
-              currency: matched.currency || 'FCFA'
+              currency: matched.currency || 'FCFA',
+              logo: parsedLogo || cachedLogo || ''
             };
           }
         }
@@ -1342,13 +1543,15 @@ class NexaProductionBackend {
         if (parsed && parsed.restoName) {
           const sessionSlug = this.getSlug(parsed.restoName);
           if (sessionSlug === cleanSlug) {
+            const cachedLogo = localStorage.getItem(`nexa_resto_logo_${sessionSlug}`) || '';
             return {
               id: parsed.authUserId || sessionSlug,
               publicId: `nx_${sessionSlug}`,
               name: parsed.restoName,
               type: '★ 4.9 • Bistro & Grillades',
               pointsPerScan: 20,
-              currency: 'FCFA'
+              currency: 'FCFA',
+              logo: cachedLogo || ''
             };
           }
         }
@@ -1375,6 +1578,8 @@ class NexaProductionBackend {
             description: r.desc,
             desc: r.desc,
             icon: r.icon || '🎁',
+            image: r.image || '',
+            category: r.category || 'Général',
             active: r.active !== false
           }));
       }
@@ -1432,13 +1637,41 @@ class NexaProductionBackend {
     if (client && restoName) {
       try {
         const slug = this.getSlug(restoName);
-        const { data: slugClients } = await client
+        const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+        
+        let restoDbId = null;
+        try {
+          const { data: rData } = await client
+            .from('restaurants')
+            .select('id, name')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+            .limit(1)
+            .maybeSingle();
+          if (rData && rData.id) restoDbId = rData.id;
+        } catch(e) {}
+
+        const orFilter = restoDbId 
+          ? `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%,restaurant_id.eq.${restoDbId}`
+          : `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%`;
+
+        const { data: slugClients, error: qErr } = await client
           .from('clients')
           .select('*')
-          .ilike('whatsapp_phone', `%_${slug}`)
+          .or(orFilter)
           .order('last_scan_at', { ascending: false });
 
-        return slugClients || []; // ABSOLUTE STRICT MULTI-TENANT ISOLATION: RETURN ONLY SLUG CLIENTS!
+        if (!qErr && Array.isArray(slugClients) && slugClients.length > 0) {
+          return slugClients;
+        }
+
+        // Fallback filter in memory
+        const { data: allRows } = await client.from('clients').select('*');
+        if (Array.isArray(allRows) && allRows.length > 0) {
+          return allRows.filter(c => {
+            const wp = (c.whatsapp_phone || '').toLowerCase();
+            return wp.endsWith('_' + slug) || wp.includes(slug) || (restoDbId && c.restaurant_id === restoDbId);
+          });
+        }
       } catch (err) {
         console.error('Fetch Clients Exception:', err);
       }
@@ -1452,11 +1685,28 @@ class NexaProductionBackend {
     if (client && restoName) {
       try {
         const slug = this.getSlug(restoName);
+        const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+
+        let restoDbId = null;
+        try {
+          const { data: rData } = await client
+            .from('restaurants')
+            .select('id, name')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+            .limit(1)
+            .maybeSingle();
+          if (rData && rData.id) restoDbId = rData.id;
+        } catch(e) {}
+
+        const orFilter = restoDbId 
+          ? `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%,restaurant_id.eq.${restoDbId}`
+          : `whatsapp_phone.ilike.%_${slug},whatsapp_phone.ilike.%${slug}%`;
+
         // Query scans matching this restaurant's specific clients
         const { data: clientRows } = await client
           .from('clients')
           .select('visits_count, points_balance')
-          .ilike('whatsapp_phone', `%_${slug}`);
+          .or(orFilter);
 
         if (clientRows && clientRows.length > 0) {
           const totalScans = clientRows.reduce((sum, c) => sum + (c.visits_count || 1), 0);
@@ -1477,6 +1727,7 @@ class NexaProductionBackend {
     
     const slug = this.getSlug(restoName || 'savane');
     const compositeKey = `${whatsappPhone}_${slug}`;
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
 
     // 1. Immediately cache in Local CRM storage (0ms guaranteed)
     try {
@@ -1507,6 +1758,7 @@ class NexaProductionBackend {
         localClients.unshift(clientObj);
       }
       this.saveLocalClients(slug, localClients);
+      localStorage.setItem(`nexa_clients_${slug}`, JSON.stringify(localClients));
     } catch (e) {
       console.warn('[STORAGE WARN] registerClientIdentity local cache:', e);
     }
@@ -1518,6 +1770,18 @@ class NexaProductionBackend {
     }
 
     try {
+      // Resolve restaurant DB id
+      let restoDbId = null;
+      try {
+        const { data: rData } = await client
+          .from('restaurants')
+          .select('id, name')
+          .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+          .limit(1)
+          .maybeSingle();
+        if (rData && rData.id) restoDbId = rData.id;
+      } catch(e) {}
+
       // Check existing client in Supabase first - NEVER blindly overwrite points to 0!
       const { data: existingClient } = await client
         .from('clients')
@@ -1530,13 +1794,16 @@ class NexaProductionBackend {
         const updatedPoints = Math.max(existingClient.points_balance || 0, initialPoints || 0);
         const updatedVisits = Math.max(existingClient.visits_count || 0, updatedPoints > 0 ? 1 : 0);
         
+        const updatePayload = {
+          full_name: clientName && clientName !== 'Client Nexa' ? clientName : existingClient.full_name,
+          points_balance: updatedPoints,
+          visits_count: updatedVisits
+        };
+        if (restoDbId) updatePayload.restaurant_id = restoDbId;
+
         await client
           .from('clients')
-          .update({
-            full_name: clientName && clientName !== 'Client Nexa' ? clientName : existingClient.full_name,
-            points_balance: updatedPoints,
-            visits_count: updatedVisits
-          })
+          .update(updatePayload)
           .eq('id', existingClient.id);
 
         return { ...existingClient, full_name: clientName, points_balance: updatedPoints, visits_count: updatedVisits };
@@ -1549,6 +1816,7 @@ class NexaProductionBackend {
           visits_count: (initialPoints > 0 ? 1 : 0),
           last_scan_at: initialPoints > 0 ? new Date().toISOString() : null
         };
+        if (restoDbId) newPayload.restaurant_id = restoDbId;
 
         const { data: createdRow } = await client
           .from('clients')
@@ -1686,6 +1954,21 @@ class NexaProductionBackend {
     const client = this.getClient();
     if (client) {
       try {
+        // Resolve restaurant_id foreign key from restaurants table upfront
+        let restoDbId = null;
+        try {
+          const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+          const { data: restoMatch } = await client
+            .from('restaurants')
+            .select('id')
+            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
+            .limit(1)
+            .maybeSingle();
+          if (restoMatch && restoMatch.id) {
+            restoDbId = restoMatch.id;
+          }
+        } catch(restoErr) {}
+
         // Step A: Check existing client by composite key
         const { data: existingClient } = await client
           .from('clients')
@@ -1701,26 +1984,32 @@ class NexaProductionBackend {
 
         // Step B: Robust Insert or Update in Supabase clients table
         if (existingClient) {
+          const updateClientPayload = {
+            full_name: displayName,
+            points_balance: cloudPoints,
+            visits_count: cloudVisits,
+            last_scan_at: new Date().toISOString()
+          };
+          if (restoDbId) updateClientPayload.restaurant_id = restoDbId;
+
           await client
             .from('clients')
-            .update({
+            .update(updateClientPayload)
+            .eq('whatsapp_phone', compositeKey);
+        } else {
+          try {
+            const insertClientPayload = {
+              whatsapp_phone: compositeKey,
               full_name: displayName,
               points_balance: cloudPoints,
               visits_count: cloudVisits,
               last_scan_at: new Date().toISOString()
-            })
-            .eq('whatsapp_phone', compositeKey);
-        } else {
-          try {
+            };
+            if (restoDbId) insertClientPayload.restaurant_id = restoDbId;
+
             const { data: newClient } = await client
               .from('clients')
-              .insert({
-                whatsapp_phone: compositeKey,
-                full_name: displayName,
-                points_balance: cloudPoints,
-                visits_count: cloudVisits,
-                last_scan_at: new Date().toISOString()
-              })
+              .insert(insertClientPayload)
               .select()
               .single();
             if (newClient) clientId = newClient.id;
@@ -1733,24 +2022,7 @@ class NexaProductionBackend {
           points_earned: pointsEarned
         };
         if (clientId) scanPayload.client_id = clientId;
-
-        // Resolve restaurant_id foreign key from restaurants table
-        try {
-          const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
-          const { data: restoMatch } = await client
-            .from('restaurants')
-            .select('id')
-            .or(`name.ilike.%${cleanSearch}%,name.ilike.%${slug}%,name.ilike.%${restoName}%`)
-            .limit(1)
-            .maybeSingle();
-
-          if (restoMatch && restoMatch.id) {
-            scanPayload.restaurant_id = restoMatch.id;
-            if (clientId) {
-              await client.from('clients').update({ restaurant_id: restoMatch.id }).eq('id', clientId);
-            }
-          }
-        } catch(restoErr) {}
+        if (restoDbId) scanPayload.restaurant_id = restoDbId;
 
         await client.from('scans').insert(scanPayload);
 

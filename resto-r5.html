@@ -2997,6 +2997,13 @@
           const iconEl = document.getElementById('res-redeem-icon');
 
           if (v.rewardImage && imgBox && imgEl) {
+            imgEl.onerror = function() {
+              imgBox.style.display = 'none';
+              if (iconEl) {
+                iconEl.textContent = v.rewardIcon || '🎁';
+                iconEl.style.display = 'block';
+              }
+            };
             imgEl.src = v.rewardImage;
             imgBox.style.display = 'block';
             if (iconEl) iconEl.style.display = 'none';
@@ -4002,11 +4009,14 @@
 
         const usageText = r.useCount > 0 ? `🔥 ${r.useCount} utilisation(s)` : `0 utilisation`;
 
-        const imgHeader = r.image ? `
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const fallbackImg = backend.getSmartRewardFallbackImage ? backend.getSmartRewardFallbackImage(r.icon, r.title, r.category) : './assets/gift_box_3d.jpg';
+        const displayImg = (r.image && r.image.trim()) ? r.image : fallbackImg;
+        const imgHeader = `
           <div style="width: 100%; height: 140px; border-radius: 12px; overflow: hidden; margin-bottom: 0.85rem; background: #F8FAFC;">
-            <img src="${r.image}" alt="${escapeHtml(r.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="${displayImg}" alt="${escapeHtml(r.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null; this.src='${fallbackImg}';">
           </div>
-        ` : '';
+        `;
 
         return `
           <div style="background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02); position: relative;">
@@ -4379,7 +4389,7 @@
 
         const imgBanner = o.image ? `
           <div style="width: 100%; height: 130px; border-radius: 12px; overflow: hidden; margin-bottom: 0.85rem; background: #F8FAFC;">
-            <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;">
+            <img src="${o.image}" alt="${escapeHtml(o.title)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none';">
           </div>
         ` : '';
 
@@ -4828,6 +4838,13 @@
       if (!previewContainer) return;
 
       const restoName = (activeB2BSession && activeB2BSession.restoName) ? activeB2BSession.restoName : 'Votre Restaurant';
+      const thisSlug = activeB2BSession ? (activeB2BSession.restoSlug || (window.nexaBackend ? window.nexaBackend.getSlug(activeB2BSession.restoName || '') : 'savane')) : 'savane';
+      const restoLogo = r13CurrentLogoData || localStorage.getItem(`nexa_resto_logo_${thisSlug}`) || '';
+      const logoPreviewHtml = restoLogo ? `
+        <div style="width: 52px; height: 52px; border-radius: 50%; overflow: hidden; margin: 0 auto 0.6rem auto; border: 2px solid #E2E8F0; background: #FFFFFF;">
+          <img src="${restoLogo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none';">
+        </div>
+      ` : '';
 
       // Generate clean QR code tag using robust multi-engine
       const qrImgTag = generateQRImageHtml(r10CurrentPublicUrl, 5, 3);
@@ -4837,6 +4854,7 @@
         templateHtml = `
           <div style="background: #FFFFFF; border: 2px solid #CBD5E1; border-radius: 16px; padding: 1.5rem; max-width: 280px; margin: 0 auto; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div style="font-size: 0.72rem; font-weight: 800; color: var(--nexa-red); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;">Chevalet de Table (10×15 cm)</div>
+            ${logoPreviewHtml}
             <h3 style="font-size: 1.15rem; font-weight: 800; color: #0F172A; margin: 0 0 0.75rem 0;">${escapeHtml(restoName)}</h3>
             <div style="background: white; display: inline-block; padding: 0.5rem; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 0.75rem;">
               ${qrImgTag}
@@ -4849,6 +4867,7 @@
         templateHtml = `
           <div style="background: #FFFFFF; border: 2px solid #CBD5E1; border-radius: 16px; padding: 1.75rem; max-width: 360px; margin: 0 auto; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div style="font-size: 0.72rem; font-weight: 800; color: var(--nexa-red); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem;">Présentoir Comptoir / Caisse (A5)</div>
+            ${logoPreviewHtml}
             <h3 style="font-size: 1.3rem; font-weight: 800; color: #0F172A; margin: 0 0 0.4rem 0;">${escapeHtml(restoName)}</h3>
             <p style="font-size: 0.82rem; color: #475569; margin: 0 0 0.85rem 0;">Validez vos points lors de votre commande ou règlement</p>
             <div style="background: white; display: inline-block; padding: 0.6rem; border-radius: 12px; border: 1px solid #E2E8F0; margin-bottom: 0.85rem;">
@@ -4861,6 +4880,7 @@
         templateHtml = `
           <div style="background: #FFFFFF; border: 2px solid #CBD5E1; border-radius: 16px; padding: 2rem; max-width: 420px; margin: 0 auto; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.04);">
             <div style="font-size: 0.75rem; font-weight: 800; color: var(--nexa-red); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.35rem;">Affiche Murale / Vitrine (A4)</div>
+            ${logoPreviewHtml}
             <h2 style="font-size: 1.5rem; font-weight: 900; color: #0F172A; margin: 0 0 0.5rem 0;">Bienvenue chez ${escapeHtml(restoName)}</h2>
             <p style="font-size: 0.88rem; color: #475569; margin: 0 0 1rem 0;">Rejoignez notre programme de fidélité instantanément</p>
             <div style="background: white; display: inline-block; padding: 0.85rem; border-radius: 16px; border: 2px solid #E2E8F0; margin-bottom: 1rem;">
@@ -4880,6 +4900,13 @@
       if (!sheet) return;
 
       const restoName = (activeB2BSession && activeB2BSession.restoName) ? activeB2BSession.restoName : 'Votre Restaurant';
+      const thisSlug = activeB2BSession ? (activeB2BSession.restoSlug || (window.nexaBackend ? window.nexaBackend.getSlug(activeB2BSession.restoName || '') : 'savane')) : 'savane';
+      const restoLogo = r13CurrentLogoData || localStorage.getItem(`nexa_resto_logo_${thisSlug}`) || '';
+      const logoPrintHtml = restoLogo ? `
+        <div style="width: 2cm; height: 2cm; border-radius: 50%; overflow: hidden; margin: 0 auto 0.4cm auto; border: 2px solid #000; background: #FFF;">
+          <img src="${restoLogo}" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.parentElement.style.display='none';">
+        </div>
+      ` : '';
 
       // High-resolution QR code tag for printing
       const qrImgTag = generateQRImageHtml(r10CurrentPublicUrl, 8, 4);
@@ -4889,6 +4916,7 @@
         printHtml = `
           <div class="print-sheet-card" style="max-width: 12cm; margin: 0 auto; text-align: center; border: 3px solid #000; border-radius: 20px; padding: 2cm 1.5cm;">
             <div style="font-size: 14pt; font-weight: 900; color: #000; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.4cm;">NEXA LOYALTY</div>
+            ${logoPrintHtml}
             <h1 style="font-size: 24pt; font-weight: 900; color: #000; margin: 0 0 0.8cm 0;">${escapeHtml(restoName)}</h1>
             <div style="margin-bottom: 0.8cm; display: inline-block;">
               ${qrImgTag}
@@ -4908,6 +4936,7 @@
         printHtml = `
           <div class="print-sheet-card" style="max-width: 15cm; margin: 0 auto; text-align: center; border: 3px solid #000; border-radius: 20px; padding: 2.5cm 1.8cm;">
             <div style="font-size: 14pt; font-weight: 900; color: #000; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 0.4cm;">ESPACE COMPTOIR & CAISSE</div>
+            ${logoPrintHtml}
             <h1 style="font-size: 26pt; font-weight: 900; color: #000; margin: 0 0 0.5cm 0;">${escapeHtml(restoName)}</h1>
             <p style="font-size: 13pt; color: #333; margin: 0 0 1cm 0;">Validez votre passage et cumulez vos points en caisse</p>
             <div style="margin-bottom: 1cm; display: inline-block;">
@@ -4924,6 +4953,7 @@
         printHtml = `
           <div class="print-sheet-card" style="max-width: 18cm; margin: 0 auto; text-align: center; border: 4px solid #000; border-radius: 24px; padding: 3cm 2cm;">
             <div style="font-size: 18pt; font-weight: 900; color: #000; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.5cm;">PROGRAMME PRIVILÈGE</div>
+            ${logoPrintHtml}
             <h1 style="font-size: 32pt; font-weight: 900; color: #000; margin: 0 0 0.6cm 0;">${escapeHtml(restoName)}</h1>
             <p style="font-size: 15pt; color: #333; margin: 0 0 1.2cm 0;">Rejoignez notre communauté de fidélité et profitez d'avantages exclusifs</p>
             <div style="margin-bottom: 1.2cm; display: inline-block;">
@@ -5637,6 +5667,14 @@
       const monoEl = document.getElementById('r13-logo-monogram');
       if (logoUrl) {
         if (imgEl) {
+          imgEl.onerror = function() {
+            imgEl.style.display = 'none';
+            if (monoEl) {
+              const initials = (restoName || 'NX').trim().slice(0, 2).toUpperCase();
+              monoEl.textContent = initials;
+              monoEl.style.display = 'block';
+            }
+          };
           imgEl.src = logoUrl;
           imgEl.style.display = 'block';
         }
