@@ -131,6 +131,44 @@ class NexaProductionBackend {
     return './assets/gift_box_3d.jpg';
   }
 
+  formatVoucherInTier(tierName = 'Silver', voucher = null) {
+    const cleanTier = this.getCleanTierName(tierName);
+    if (!voucher) return cleanTier;
+    return `${cleanTier}#VCH:${JSON.stringify(voucher)}`;
+  }
+
+  parseVoucherFromTier(tierStr) {
+    if (!tierStr || typeof tierStr !== 'string') return null;
+    if (tierStr.includes('#VCH:')) {
+      const raw = tierStr.split('#VCH:')[1];
+      if (!raw) return null;
+      if (raw.startsWith('{')) {
+        try { return JSON.parse(raw); } catch (e) {}
+      }
+      const parts = raw.split(':');
+      if (parts.length >= 3) {
+        return {
+          code: parts[0],
+          pts: parseInt(parts[1], 10) || 0,
+          rewardTitle: parts[2] || 'Récompense',
+          status: parts[3] || 'pending',
+          clientName: parts[4] || 'Client Nexa',
+          clientPhone: parts[5] || ''
+        };
+      }
+    } else if (tierStr.includes('|||')) {
+      try {
+        return JSON.parse(tierStr.split('|||')[1]);
+      } catch (e) {}
+    }
+    return null;
+  }
+
+  getCleanTierName(tierStr) {
+    if (!tierStr || typeof tierStr !== 'string') return 'Silver';
+    return tierStr.split('#')[0].split('|||')[0].trim() || 'Silver';
+  }
+
   // 1. Register or Login Merchant Profile
   async registerOrLoginMerchant(name, type, email, pwd, pointsPerScan = 20, currency = 'FCFA', whatsappOfficial = '') {
     const client = this.getClient();
@@ -1870,10 +1908,14 @@ class NexaProductionBackend {
 
       if (response.data) {
         console.log('[DIAGNOSTIC] Profil trouvé dans Supabase Cloud:', response.data);
+        const tierRaw = response.data.tier || '';
+        const activeVoucher = this.parseVoucherFromTier(tierRaw);
         return {
           points: response.data.points_balance || 0,
           visits: response.data.visits_count || 0,
           name: response.data.full_name || 'Client Nexa',
+          tier: this.getCleanTierName(tierRaw),
+          activeVoucher: activeVoucher,
           lastScanAt: response.data.last_scan_at ? new Date(response.data.last_scan_at).getTime() : 0
         };
       }
@@ -2706,15 +2748,15 @@ class NexaProductionBackend {
       rewardImage: rewardData.image || '',
       pts,
       clientName: rewardData.clientName || 'Client Nexa',
-      clientPhone,
-      restoName,
+      clientPhone: clientPhone || '',
+      restoName: restoName || 'Mon Restaurant',
       restoSlug: slug,
       status: 'pending', // 'pending' -> 'used'
       createdAt: new Date().toISOString(),
       usedAt: null
     };
 
-    // Persist voucher in restaurant storage and pending claims
+    // 1. Instant local storage cache (0ms)
     try {
       let list = [];
       const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
@@ -2733,6 +2775,24 @@ class NexaProductionBackend {
       localStorage.setItem(`nexa_active_client_voucher_${slug}`, JSON.stringify(voucher));
     } catch (e) {}
 
+    // 2. Instant Supabase Cloud Sync across devices!
+    const client = this.getClient();
+    if (client && clientPhone) {
+      try {
+        const compositeKey = `${clientPhone}_${slug}`;
+        const tierPayload = this.formatVoucherInTier('Silver', voucher);
+
+        await client
+          .from('clients')
+          .update({ tier: tierPayload })
+          .or(`whatsapp_phone.eq.${compositeKey},whatsapp_phone.eq.${clientPhone},whatsapp_phone.ilike.%${clientPhone}%`);
+
+        console.log('[CLOUD VOUCHER SYNC] Voucher saved in Supabase client tier:', code);
+      } catch (cloudErr) {
+        console.warn('[CLOUD VOUCHER SYNC WARN]', cloudErr.message);
+      }
+    }
+
     return voucher;
   }
 
@@ -2746,24 +2806,45 @@ class NexaProductionBackend {
     }
 
     // Normalization: allow entering "8429" or "NX-8429" or raw QR JSON/URL
-    if (search.startsWith('NX-') === false && /^[A-Z0-9]{4}$/.test(search)) {
+    if (search.includes('VCH=')) {
+      try {
+        const u = new URL(search);
+        search = u.searchParams.get('vch') || search;
+      } catch (e) {}
+    } else if (search.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(search);
+        search = parsed.code || parsed.voucherId || search;
+      } catch (e) {}
+    }
+
+    search = search.toUpperCase();
+    if (search.startsWith('NX-') === false && /^[A-Z0-9]{4,6}$/.test(search)) {
       search = `NX-${search}`;
     }
 
-    let vouchers = [];
+    let voucher = null;
+    let clientRow = null;
+    let localVouchers = [];
+    let fromLocal = false;
+    let voucherIdx = -1;
+
+    // 1. Check local storage first (instant if same browser)
     try {
       const raw = localStorage.getItem(`nexa_vouchers_${slug}`);
-      if (raw) vouchers = JSON.parse(raw);
+      if (raw) localVouchers = JSON.parse(raw);
     } catch (e) {}
 
-    // Fallback: If not found in current slug, also check pending claims or other resto vouchers
-    let voucherIdx = vouchers.findIndex(v => 
+    voucherIdx = localVouchers.findIndex(v => 
       (v.code && v.code.toUpperCase() === search) || 
       (v.voucherId && v.voucherId.toUpperCase() === search) ||
       (v.id && String(v.id).toUpperCase() === search)
     );
 
-    if (voucherIdx < 0) {
+    if (voucherIdx >= 0) {
+      voucher = localVouchers[voucherIdx];
+      fromLocal = true;
+    } else {
       // Check pending claims
       try {
         const rawClaims = localStorage.getItem(`nexa_pending_claims_${slug}`);
@@ -2774,15 +2855,17 @@ class NexaProductionBackend {
             (c.voucherId && c.voucherId.toUpperCase() === search)
           );
           if (claimIdx >= 0) {
-            vouchers.unshift(claims[claimIdx]);
+            voucher = claims[claimIdx];
+            localVouchers.unshift(voucher);
             voucherIdx = 0;
+            fromLocal = true;
           }
         }
       } catch (e) {}
     }
 
-    // Cross-resto fallback for demo flexibility
-    if (voucherIdx < 0) {
+    // Cross-resto local fallback
+    if (!voucher) {
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (k && k.startsWith('nexa_vouchers_')) {
@@ -2790,8 +2873,10 @@ class NexaProductionBackend {
             const list = JSON.parse(localStorage.getItem(k));
             const foundIdx = list.findIndex(v => (v.code && v.code.toUpperCase() === search));
             if (foundIdx >= 0) {
-              vouchers = list;
+              voucher = list[foundIdx];
+              localVouchers = list;
               voucherIdx = foundIdx;
+              fromLocal = true;
               break;
             }
           } catch (e) {}
@@ -2799,14 +2884,58 @@ class NexaProductionBackend {
       }
     }
 
-    if (voucherIdx < 0) {
+    // 2. Query Supabase Cloud Database (for cross-device smartphone-to-desktop validation!)
+    const client = this.getClient();
+    if (client) {
+      try {
+        // Query clients table where tier contains the voucher code
+        const { data: rows, error: qErr } = await client
+          .from('clients')
+          .select('*')
+          .ilike('tier', `%${search}%`);
+
+        if (!qErr && Array.isArray(rows) && rows.length > 0) {
+          for (const r of rows) {
+            const parsed = this.parseVoucherFromTier(r.tier);
+            if (parsed && (parsed.code === search || String(parsed.code).toUpperCase() === search || parsed.voucherId === search)) {
+              voucher = parsed;
+              clientRow = r;
+              break;
+            }
+          }
+        }
+
+        // Secondary search in all clients of this restaurant
+        if (!voucher) {
+          const { data: allRestoClients } = await client
+            .from('clients')
+            .select('*')
+            .ilike('whatsapp_phone', `%${slug}%`)
+            .order('last_scan_at', { ascending: false })
+            .limit(20);
+
+          if (Array.isArray(allRestoClients)) {
+            for (const r of allRestoClients) {
+              const parsed = this.parseVoucherFromTier(r.tier);
+              if (parsed && (parsed.code === search || String(parsed.code).toUpperCase() === search)) {
+                voucher = parsed;
+                clientRow = r;
+                break;
+              }
+            }
+          }
+        }
+      } catch (cloudErr) {
+        console.warn('[CLOUD VOUCHER SEARCH WARN]', cloudErr);
+      }
+    }
+
+    if (!voucher) {
       return { 
         success: false, 
         error: `Code « ${search} » introuvable ou invalide pour cet établissement.` 
       };
     }
-
-    const voucher = vouchers[voucherIdx];
 
     // Check anti-fraud / already used
     if (voucher.status === 'used') {
@@ -2815,24 +2944,75 @@ class NexaProductionBackend {
         success: false,
         alreadyUsed: true,
         voucher,
-        error: `⚠️ Ce cadeau a DÉJÀ été utilisé le ${dateUsed} pour ${voucher.clientName}.`
+        error: `⚠️ Ce cadeau a DÉJÀ été validé et utilisé le ${dateUsed} pour ${voucher.clientName || 'ce client'}.`
       };
     }
 
-    // POINT DEDUCTION: Now deduct points strictly upon restaurant validation!
+    // POINT DEDUCTION: Verify client points balance and deduct
     const ptsToDeduct = parseInt(voucher.pts || 0, 10);
-    if (ptsToDeduct > 0 && voucher.clientPhone) {
-      await this.deductPointsCloud(restoName || voucher.restoName, voucher.clientPhone, ptsToDeduct);
+    const clientPhone = voucher.clientPhone || (clientRow ? clientRow.whatsapp_phone.split('_')[0] : '');
+
+    let clientPointsCurrent = 0;
+    if (clientRow) {
+      clientPointsCurrent = typeof clientRow.points_balance === 'number' ? clientRow.points_balance : 0;
+    } else if (clientPhone) {
+      const profile = await this.getClientProfile(restoName, clientPhone);
+      if (profile) clientPointsCurrent = profile.points || 0;
+    }
+
+    if (ptsToDeduct > 0 && clientPointsCurrent < ptsToDeduct) {
+      return {
+        success: false,
+        error: `⚠️ Solde insuffisant : ${voucher.clientName || 'Le client'} n'a que ${clientPointsCurrent} points (${ptsToDeduct} pts requis).`
+      };
+    }
+
+    const newPointsBalance = Math.max(0, clientPointsCurrent - ptsToDeduct);
+
+    if (ptsToDeduct > 0 && clientPhone) {
+      await this.deductPointsCloud(restoName || voucher.restoName, clientPhone, ptsToDeduct);
     }
 
     // Mark as Used ✅
     voucher.status = 'used';
     voucher.usedAt = new Date().toISOString();
-    vouchers[voucherIdx] = voucher;
 
+    // Update in Supabase Cloud
+    if (client && (clientRow || clientPhone)) {
+      try {
+        const cleanTier = clientRow ? this.getCleanTierName(clientRow.tier) : 'Silver';
+        const updatedTier = this.formatVoucherInTier(cleanTier, voucher);
+
+        let updateQuery = client.from('clients').update({
+          points_balance: newPointsBalance,
+          tier: updatedTier
+        });
+
+        if (clientRow && clientRow.id) {
+          await updateQuery.eq('id', clientRow.id);
+        } else {
+          const compositeKey = `${clientPhone}_${slug}`;
+          await updateQuery.or(`whatsapp_phone.eq.${compositeKey},whatsapp_phone.eq.${clientPhone}`);
+        }
+        console.log('[CLOUD REDEEM SUCCESS] Client updated with used voucher & deducted points:', newPointsBalance);
+      } catch (cloudUpErr) {
+        console.warn('[CLOUD REDEEM UPDATE WARN]', cloudUpErr);
+      }
+    }
+
+    // Save in local storage caches
     try {
       const targetSlug = voucher.restoSlug || slug;
-      localStorage.setItem(`nexa_vouchers_${targetSlug}`, JSON.stringify(vouchers));
+      if (fromLocal && voucherIdx >= 0) {
+        localVouchers[voucherIdx] = voucher;
+        localStorage.setItem(`nexa_vouchers_${targetSlug}`, JSON.stringify(localVouchers));
+      } else {
+        let list = [];
+        const raw = localStorage.getItem(`nexa_vouchers_${targetSlug}`);
+        if (raw) list = JSON.parse(raw);
+        list.unshift(voucher);
+        localStorage.setItem(`nexa_vouchers_${targetSlug}`, JSON.stringify(list));
+      }
 
       // Record in proofs feed for KPIs and analytics
       let proofs = [];

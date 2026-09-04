@@ -1880,6 +1880,22 @@ function initNexaApp() {
         } catch (e) {}
       }
 
+      // Check Cloud Supabase for live cross-device redemption status!
+      if (!isRedeemed && window.nexaBackend && state.clientSession.whatsapp) {
+        try {
+          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
+          if (profile) {
+            if (typeof profile.points === 'number' && profile.points < state.clientSession.points) {
+              isRedeemed = true;
+              state.clientSession.points = profile.points;
+            }
+            if (profile.activeVoucher && (profile.activeVoucher.code === voucherCode || profile.activeVoucher.voucherId === voucherCode) && profile.activeVoucher.status === 'used') {
+              isRedeemed = true;
+            }
+          }
+        } catch (e) {}
+      }
+
       if (isRedeemed) {
         clearInterval(clientVoucherPollTimer);
         if (elStatus) {
