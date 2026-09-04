@@ -1473,6 +1473,33 @@
         <div class="alert-banner error" id="r8-rewards-error-banner" style="display: none; margin-bottom: 1rem;"></div>
         <div class="alert-banner success" id="r8-rewards-success-banner" style="display: none; margin-bottom: 1rem;"></div>
 
+        <!-- SECTION ÉCHANGES ÉLIGIBLES 1-CLIC -->
+        <div id="r8-eligible-container" style="margin-bottom: 2rem; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 16px; padding: 1.25rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--text-dark); margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                <span>🎁</span> Échanges de Récompenses Éligibles (Validation 1-Clic)
+              </h2>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Clients ayant accumulé suffisamment de points pour obtenir une récompense active. Validez en 1 clic pour déduire les points !
+              </p>
+            </div>
+            <span style="font-size: 0.75rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 4px 10px; border-radius: 12px;" id="r8-eligible-badge-count">
+              0 échange(s) disponible(s)
+            </span>
+          </div>
+
+          <div id="r8-eligible-feed" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
+            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem; background: #FFFFFF; border-radius: 12px; border: 1px dashed #CBD5E1;">
+              ⏳ Analyse des points clients et des récompenses débloquées…
+            </div>
+          </div>
+        </div>
+
+        <h2 style="font-size: 1.1rem; font-weight: 800; color: var(--text-dark); margin-bottom: 1rem;">
+          📋 Catalogue de vos Récompenses
+        </h2>
+
         <!-- FEED DE CARTES DES RÉCOMPENSES -->
         <div id="r8-rewards-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem;">
           <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 3rem; background: #FFFFFF; border-radius: 16px; border: 1px solid var(--border-color);">
@@ -3782,6 +3809,117 @@
     }
 
     // ==========================================================================
+    // REWARDS 1-CLICK REDEMPTION ENGINE
+    // ==========================================================================
+    async function loadR8EligibleRedemptions() {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      const feed = document.getElementById('r8-eligible-feed');
+      const badgeCount = document.getElementById('r8-eligible-badge-count');
+      if (!feed) return;
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        const eligibleItems = await backend.getEligibleRedemptions(activeB2BSession.restoName);
+
+        if (badgeCount) {
+          badgeCount.textContent = `${eligibleItems.length} échange(s) disponible(s)`;
+        }
+
+        if (!eligibleItems || eligibleItems.length === 0) {
+          feed.innerHTML = `
+            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem; background: #FFFFFF; border-radius: 12px; border: 1px dashed #CBD5E1;">
+              <span style="font-size: 1.5rem; display: block; margin-bottom: 0.3rem;">ℹ️</span>
+              <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">Aucun échange en attente</span>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+                Dès qu'un client accumule assez de points pour débloquer une récompense active, son option d'échange 1-clic apparaîtra ici !
+              </p>
+            </div>
+          `;
+          return;
+        }
+
+        feed.innerHTML = eligibleItems.map(item => {
+          const clientName = escapeHtml(item.client.name);
+          const rewardTitleEscaped = escapeHtml(item.reward.title).replace(/'/g, "\\'");
+          const clientPhone = item.client.rawKey;
+
+          return `
+            <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+              <div>
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                  <div>
+                    <strong style="font-size: 0.95rem; color: var(--text-dark); display: block;">👤 ${clientName}</strong>
+                    <span style="font-size: 0.75rem; color: var(--text-muted);">${item.client.phone}</span>
+                  </div>
+                  <span style="font-size: 0.75rem; font-weight: 800; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 10px;">
+                    Solde: ${item.client.points} pts
+                  </span>
+                </div>
+
+                <div style="background: #F1F5F9; padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                  <span style="font-size: 1.4rem;">${item.reward.icon}</span>
+                  <div>
+                    <strong style="font-size: 0.88rem; color: var(--text-dark); display: block;">${escapeHtml(item.reward.title)}</strong>
+                    <span style="font-size: 0.75rem; color: #DC2626; font-weight: 800;">Coût : -${item.reward.pts} PTS</span>
+                  </div>
+                </div>
+              </div>
+
+              <button class="btn-create-account" style="width: 100%; background: #10B981; border-color: #10B981; font-size: 0.8rem; padding: 0.5rem 0.75rem;" onclick="validateRewardRedemptionDirect('${clientPhone}', '${rewardTitleEscaped}', ${item.reward.pts}, this)">
+                <span>✅ Valider l'Échange (-${item.reward.pts} Pts)</span>
+              </button>
+            </div>
+          `;
+        }).join('');
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC LOAD ELIGIBLE ERROR]', err);
+      }
+    }
+
+    async function validateRewardRedemptionDirect(clientPhone, rewardTitle, ptsCost, btnElement = null) {
+      if (!activeB2BSession || !activeB2BSession.restoName) return;
+
+      if (btnElement) {
+        btnElement.disabled = true;
+        btnElement.innerHTML = '<span>Validation & Déduction…</span>';
+      }
+
+      const succBanner = document.getElementById('r8-rewards-success-banner');
+      const errBanner = document.getElementById('r8-rewards-error-banner');
+      if (succBanner) succBanner.style.display = 'none';
+      if (errBanner) errBanner.style.display = 'none';
+
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        await backend.deductPointsCloud(activeB2BSession.restoName, clientPhone, ptsCost, rewardTitle);
+
+        if (succBanner) {
+          succBanner.textContent = `✅ Récompense « ${rewardTitle} » validée avec succès ! ${ptsCost} points déduits du solde du client.`;
+          succBanner.style.display = 'block';
+        }
+
+        // Reload lists
+        loadR8EligibleRedemptions();
+        loadR8Rewards();
+        if (typeof loadR6Clients === 'function') loadR6Clients();
+
+      } catch (err) {
+        console.error('[DIAGNOSTIC VALIDATE REDEMPTION ERROR]', err);
+        if (errBanner) {
+          errBanner.textContent = `Erreur lors de la déduction des points : ${err.message}`;
+          errBanner.style.display = 'block';
+        }
+      } finally {
+        if (btnElement) {
+          btnElement.disabled = false;
+          btnElement.innerHTML = `<span>✅ Valider l'Échange (-${ptsCost} Pts)</span>`;
+        }
+      }
+    }
+
+    // ==========================================================================
     // ÉTAPE R8: REWARDS CATALOGUE ENGINE (CREATE, EDIT, TOGGLE STATUS, RENDER)
     // ==========================================================================
     let rawR8RewardsList = [];
@@ -3938,6 +4076,8 @@
       const restoName = (activeB2BSession && activeB2BSession.restoName)
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
+
+      loadR8EligibleRedemptions();
 
       const grid = document.getElementById('r8-rewards-grid');
       const errBanner = document.getElementById('r8-rewards-error-banner');

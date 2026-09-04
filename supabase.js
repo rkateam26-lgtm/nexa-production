@@ -2099,9 +2099,10 @@ class NexaProductionBackend {
       try {
         const { data: existingClient } = await client
           .from('clients')
-          .select('*')
-          .eq('whatsapp_phone', compositeKey)
-          .maybeSingle();
+          .update({ points_balance: newBalance })
+          .eq('whatsapp_phone', existingClient.whatsapp_phone)
+          .select()
+          .single();
 
         if (existingClient) {
           const newBalance = Math.max(0, (existingClient.points_balance || 0) - pointsDeducted);
@@ -2110,9 +2111,15 @@ class NexaProductionBackend {
             .update({ points_balance: newBalance })
             .eq('whatsapp_phone', compositeKey);
         }
-      } catch (e) {
-        console.error('Deduct points error:', e);
+
+        console.log(`[DIAGNOSTIC DEDUCT PTS SUCCESS] New balance for ${existingClient.full_name}: ${newBalance} pts`);
+        return updatedClient;
+      } else {
+        throw new Error(`Client introuvable pour la clé ${cleanPhone}`);
       }
+    } catch (e) {
+      console.error('[DIAGNOSTIC DEDUCT PTS EXCEPTION]', e);
+      throw e;
     }
   }
 
