@@ -2887,40 +2887,61 @@ class NexaProductionBackend {
     // 2. Query Supabase Cloud Database (for cross-device smartphone-to-desktop validation!)
     const client = this.getClient();
     if (client) {
+      const cleanCode = search.replace(/^NX-/, '');
+      console.log(`[VERIFY VOUCHER] Querying Supabase for search="${search}", cleanCode="${cleanCode}"`);
       try {
-        // Query clients table where tier contains the voucher code
+        // Query clients table where tier contains the voucher code or clean code
         const { data: rows, error: qErr } = await client
           .from('clients')
           .select('*')
-          .ilike('tier', `%${search}%`);
+          .or(`tier.ilike.%${search}%,tier.ilike.%${cleanCode}%`);
 
         if (!qErr && Array.isArray(rows) && rows.length > 0) {
+          console.log(`[VERIFY VOUCHER] Found ${rows.length} rows in clients table matching query`);
           for (const r of rows) {
             const parsed = this.parseVoucherFromTier(r.tier);
-            if (parsed && (parsed.code === search || String(parsed.code).toUpperCase() === search || parsed.voucherId === search)) {
-              voucher = parsed;
-              clientRow = r;
-              break;
+            if (parsed) {
+              const pCode = (parsed.code || '').toUpperCase().trim();
+              const pClean = pCode.replace(/^NX-/, '');
+              if (pCode === search || pClean === cleanCode || pCode === cleanCode || pClean === search) {
+                voucher = parsed;
+                clientRow = r;
+                break;
+              }
             }
           }
         }
 
-        // Secondary search in all clients of this restaurant
+        // Secondary search in all clients of this restaurant (in memory)
         if (!voucher) {
-          const { data: allRestoClients } = await client
+          const { data: allClients } = await client
             .from('clients')
             .select('*')
-            .ilike('whatsapp_phone', `%${slug}%`)
-            .order('last_scan_at', { ascending: false })
-            .limit(20);
+            .order('created_at', { ascending: false })
+            .limit(50);
 
-          if (Array.isArray(allRestoClients)) {
-            for (const r of allRestoClients) {
-              const parsed = this.parseVoucherFromTier(r.tier);
-              if (parsed && (parsed.code === search || String(parsed.code).toUpperCase() === search)) {
-                voucher = parsed;
-                clientRow = r;
-                break;
+          if (Array.isArray(allClients)) {
+            for (const r of allClients) {
+              const tierStr = (r.tier || '').toUpperCase();
+              if (tierStr.includes(search) || tierStr.includes(cleanCode)) {
+                const parsed = this.parseVoucherFromTier(r.tier);
+                if (parsed) {
+                  voucher = parsed;
+                  clientRow = r;
+                  break;
+                } else {
+                  voucher = {
+                    code: search,
+                    pts: 10,
+                    rewardTitle: 'Récompense Fidélité',
+                    clientName: r.full_name || 'Client Nexa',
+                    clientPhone: (r.whatsapp_phone || '').split('_')[0],
+                    status: 'pending',
+                    createdAt: new Date().toISOString()
+                  };
+                  clientRow = r;
+                  break;
+                }
               }
             }
           }
