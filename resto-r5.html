@@ -1112,6 +1112,10 @@
     </div>
 
     <div class="user-menu-group">
+      <button class="btn-create-account" onclick="switchR5Tab('qr')" style="width: auto; padding: 0.42rem 0.85rem; font-size: 0.8rem; background: #E53935; border-color: #E53935; display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;" title="Accéder au QR Code officiel de votre restaurant">
+        <i data-lucide="qr-code" style="width: 14px; height: 14px; color: white;"></i>
+        <span>Studio QR Code</span>
+      </button>
       <button class="btn-create-account" onclick="openServerRedeemModal()" style="width: auto; padding: 0.42rem 0.85rem; font-size: 0.8rem; background: var(--text-dark); border-color: var(--text-dark); display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;" title="Valider un cadeau client via QR ou code alphanumérique">
         <i data-lucide="scan-line" style="width: 14px; height: 14px; color: #10B981;"></i>
         <span>🔍 Valider un Cadeau</span>
@@ -3337,6 +3341,7 @@
         if (subTab) subTab.style.display = 'none';
         if (settingsTab) settingsTab.style.display = 'none';
         comingSoonTab.style.display = 'none';
+        loadR10QRCodeStudio();
       } else if (tabName === 'clients') {
         dashTab.style.display = 'none';
         if (clientsTab) clientsTab.style.display = 'block';
@@ -4798,7 +4803,7 @@
     let r10CurrentPublicId = '';
     let r10SelectedPrintFormat = 'table';
 
-    // GUARANTEED QR CODE RENDERING ENGINE (OFFLINE VECTOR + CLOUD RESILIENT FALLBACK)
+    // GUARANTEED QR CODE RENDERING ENGINE (OFFLINE VECTOR + MULTI-CLOUD RESILIENT FALLBACK)
     function generateQRImageHtml(targetUrl, cellSize = 6, margin = 4) {
       if (!targetUrl) return '<div style="color:var(--text-muted); padding:1rem;">URL manquante</div>';
 
@@ -4814,9 +4819,13 @@
         }
       }
 
-      // 2. Secondary Engine: Instant High-Res HTTPS Image Generator (No CDN dependencies)
-      const px = Math.max(80, Math.min(cellSize * 34, 400));
-      return `<img src="https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&data=${encodeURIComponent(targetUrl)}&margin=1" style="display:block; margin:0 auto; width:${px}px; height:${px}px; max-width:100%; border-radius:6px;" alt="QR Code ${escapeHtml(targetUrl)}" />`;
+      // 2. Secondary Engine: Instant High-Res Image Generator with onerror fallback
+      const px = Math.max(100, Math.min(cellSize * 34, 400));
+      const encodedUrl = encodeURIComponent(targetUrl);
+      const primaryApi = `https://api.qrserver.com/v1/create-qr-code/?size=${px}x${px}&data=${encodedUrl}&margin=1`;
+      const fallbackApi = `https://quickchart.io/qr?size=${px}&text=${encodedUrl}`;
+
+      return `<img src="${primaryApi}" onerror="this.onerror=null; this.src='${fallbackApi}';" style="display:block; margin:0 auto; width:${px}px; height:${px}px; max-width:100%; border-radius:8px; background:white; padding:4px;" alt="QR Code ${escapeHtml(targetUrl)}" />`;
     }
 
     async function loadR10QRCodeStudio() {
