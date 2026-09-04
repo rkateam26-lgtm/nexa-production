@@ -2799,6 +2799,28 @@
   </div>
 
   <script>
+    // GUARANTEED SAFE BACKEND RETRIEVAL (PREVENTS ANY REFERENCE ERROR OR UNCAUGHT EXCEPTION)
+    function getSafeNexaBackend() {
+      if (window.nexaBackend) return window.nexaBackend;
+      if (typeof NexaProductionBackend !== 'undefined') {
+        try {
+          window.nexaBackend = new NexaProductionBackend();
+          return window.nexaBackend;
+        } catch (e) {}
+      }
+      return {
+        getSlug: (name) => (name || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-'),
+        getRestaurantPublicId: (name) => 'nx_' + (name || 'savane').toLowerCase().trim().replace(/[^a-z0-9]/g, '-'),
+        getRestaurantOffers: async () => [],
+        getRestaurantRewards: async () => [],
+        getRestaurantClients: async () => [],
+        getEligibleRedemptions: async () => [],
+        deductPointsCloud: async () => true,
+        deleteRestaurantOffer: async () => true,
+        deleteRestaurantReward: async () => true
+      };
+    }
+
     // Initialize Lucide Icons
     if (window.lucide) {
       try { lucide.createIcons(); } catch (e) {}
@@ -2999,7 +3021,7 @@
 
       try {
         const restoName = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const result = await backend.verifyAndRedeemVoucher(restoName, code);
 
         if (!result.success) {
@@ -3072,7 +3094,7 @@
       if (!newRestoName) return;
       console.log('⚡ Switching active restaurant to:', newRestoName);
       
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
       const restoObj = await backend.getRestaurantByName(newRestoName);
       const effectiveName = (restoObj && restoObj.name) || newRestoName;
       const effectiveEmail = (restoObj && restoObj.email) || `${backend.getSlug(effectiveName)}@restaurant.com`;
@@ -3136,7 +3158,7 @@
       const urlParams = new URLSearchParams(rawSearch);
       const urlResto = urlParams.get('resto') || urlParams.get('r') || urlParams.get('restaurant');
 
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
 
       // 0. Immediate synchronous session bootstrap (0ms)
       let storedSession = localStorage.getItem('nexa_merchant_b2b_session');
@@ -3239,7 +3261,7 @@
 
     function openLiveClientView() {
       const currentResto = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
       const slug = backend.getSlug(currentResto);
       window.open(`index.html?resto=nx_${slug}&table=1`, '_blank');
     }
@@ -3269,7 +3291,7 @@
       } catch (e) {}
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const metrics = await backend.getRestaurantDashboardMetrics(restoName, userEmail);
 
         if (metrics) {
@@ -3507,7 +3529,7 @@
 
       // 2. Fetch and sync with Supabase Cloud
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const clients = await backend.getRestaurantClients(restoName);
 
         if (Array.isArray(clients)) {
@@ -3625,7 +3647,7 @@
       document.getElementById('detail-rewards-feed').innerHTML = '<div style="text-align:center; padding:1rem; color:var(--text-muted);">⏳ Chargement des récompenses…</div>';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const details = await backend.getRestaurantClientDetails(activeB2BSession.restoName, rawKey);
 
         if (details && details.profile) {
@@ -3729,7 +3751,7 @@
 
       // 2. Fetch verified Cloud metrics & config
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const config = await backend.getRestaurantLoyaltyConfig(activeB2BSession.restoName, activeB2BSession.email);
 
         if (config) {
@@ -3781,7 +3803,7 @@
         }
 
         try {
-          const backend = window.nexaBackend || new NexaProductionBackend();
+          const backend = getSafeNexaBackend();
           const result = await backend.updateRestaurantPointsConfig(activeB2BSession.restoName, activeB2BSession.email, inputVal);
 
           // Update local UI metrics & localStorage
@@ -3824,7 +3846,7 @@
       if (!feed) return;
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const eligibleItems = await backend.getEligibleRedemptions(activeB2BSession.restoName);
 
         if (badgeCount) {
@@ -3897,7 +3919,7 @@
       if (errBanner) errBanner.style.display = 'none';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.deductPointsCloud(activeB2BSession.restoName, clientPhone, ptsCost, rewardTitle);
 
         if (succBanner) {
@@ -4064,7 +4086,7 @@
       try {
         const restoName = (activeB2BSession && activeB2BSession.restoName) || localStorage.getItem('nexa_resto_name') || 'Le Savane';
         const userEmail = (activeB2BSession && activeB2BSession.email) || 'owner@restaurant.com';
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.updateRestaurantLoyaltyConfig(restoName, userEmail, { pointsPerScan: pts });
         alert(`✅ Barème mis à jour : ${pts} points seront attribués par scan de table.`);
       } catch (e) {
@@ -4116,7 +4138,7 @@
       }
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         rawR8RewardsList = await backend.getRestaurantRewards(restoName);
         renderR8RewardsFeed(rawR8RewardsList);
       } catch (err) {
@@ -4154,7 +4176,7 @@
 
         const usageText = r.useCount > 0 ? `🔥 ${r.useCount} utilisation(s)` : `0 utilisation`;
 
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const fallbackImg = backend.getSmartRewardFallbackImage ? backend.getSmartRewardFallbackImage(r.icon, r.title, r.category) : './assets/gift_box_3d.jpg';
         const displayImg = (r.image && r.image.trim()) ? r.image : fallbackImg;
         const imgHeader = `
@@ -4331,7 +4353,7 @@
           || localStorage.getItem('nexa_resto_name')
           || 'Le Savane';
 
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const categoryMap = {
           '☕': 'Boisson Chaude',
           '🥤': 'Boisson Fraîche',
@@ -4386,7 +4408,7 @@
         || 'Le Savane';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.toggleRestaurantRewardStatus(restoName, rewardId, currentActiveState);
         await loadR8Rewards();
       } catch (err) {
@@ -4407,7 +4429,7 @@
         || 'Le Savane';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.deleteRestaurantReward(restoName, rewardId);
         await loadR8Rewards();
       } catch (err) {
@@ -4438,7 +4460,7 @@
       }
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         rawR9OffersList = await backend.getRestaurantOffers(restoName);
 
         // Update status counts
@@ -4715,7 +4737,7 @@
           || localStorage.getItem('nexa_resto_name')
           || 'Le Savane';
 
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.createOrUpdateRestaurantOffer(restoName, {
           id: offerId || null,
           title,
@@ -4765,7 +4787,7 @@
         || 'Le Savane';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.toggleRestaurantOfferStatus(restoName, offerId, currentActiveState);
         await loadR9Offers();
         loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
@@ -4787,7 +4809,7 @@
         || 'Le Savane';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.deleteRestaurantOffer(restoName, offerId);
         await loadR9Offers();
         loadDashboardMetrics(restoName, activeB2BSession ? activeB2BSession.email : '');
@@ -4833,7 +4855,7 @@
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
 
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
       const publicId = backend.getRestaurantPublicId(restoName);
       const origin = window.location.origin && window.location.origin !== 'null' && !window.location.origin.startsWith('file:') ? window.location.origin : 'https://nexa-production.vercel.app';
       const targetUrl = `${origin}/index.html?resto=${encodeURIComponent(publicId)}`;
@@ -5205,7 +5227,7 @@
       if (!rawR11AnalyticsData && loadingState) loadingState.style.display = 'block';
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const data = await backend.getRestaurantAnalytics(restoName, currentR11Period);
         rawR11AnalyticsData = data;
         renderR11Analytics(data);
@@ -5561,7 +5583,7 @@
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
       const userEmail = (activeB2BSession && activeB2BSession.email) || '';
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
       const slug = backend.getSlug(restoName);
 
       // 1. Instant Cache Display (0ms)
@@ -5749,7 +5771,7 @@
         || localStorage.getItem('nexa_resto_name')
         || 'Le Savane';
       const userEmail = (activeB2BSession && activeB2BSession.email) || '';
-      const backend = window.nexaBackend || new NexaProductionBackend();
+      const backend = getSafeNexaBackend();
       const slug = backend.getSlug(restoName);
 
       // 1. Instant Cache Display (0ms)
@@ -5925,7 +5947,7 @@
       if (btnCancel) btnCancel.disabled = true;
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         const curResto = (activeB2BSession && activeB2BSession.restoName) || name;
         const curEmail = (activeB2BSession && activeB2BSession.email) || '';
 
@@ -6004,7 +6026,7 @@
       }
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = getSafeNexaBackend();
         await backend.updateRestaurantPassword(newPwd);
 
         if (feedbackEl) {

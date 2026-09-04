@@ -2224,7 +2224,8 @@ function initNexaApp() {
       showToast(`📢 ${title}`, text);
 
       try {
-        const backend = window.nexaBackend || new NexaProductionBackend();
+        const backend = window.nexaBackend || (typeof NexaProductionBackend !== 'undefined' ? new NexaProductionBackend() : null);
+        if (backend && typeof backend.createOrUpdateRestaurantOffer === 'function') {
         const restoName = (state.restaurant && state.restaurant.name) || 'Le Savane';
         const today = new Date().toISOString().split('T')[0];
         const nextWeek = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
