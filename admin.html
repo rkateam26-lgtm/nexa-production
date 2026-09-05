@@ -11,127 +11,284 @@
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Supabase Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Nexa Supabase Backend Engine -->
+  <script src="supabase.js?v=20260905_01"></script>
 
   <style>
+    :root {
+      --admin-bg: #F8FAFC;
+      --admin-header-bg: #1E1B18;
+      --admin-gold: #D97706;
+      --admin-green: #059669;
+      --admin-red: #DC2626;
+      --admin-border: #E2E8F0;
+    }
     body {
-      background: #FAF8F5;
+      background: var(--admin-bg);
       font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       margin: 0;
       padding: 0;
+      color: #1E293B;
     }
     .admin-header {
-      background: #2A1D15;
+      background: var(--admin-header-bg);
       color: white;
       padding: 1rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      box-shadow: 0 4px 15px rgba(42,29,21,0.2);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
     .admin-container {
-      max-width: 1300px;
+      max-width: 1350px;
       margin: 2rem auto;
       padding: 0 1.5rem;
     }
     .admin-kpi-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 1.25rem;
       margin-bottom: 2rem;
     }
     .admin-kpi-card {
       background: white;
-      border: 1px solid var(--dash-border);
-      border-radius: 14px;
-      padding: 1.25rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border: 1px solid var(--admin-border);
+      border-radius: 16px;
+      padding: 1.4rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+      position: relative;
+      overflow: hidden;
     }
+    .admin-kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: var(--admin-gold);
+    }
+    .admin-kpi-card.green::before { background: #10B981; }
+    .admin-kpi-card.purple::before { background: #8B5CF6; }
+    .admin-kpi-card.red::before { background: #EF4444; }
+
     .admin-nav {
       display: flex;
       gap: 0.75rem;
-      border-bottom: 2px solid var(--dash-border);
+      border-bottom: 2px solid var(--admin-border);
       margin-bottom: 1.5rem;
+      overflow-x: auto;
+      padding-bottom: 2px;
     }
     .admin-nav-btn {
       background: none;
       border: none;
-      padding: 0.75rem 1.25rem;
+      padding: 0.85rem 1.4rem;
       font-weight: 800;
-      font-size: 0.9rem;
-      color: var(--text-muted);
+      font-size: 0.92rem;
+      color: #64748B;
       cursor: pointer;
       border-bottom: 3px solid transparent;
       transition: all 0.2s ease;
       display: flex;
       align-items: center;
       gap: 0.5rem;
+      white-space: nowrap;
+    }
+    .admin-nav-btn:hover {
+      color: #1E293B;
     }
     .admin-nav-btn.active {
-      color: var(--marron-dark);
-      border-bottom-color: var(--primary-gold);
+      color: #B45309;
+      border-bottom-color: #D97706;
+      background: rgba(217, 119, 6, 0.04);
+      border-radius: 8px 8px 0 0;
     }
     .admin-sec {
       display: none;
+      animation: fadeIn 0.25s ease-in-out;
     }
     .admin-sec.active {
       display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .data-table-container {
+      background: white;
+      border: 1px solid var(--admin-border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .data-table th {
+      background: #F8FAFC;
+      padding: 0.85rem 1.1rem;
+      font-size: 0.8rem;
+      font-weight: 800;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--admin-border);
+    }
+    .data-table td {
+      padding: 1rem 1.1rem;
+      font-size: 0.88rem;
+      border-bottom: 1px solid #F1F5F9;
+      vertical-align: middle;
+    }
+    .data-table tr:hover td {
+      background: #F8FAFC;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+    .badge-active { background: #DCFCE7; color: #166534; }
+    .badge-suspended { background: #FEE2E2; color: #991B1B; }
+    .badge-pending { background: #FEF3C7; color: #92400E; }
+    
+    .admin-search-input {
+      padding: 0.6rem 1rem;
+      border-radius: 10px;
+      border: 1.5px solid var(--admin-border);
+      font-size: 0.85rem;
+      font-weight: 600;
+      outline: none;
+      width: 260px;
+      transition: border-color 0.2s;
+    }
+    .admin-search-input:focus {
+      border-color: #D97706;
+    }
+
+    /* Modal Super-Admin Auth Lock */
+    .admin-auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      padding: 1rem;
+    }
+    .admin-auth-card {
+      background: white;
+      border-radius: 20px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     }
   </style>
 </head>
 <body>
 
+  <!-- ADMIN AUTHENTICATION GATE -->
+  <div id="admin-auth-gate" class="admin-auth-overlay" style="display: none;">
+    <div class="admin-auth-card">
+      <div style="width: 56px; height: 56px; background: #FEF3C7; color: #D97706; font-size: 1.8rem; border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+        👑
+      </div>
+      <h2 style="font-size: 1.4rem; font-weight: 900; margin: 0 0 0.4rem 0; color: #0F172A;">Accès Super-Admin NEXA</h2>
+      <p style="font-size: 0.85rem; color: #64748B; margin: 0 0 1.5rem 0;">Veuillez saisir votre code d'accès administrateur pour déverrouiller la console.</p>
+
+      <form id="form-admin-auth" onsubmit="handleAdminLogin(event)">
+        <div style="margin-bottom: 1.25rem;">
+          <input type="password" id="admin-pin-input" placeholder="Code Secret (ex: 2026)" style="width: 100%; padding: 0.85rem; font-size: 1.3rem; font-weight: 900; text-align: center; letter-spacing: 4px; border: 2px solid #E2E8F0; border-radius: 12px; box-sizing: border-box; outline: none;" autofocus required>
+        </div>
+        <div id="admin-auth-error" style="color: #DC2626; font-size: 0.82rem; font-weight: 700; margin-bottom: 1rem; display: none;"></div>
+        <button type="submit" class="btn-create-account" style="width: 100%; padding: 0.85rem; font-size: 0.95rem; background: #D97706; border-color: #D97706;">
+          <span>Déverrouiller la Console</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
   <!-- ADMIN MASTER HEADER -->
   <header class="admin-header">
     <div style="display: flex; align-items: center; gap: 1rem;">
-      <div style="background: var(--primary-gold); color: #2A1D15; font-size: 1.2rem; font-weight: 900; width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+      <div style="background: #D97706; color: #1E1B18; font-size: 1.3rem; font-weight: 900; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(217,119,6,0.4);">
         👑
       </div>
       <div>
-        <h1 style="font-size: 1.2rem; font-weight: 900; margin: 0; letter-spacing: 0.5px;">NEXA SUPER-ADMIN</h1>
-        <p style="font-size: 0.78rem; color: #D6C8BC; margin: 0;">Plateforme Centrale de Super-Administration & Encaissement</p>
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <h1 style="font-size: 1.2rem; font-weight: 900; margin: 0; letter-spacing: 0.5px; color: white;">NEXA SUPER-ADMIN</h1>
+          <span style="background: #059669; color: white; font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">LIVE SUPABASE</span>
+        </div>
+        <p style="font-size: 0.78rem; color: #94A3B8; margin: 0;">Centre d'Opérations & Pilotage Central des Restaurants</p>
       </div>
     </div>
 
-    <div style="display: flex; align-items: center; gap: 1rem;">
-      <div style="background: rgba(245,158,11,0.15); border: 1px solid var(--primary-gold); padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.8rem; color: var(--primary-gold); font-weight: 700;">
-        📲 Réception Mobile Money : <strong>+226 54 51 39 81</strong>
+    <div style="display: flex; align-items: center; gap: 0.85rem; flex-wrap: wrap;">
+      <div style="background: rgba(217,119,6,0.15); border: 1px solid rgba(217,119,6,0.5); padding: 0.4rem 0.85rem; border-radius: 20px; font-size: 0.8rem; color: #FBBF24; font-weight: 700; display: flex; align-items: center; gap: 0.4rem;">
+        <span>📲 Réception Mobile Money :</span>
+        <strong style="color: white;">+226 54 51 39 81</strong>
       </div>
-      <a href="index.html" class="btn-secondary" style="color: white; border-color: rgba(255,255,255,0.2); font-size: 0.8rem;">
-        ← Retour au Site Resto
+      <button class="btn-create-account" onclick="loadAdminMasterData()" style="width: auto; padding: 0.45rem 0.9rem; font-size: 0.82rem; background: #334155; border-color: #475569;" title="Actualiser les données cloud en direct">
+        <i data-lucide="refresh-cw" style="width: 14px; height: 14px;"></i>
+        <span>Actualiser</span>
+      </button>
+      <a href="resto-r5.html" class="btn-secondary" style="color: white; border-color: rgba(255,255,255,0.2); font-size: 0.82rem; padding: 0.45rem 0.85rem;">
+        🏢 Espace Restaurant
       </a>
+      <a href="index.html" class="btn-secondary" style="color: white; border-color: rgba(255,255,255,0.2); font-size: 0.82rem; padding: 0.45rem 0.85rem;">
+        📱 App Client
+      </a>
+      <button class="btn-logout" onclick="adminLogout()" style="padding: 0.45rem 0.75rem; font-size: 0.82rem;" title="Verrouiller la session admin">
+        <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
+      </button>
     </div>
   </header>
 
   <!-- ADMIN CONTAINER -->
   <div class="admin-container">
 
-    <!-- MASTER KPIS -->
+    <!-- MASTER KPIS (100% REAL SUPABASE DATA) -->
     <div class="admin-kpi-grid">
       
-      <div class="admin-kpi-card">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Chiffre d'Affaires Encaissé</div>
-        <div style="font-size: 1.8rem; font-weight: 900; color: #10B981; margin: 0.3rem 0;" id="kpi-total-revenue">175 000 FCFA</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">Paiements Mobile Money sur +226 54 51 39 81</div>
+      <div class="admin-kpi-card green">
+        <div style="font-size: 0.8rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Chiffre d'Affaires Encaissé</div>
+        <div style="font-size: 1.85rem; font-weight: 900; color: #059669; margin: 0.35rem 0;" id="kpi-total-revenue">Chargement…</div>
+        <div style="font-size: 0.75rem; color: #64748B;">Abonnements actifs sur +226 54 51 39 81</div>
       </div>
 
       <div class="admin-kpi-card">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Total Scans Réalisés</div>
-        <div style="font-size: 1.8rem; font-weight: 900; color: var(--marron-dark); margin: 0.3rem 0;" id="kpi-total-scans">12 840 Scans</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">Audités sur l'ensemble des établissements</div>
+        <div style="font-size: 0.8rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Total Scans de Table</div>
+        <div style="font-size: 1.85rem; font-weight: 900; color: #0F172A; margin: 0.35rem 0;" id="kpi-total-scans">Chargement…</div>
+        <div style="font-size: 0.75rem; color: #64748B;">Audités en direct dans PostgreSQL</div>
+      </div>
+
+      <div class="admin-kpi-card purple">
+        <div style="font-size: 0.8rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Clients Enregistrés</div>
+        <div style="font-size: 1.85rem; font-weight: 900; color: #7C3AED; margin: 0.35rem 0;" id="kpi-total-clients">Chargement…</div>
+        <div style="font-size: 0.75rem; color: #64748B;">Membres inscrits avec WhatsApp</div>
       </div>
 
       <div class="admin-kpi-card">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Clients Totaux Plateforme</div>
-        <div style="font-size: 1.8rem; font-weight: 900; color: var(--primary-gold); margin: 0.3rem 0;" id="kpi-total-clients">1 450 Clients</div>
-        <div style="font-size: 0.75rem; color: var(--text-muted);">Membres enregistrés avec WhatsApp</div>
-      </div>
-
-      <div class="admin-kpi-card">
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase;">Restaurants Abonnés</div>
-        <div style="font-size: 1.8rem; font-weight: 900; color: var(--marron-dark); margin: 0.3rem 0;" id="kpi-total-restos">5 Restaurants</div>
-        <div style="font-size: 0.75rem; color: #10B981; font-weight: 700;">100% avec abonnement actif</div>
+        <div style="font-size: 0.8rem; color: #64748B; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Restaurants Enregistrés</div>
+        <div style="font-size: 1.85rem; font-weight: 900; color: #B45309; margin: 0.35rem 0;" id="kpi-total-restos">Chargement…</div>
+        <div style="font-size: 0.75rem; color: #059669; font-weight: 700;">Établissements dans Supabase</div>
       </div>
 
     </div>
@@ -140,11 +297,11 @@
     <div class="admin-nav">
       <button class="admin-nav-btn active" onclick="showAdminTab('payments')">
         <i data-lucide="credit-card"></i>
-        <span>Paiements Encaissés (Orange/Wave)</span>
+        <span>Paiements & Abonnements Encaissés</span>
       </button>
       <button class="admin-nav-btn" onclick="showAdminTab('scans')">
         <i data-lucide="qr-code"></i>
-        <span>Récapitulatif des Scans (Par Période)</span>
+        <span>Audit des Scans de Table</span>
       </button>
       <button class="admin-nav-btn" onclick="showAdminTab('restos')">
         <i data-lucide="building"></i>
@@ -159,10 +316,10 @@
     <!-- SECTION 1: PAIEMENTS ENCAISSÉS -->
     <div class="admin-sec active" id="admin-sec-payments">
       <div class="data-table-container" style="padding: 1.5rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">💳 Journal Général des Encaissements NEXA</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Historique de tous les abonnements réglés par les gérants sur le +226 54 51 39 81.</p>
+            <h3 style="font-size: 1.15rem; font-weight: 900; color: #0F172A; margin: 0 0 0.2rem 0;">💳 Journal Général des Encaissements NEXA</h3>
+            <p style="font-size: 0.82rem; color: #64748B; margin: 0;">Historique des abonnements des restaurants réglés via Mobile Money sur +226 54 51 39 81.</p>
           </div>
         </div>
 
@@ -171,15 +328,16 @@
             <tr>
               <th>Date & Heure</th>
               <th>Restaurant</th>
-              <th>Formule d'Abonnement</th>
+              <th>Formule</th>
               <th>Montant</th>
               <th>Mode de Paiement</th>
               <th>Téléphone Émetteur</th>
               <th>Statut</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="admin-payments-table-body">
-            <!-- Rendered dynamically -->
+            <tr><td colspan="8" style="text-align: center; color: #64748B; padding: 2rem;">Chargement des paiements…</td></tr>
           </tbody>
         </table>
       </div>
@@ -190,16 +348,16 @@
       <div class="data-table-container" style="padding: 1.5rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">📷 Audit Général des Scans de Table</h3>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Récapitulatif de tous les scans effectués sur l'ensemble de la plateforme.</p>
+            <h3 style="font-size: 1.15rem; font-weight: 900; color: #0F172A; margin: 0 0 0.2rem 0;">📷 Audit des Scans en Direct (PostgreSQL)</h3>
+            <p style="font-size: 0.82rem; color: #64748B; margin: 0;">Tous les scans de table audités sur l'ensemble de la plateforme en temps réel.</p>
           </div>
 
-          <div style="display: flex; gap: 0.5rem;">
-            <select id="admin-scan-filter-period" style="padding: 0.5rem 0.8rem; border-radius: 8px; border: 1px solid var(--dash-border); font-size: 0.85rem; font-weight: 700;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <select id="admin-scan-filter-period" onchange="filterScansByPeriod()" style="padding: 0.55rem 0.9rem; border-radius: 10px; border: 1.5px solid var(--admin-border); font-size: 0.85rem; font-weight: 700; outline: none;">
               <option value="all">Toutes les Périodes</option>
               <option value="today">Aujourd'hui</option>
-              <option value="week">7 Derniers Jours</option>
-              <option value="month">Ce Mois-ci</option>
+              <option value="7d">7 Derniers Jours</option>
+              <option value="30d">30 Derniers Jours</option>
             </select>
           </div>
         </div>
@@ -216,7 +374,7 @@
             </tr>
           </thead>
           <tbody id="admin-scans-table-body">
-            <!-- Rendered dynamically -->
+            <tr><td colspan="6" style="text-align: center; color: #64748B; padding: 2rem;">Chargement des scans…</td></tr>
           </tbody>
         </table>
       </div>
@@ -225,24 +383,28 @@
     <!-- SECTION 3: TOUS LES RESTAURANTS -->
     <div class="admin-sec" id="admin-sec-restos">
       <div class="data-table-container" style="padding: 1.5rem;">
-        <div style="margin-bottom: 1.25rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">🏢 Registre Officiel des Restaurants Abonnés</h3>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Liste de tous les établissements inscrits et leur niveau d'activité.</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; color: #0F172A; margin: 0 0 0.2rem 0;">🏢 Registre Officiel des Restaurants</h3>
+            <p style="font-size: 0.82rem; color: #64748B; margin: 0;">Liste de tous les établissements enregistrés dans Supabase Cloud.</p>
+          </div>
+          <input type="text" id="admin-resto-search" class="admin-search-input" placeholder="🔍 Rechercher un restaurant…" oninput="filterRestosList()">
         </div>
 
         <table class="data-table">
           <thead>
             <tr>
               <th>Nom du Restaurant</th>
-              <th>Formule d'Abonnement</th>
-              <th>Scans Ce Mois</th>
+              <th>Formule</th>
+              <th>Scans Totaux</th>
               <th>Clients Inscrits</th>
-              <th>Points Attribués</th>
+              <th>Points Distribués</th>
               <th>Statut Compte</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody id="admin-restos-table-body">
-            <!-- Rendered dynamically -->
+            <tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Chargement des restaurants…</td></tr>
           </tbody>
         </table>
       </div>
@@ -251,9 +413,12 @@
     <!-- SECTION 4: CRM GLOBAL CLIENTS -->
     <div class="admin-sec" id="admin-sec-clients">
       <div class="data-table-container" style="padding: 1.5rem;">
-        <div style="margin-bottom: 1.25rem;">
-          <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--marron-dark); margin: 0 0 0.2rem 0;">👥 Base de Données Unifiée de tous les Clients</h3>
-          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Fichier récapitulatif de l'ensemble des consommateurs fidélisés.</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 1rem;">
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 900; color: #0F172A; margin: 0 0 0.2rem 0;">👥 CRM Unifié de Tous les Clients</h3>
+            <p style="font-size: 0.82rem; color: #64748B; margin: 0;">Base de données centralisée de l'ensemble des consommateurs fidélisés sur NEXA.</p>
+          </div>
+          <input type="text" id="admin-client-search" class="admin-search-input" placeholder="🔍 Filtrer par nom, tél ou resto…" oninput="filterClientsList()">
         </div>
 
         <table class="data-table">
@@ -262,13 +427,14 @@
               <th>Nom du Client</th>
               <th>WhatsApp</th>
               <th>Restaurant Fréquenté</th>
+              <th>Statut Membre</th>
               <th>Solde de Points</th>
               <th>Nombre de Visites</th>
               <th>Dernier Scan</th>
             </tr>
           </thead>
           <tbody id="admin-clients-table-body">
-            <!-- Rendered dynamically -->
+            <tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Chargement du CRM…</td></tr>
           </tbody>
         </table>
       </div>
@@ -276,93 +442,225 @@
 
   </div>
 
-  <script src="supabase.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', async () => {
-      if (window.lucide) lucide.createIcons();
+    let globalAdminData = null;
 
-      // MOCK INITIAL ADMIN DATA (Enriched with real cloud logs)
-      const payments = [
-        { date: '12/08/2026 17:35', resto: 'Le Savane', plan: 'NEXA Pro', amount: '25 000 FCFA', provider: 'Orange Money', phone: '+226 70 12 34 56', status: '✅ Validé' },
-        { date: '12/08/2026 14:20', resto: 'Bistro Malco', plan: 'NEXA Pro', amount: '25 000 FCFA', provider: 'Wave Direct', phone: '+226 76 98 76 54', status: '✅ Validé' },
-        { date: '11/08/2026 10:15', resto: 'Faso Couture Bistro', plan: 'NEXA Basic', amount: '15 000 FCFA', provider: 'Orange Money', phone: '+226 78 55 44 33', status: '✅ Validé' },
-        { date: '10/08/2026 18:40', resto: 'Le Grilladin', plan: 'NEXA Multi-Group', amount: '50 000 FCFA', provider: 'Wave Direct', phone: '+226 70 00 11 22', status: '✅ Validé' },
-        { date: '09/08/2026 11:30', resto: 'Café de la Paix', plan: 'NEXA Pro', amount: '25 000 FCFA', provider: 'Moov Money', phone: '+226 60 44 33 22', status: '✅ Validé' }
-      ];
+    // ADMIN AUTHENTICATION CONTROLLER
+    function checkAdminAuth() {
+      const isAuth = sessionStorage.getItem('nexa_admin_authenticated') === 'true' || localStorage.getItem('nexa_admin_authenticated') === 'true';
+      const gate = document.getElementById('admin-auth-gate');
+      if (!isAuth && gate) {
+        gate.style.display = 'flex';
+      } else if (gate) {
+        gate.style.display = 'none';
+        loadAdminMasterData();
+      }
+    }
 
-      const restos = [
-        { name: 'Le Savane', plan: 'NEXA Pro', scans: 3890, clients: 412, pts: 77800, status: '🟢 Actif' },
-        { name: 'Bistro Malco', plan: 'NEXA Pro', scans: 2450, clients: 298, pts: 49000, status: '🟢 Actif' },
-        { name: 'Faso Couture Bistro', plan: 'NEXA Basic', scans: 1120, clients: 145, pts: 22400, status: '🟢 Actif' },
-        { name: 'Le Grilladin', plan: 'NEXA Multi-Group', scans: 4200, clients: 510, pts: 84000, status: '🟢 Actif' },
-        { name: 'Café de la Paix', plan: 'NEXA Pro', scans: 1180, clients: 185, pts: 23600, status: '🟢 Actif' }
-      ];
+    function handleAdminLogin(e) {
+      if (e) e.preventDefault();
+      const pin = (document.getElementById('admin-pin-input').value || '').trim();
+      const err = document.getElementById('admin-auth-error');
 
-      const scans = [
-        { time: '12/08/2026 17:30', resto: 'Le Savane', table: '4', client: 'Salif Ouédraogo', phone: '+226 70 11 22 33', pts: '+20 pts' },
-        { time: '12/08/2026 17:15', resto: 'Bistro Malco', table: '2', client: 'Awa Koné', phone: '+226 76 44 55 66', pts: '+10 pts' },
-        { time: '12/08/2026 16:45', resto: 'Le Savane', table: '7', client: 'Karim Traoré', phone: '+226 78 99 88 77', pts: '+20 pts' },
-        { time: '12/08/2026 15:10', resto: 'Faso Couture Bistro', table: '1', client: 'Aminata Kaboré', phone: '+226 71 22 33 44', pts: '+15 pts' },
-        { time: '12/08/2026 14:00', resto: 'Le Grilladin', table: '5', client: 'Moussa Sawadogo', phone: '+226 70 55 66 77', pts: '+20 pts' }
-      ];
+      // Master Super-Admin Passcode: 2026 or nexa-admin
+      if (pin === '2026' || pin.toLowerCase() === 'admin' || pin.toLowerCase() === 'nexa') {
+        sessionStorage.setItem('nexa_admin_authenticated', 'true');
+        localStorage.setItem('nexa_admin_authenticated', 'true');
+        document.getElementById('admin-auth-gate').style.display = 'none';
+        if (err) err.style.display = 'none';
+        loadAdminMasterData();
+      } else {
+        if (err) {
+          err.textContent = '❌ Code secret incorrect. Veuillez réessayer.';
+          err.style.display = 'block';
+        }
+      }
+    }
 
-      const clients = [
-        { name: 'Salif Ouédraogo', phone: '+226 70 11 22 33', resto: 'Le Savane', points: 140, visits: 7, lastScan: 'Aujourd\'hui 17:30' },
-        { name: 'Awa Koné', phone: '+226 76 44 55 66', resto: 'Bistro Malco', points: 80, visits: 4, lastScan: 'Aujourd\'hui 17:15' },
-        { name: 'Karim Traoré', phone: '+226 78 99 88 77', resto: 'Le Savane', points: 220, visits: 11, lastScan: 'Aujourd\'hui 16:45' },
-        { name: 'Aminata Kaboré', phone: '+226 71 22 33 44', resto: 'Faso Couture Bistro', points: 45, visits: 3, lastScan: 'Aujourd\'hui 15:10' },
-        { name: 'Moussa Sawadogo', phone: '+226 70 55 66 77', resto: 'Le Grilladin', points: 190, visits: 9, lastScan: 'Aujourd\'hui 14:00' }
-      ];
+    function adminLogout() {
+      sessionStorage.removeItem('nexa_admin_authenticated');
+      localStorage.removeItem('nexa_admin_authenticated');
+      window.location.reload();
+    }
 
-      // RENDER PAYMENTS TABLE
-      document.getElementById('admin-payments-table-body').innerHTML = payments.map(p => `
+    // MAIN DATA LOADER FROM REAL SUPABASE CLOUD
+    async function loadAdminMasterData() {
+      try {
+        const backend = window.nexaBackend || new NexaProductionBackend();
+        console.log('[SUPER-ADMIN] Fetching real master data from Supabase Cloud...');
+        globalAdminData = await backend.getAdminMasterDashboardData();
+
+        if (globalAdminData) {
+          // 1. Update Master KPIs
+          document.getElementById('kpi-total-revenue').textContent = globalAdminData.kpis.totalRevenue;
+          document.getElementById('kpi-total-scans').textContent = globalAdminData.kpis.totalScans;
+          document.getElementById('kpi-total-clients').textContent = globalAdminData.kpis.totalClients;
+          document.getElementById('kpi-total-restos').textContent = globalAdminData.kpis.totalRestos;
+
+          // 2. Render Payments Journal
+          renderPaymentsTable(globalAdminData.payments);
+
+          // 3. Render Scans
+          renderScansTable(globalAdminData.scans);
+
+          // 4. Render Restaurants
+          renderRestosTable(globalAdminData.restos);
+
+          // 5. Render CRM Clients
+          renderClientsTable(globalAdminData.clients);
+        }
+      } catch (err) {
+        console.error('[SUPER-ADMIN ERROR]', err);
+      }
+    }
+
+    function renderPaymentsTable(payments) {
+      const tbody = document.getElementById('admin-payments-table-body');
+      if (!tbody) return;
+      if (!payments || payments.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #64748B; padding: 2rem;">Aucun paiement enregistré pour l'instant.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = payments.map(p => `
         <tr>
-          <td style="color: var(--text-muted); font-size: 0.8rem;">${p.date}</td>
-          <td style="font-weight: 800; color: var(--marron-dark);">${p.resto}</td>
-          <td><span style="background: var(--marron-light); color: var(--marron-dark); font-weight: 700; font-size: 0.75rem; padding: 2px 8px; border-radius: 10px;">${p.plan}</span></td>
-          <td><strong style="color: #10B981; font-size: 0.95rem;">${p.amount}</strong></td>
-          <td style="font-weight: 700;">${p.provider}</td>
-          <td style="color: var(--text-muted);">${p.phone}</td>
-          <td><span style="background: #10B981; color: white; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 12px;">${p.status}</span></td>
+          <td style="color: #64748B; font-size: 0.8rem; font-weight: 600;">${p.date}</td>
+          <td style="font-weight: 900; color: #0F172A;">${escapeHtml(p.resto)}</td>
+          <td><span style="background: #F1F5F9; color: #475569; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 8px;">${p.plan}</span></td>
+          <td><strong style="color: #059669; font-size: 0.95rem; font-weight: 900;">${p.amount}</strong></td>
+          <td style="font-weight: 700; color: #334155;">${p.provider}</td>
+          <td style="color: #64748B; font-family: monospace;">${p.phone}</td>
+          <td><span class="badge-status badge-active">${p.status}</span></td>
+          <td>
+            <a href="resto-r5.html" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Ouvrir l'espace de ce restaurant">
+              🏢 Gérer
+            </a>
+          </td>
         </tr>
       `).join('');
+    }
 
-      // RENDER SCANS TABLE
-      document.getElementById('admin-scans-table-body').innerHTML = scans.map(s => `
+    function renderScansTable(scans) {
+      const tbody = document.getElementById('admin-scans-table-body');
+      if (!tbody) return;
+      if (!scans || scans.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748B; padding: 2rem;">Aucun scan enregistré dans PostgreSQL.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = scans.map(s => `
         <tr>
-          <td style="color: var(--text-muted); font-size: 0.8rem;">${s.time}</td>
-          <td style="font-weight: 800;">${s.resto}</td>
-          <td><span style="font-size: 0.78rem; font-weight: 800; background: var(--bg-subtle); padding: 2px 8px; border-radius: 6px;">Table #${s.table}</span></td>
-          <td style="font-weight: 700;">${s.client}</td>
-          <td style="color: var(--text-muted);">${s.phone}</td>
-          <td><strong style="color: var(--primary-gold);">${s.pts}</strong></td>
+          <td style="color: #64748B; font-size: 0.8rem; font-weight: 600;">${s.time}</td>
+          <td style="font-weight: 900; color: #0F172A;">${escapeHtml(s.restoName)}</td>
+          <td><span style="font-size: 0.78rem; font-weight: 800; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 8px; border-radius: 6px;">Table #${s.table}</span></td>
+          <td style="font-weight: 800; color: #334155;">${escapeHtml(s.clientName)}</td>
+          <td style="color: #64748B; font-family: monospace;">${escapeHtml(s.clientPhone)}</td>
+          <td><strong style="color: #D97706; font-weight: 900;">${s.pts}</strong></td>
         </tr>
       `).join('');
+    }
 
-      // RENDER RESTOS TABLE
-      document.getElementById('admin-restos-table-body').innerHTML = restos.map(r => `
+    function renderRestosTable(restos) {
+      const tbody = document.getElementById('admin-restos-table-body');
+      if (!tbody) return;
+      if (!restos || restos.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Aucun restaurant trouvé.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = restos.map(r => `
         <tr>
-          <td style="font-weight: 800; color: var(--marron-dark);">${r.name}</td>
-          <td><span style="background: var(--marron-light); color: var(--primary-gold); font-weight: 800; font-size: 0.75rem; padding: 3px 10px; border-radius: 12px;">${r.plan}</span></td>
-          <td style="font-weight: 700;">${r.scans.toLocaleString()} scans</td>
-          <td>${r.clients} clients</td>
-          <td style="color: var(--primary-gold); font-weight: 700;">${r.pts.toLocaleString()} pts</td>
-          <td><span style="background: #10B981; color: white; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 12px;">${r.status}</span></td>
+          <td>
+            <div style="font-weight: 900; color: #0F172A;">${escapeHtml(r.name)}</div>
+            <div style="font-size: 0.75rem; color: #64748B;">${escapeHtml(r.email)} • ${escapeHtml(r.phone)}</div>
+          </td>
+          <td><span style="background: #FEF3C7; color: #92400E; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 10px;">${r.plan}</span></td>
+          <td style="font-weight: 800; color: #0F172A;">${r.scansCount} scans</td>
+          <td style="font-weight: 700; color: #475569;">${r.clientsCount} clients</td>
+          <td style="color: #D97706; font-weight: 900;">${r.pointsAwarded.toLocaleString()} pts</td>
+          <td><span class="badge-status ${r.isActive ? 'badge-active' : 'badge-suspended'}">${r.status}</span></td>
+          <td>
+            <div style="display: flex; gap: 0.35rem;">
+              <a href="index.html?resto=nx_${r.slug}&table=1" target="_blank" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Tester le QR client">
+                📱 QR Client
+              </a>
+              <button class="btn-logout" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" onclick="toggleRestoStatus('${r.id}', ${r.isActive})">
+                ${r.isActive ? 'Suspendre' : 'Activer'}
+              </button>
+            </div>
+          </td>
         </tr>
       `).join('');
+    }
 
-      // RENDER CLIENTS TABLE
-      document.getElementById('admin-clients-table-body').innerHTML = clients.map(c => `
+    function renderClientsTable(clients) {
+      const tbody = document.getElementById('admin-clients-table-body');
+      if (!tbody) return;
+      if (!clients || clients.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Aucun client trouvé dans le CRM.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = clients.map(c => `
         <tr>
-          <td style="font-weight: 700;">${c.name}</td>
-          <td style="color: var(--text-muted);">${c.phone}</td>
-          <td style="font-weight: 700; color: var(--marron-dark);">${c.resto}</td>
-          <td><strong style="color: var(--primary-gold);">${c.points} pts</strong></td>
-          <td>${c.visits} visites</td>
-          <td style="color: var(--text-muted);">${c.lastScan}</td>
+          <td style="font-weight: 900; color: #0F172A;">${escapeHtml(c.name)}</td>
+          <td style="color: #64748B; font-family: monospace; font-weight: 600;">${escapeHtml(c.phone)}</td>
+          <td style="font-weight: 800; color: #B45309;">${escapeHtml(c.restoName)}</td>
+          <td><span style="background: ${c.tier === 'VIP' ? '#FEF3C7' : '#F1F5F9'}; color: ${c.tier === 'VIP' ? '#B45309' : '#475569'}; font-weight: 800; font-size: 0.7rem; padding: 2px 7px; border-radius: 6px;">${c.tier === 'VIP' ? '👑 VIP' : 'Silver'}</span></td>
+          <td><strong style="color: #D97706; font-size: 0.95rem; font-weight: 900;">${c.points} pts</strong></td>
+          <td style="font-weight: 700; color: #334155;">${c.visits} visite(s)</td>
+          <td style="color: #64748B; font-size: 0.8rem;">${c.lastScan}</td>
         </tr>
       `).join('');
-    });
+    }
+
+    async function toggleRestoStatus(restoId, currentlyActive) {
+      const newStatus = currentlyActive ? 'Suspended' : 'Active';
+      const actionName = currentlyActive ? 'suspendre' : 'activer';
+      if (!confirm(`Confirmez-vous vouloir ${actionName} cet établissement ?`)) return;
+
+      const backend = window.nexaBackend || new NexaProductionBackend();
+      await backend.updateRestaurantStatusByAdmin(restoId, newStatus);
+      await loadAdminMasterData();
+    }
+
+    function filterScansByPeriod() {
+      if (!globalAdminData || !globalAdminData.scans) return;
+      const period = document.getElementById('admin-scan-filter-period').value;
+      const now = new Date();
+
+      let filtered = globalAdminData.scans;
+      if (period === 'today') {
+        const todayStr = now.toISOString().split('T')[0];
+        filtered = globalAdminData.scans.filter(s => s.rawDate && s.rawDate.startsWith(todayStr));
+      } else if (period === '7d') {
+        const threshold = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filtered = globalAdminData.scans.filter(s => new Date(s.rawDate) >= threshold);
+      } else if (period === '30d') {
+        const threshold = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        filtered = globalAdminData.scans.filter(s => new Date(s.rawDate) >= threshold);
+      }
+
+      renderScansTable(filtered);
+    }
+
+    function filterRestosList() {
+      if (!globalAdminData || !globalAdminData.restos) return;
+      const q = (document.getElementById('admin-resto-search').value || '').toLowerCase().trim();
+      const filtered = globalAdminData.restos.filter(r => 
+        (r.name && r.name.toLowerCase().includes(q)) ||
+        (r.email && r.email.toLowerCase().includes(q)) ||
+        (r.phone && r.phone.toLowerCase().includes(q))
+      );
+      renderRestosTable(filtered);
+    }
+
+    function filterClientsList() {
+      if (!globalAdminData || !globalAdminData.clients) return;
+      const q = (document.getElementById('admin-client-search').value || '').toLowerCase().trim();
+      const filtered = globalAdminData.clients.filter(c => 
+        (c.name && c.name.toLowerCase().includes(q)) ||
+        (c.phone && c.phone.toLowerCase().includes(q)) ||
+        (c.restoName && c.restoName.toLowerCase().includes(q))
+      );
+      renderClientsTable(filtered);
+    }
 
     window.showAdminTab = function(tabId) {
       document.querySelectorAll('.admin-sec').forEach(s => s.classList.remove('active'));
@@ -374,6 +672,24 @@
       const activeBtn = document.querySelector(`.admin-nav-btn[onclick*="${tabId}"]`);
       if (activeBtn) activeBtn.classList.add('active');
     };
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[m]);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) lucide.createIcons();
+      checkAdminAuth();
+      // Auto-refresh data every 12 seconds
+      setInterval(() => {
+        if (sessionStorage.getItem('nexa_admin_authenticated') === 'true') {
+          loadAdminMasterData();
+        }
+      }, 12000);
+    });
   </script>
 </body>
 </html>

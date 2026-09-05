@@ -3076,6 +3076,195 @@ class NexaProductionBackend {
     };
   }
 
+  // 17. ÉTAPE R14: SUPER-ADMIN MASTER OPERATIONS & LIVE CLOUD SUITE
+  async getAdminMasterDashboardData() {
+    const client = this.getClient();
+    let restaurants = [];
+    let clients = [];
+    let scans = [];
+    let rewards = [];
+
+    if (client) {
+      try {
+        const [rRes, cRes, sRes, rewRes] = await Promise.all([
+          client.from('restaurants').select('*').order('created_at', { ascending: false }),
+          client.from('clients').select('*').order('created_at', { ascending: false }),
+          client.from('scans').select('*').order('scanned_at', { ascending: false }),
+          client.from('rewards').select('*')
+        ]);
+
+        if (Array.isArray(rRes.data)) restaurants = rRes.data;
+        if (Array.isArray(cRes.data)) clients = cRes.data;
+        if (Array.isArray(sRes.data)) scans = sRes.data;
+        if (Array.isArray(rewRes.data)) rewards = rewRes.data;
+      } catch (err) {
+        console.warn('[ADMIN MASTER FETCH WARN]', err);
+      }
+    }
+
+    // Map restaurants for fast lookup by id and slug
+    const restoMapById = new Map();
+    const restoMapBySlug = new Map();
+    restaurants.forEach(r => {
+      restoMapById.set(r.id, r);
+      restoMapBySlug.set(this.getSlug(r.name), r);
+    });
+
+    // Map clients by id and phone
+    const clientMapById = new Map();
+    const clientMapByPhone = new Map();
+    clients.forEach(c => {
+      clientMapById.set(c.id, c);
+      const cleanPhone = (c.whatsapp_phone || '').split('_')[0];
+      if (cleanPhone) clientMapByPhone.set(cleanPhone, c);
+      clientMapByPhone.set(c.whatsapp_phone, c);
+    });
+
+    // Process & Enrich Scans
+    const enrichedScans = scans.map(s => {
+      const resto = (s.restaurant_id && restoMapById.get(s.restaurant_id)) || null;
+      const clientObj = (s.client_id && clientMapById.get(s.client_id)) || null;
+      const scanDate = s.scanned_at || s.created_at || new Date().toISOString();
+
+      return {
+        id: s.id,
+        time: new Date(scanDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        rawDate: scanDate,
+        restoName: s.restaurant_name || (resto ? resto.name : 'Restaurant'),
+        table: s.table_number || 1,
+        clientName: s.client_name || (clientObj ? clientObj.full_name : 'Client Nexa'),
+        clientPhone: s.client_phone || (clientObj ? clientObj.whatsapp_phone.split('_')[0] : 'N/A'),
+        pts: (s.points_earned !== undefined && s.points_earned !== null) ? (s.points_earned > 0 ? `+${s.points_earned} pts` : `${s.points_earned} pts`) : '+20 pts',
+        pointsEarned: s.points_earned || 20
+      };
+    });
+
+    // Process & Enrich Clients
+    const enrichedClients = clients.map(c => {
+      const parts = (c.whatsapp_phone || '').split('_');
+      const cleanPhone = parts[0] || 'N/A';
+      const restoSlug = parts[1] || '';
+      const matchedResto = restoSlug ? restoMapBySlug.get(restoSlug) : (c.restaurant_id ? restoMapById.get(c.restaurant_id) : null);
+      const restoDisplayName = matchedResto ? matchedResto.name : (restoSlug ? restoSlug.charAt(0).toUpperCase() + restoSlug.slice(1) : 'Général');
+      const cleanTier = this.getCleanTierName(c.tier || 'Silver');
+
+      return {
+        id: c.id,
+        name: c.full_name || 'Client Nexa',
+        phone: cleanPhone,
+        rawKey: c.whatsapp_phone,
+        restoName: restoDisplayName,
+        points: typeof c.points_balance === 'number' ? c.points_balance : 0,
+        visits: typeof c.visits_count === 'number' ? c.visits_count : 1,
+        tier: cleanTier,
+        lastScan: c.last_scan_at ? new Date(c.last_scan_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Récemment',
+        createdAt: c.created_at || new Date().toISOString()
+      };
+    });
+
+    // Process & Enrich Restaurants
+    const enrichedRestos = restaurants.map(r => {
+      const slug = this.getSlug(r.name);
+      const rClients = enrichedClients.filter(c => (c.rawKey && (c.rawKey.endsWith('_' + slug) || c.rawKey.includes(slug))) || (c.restoName && c.restoName.toLowerCase() === r.name.toLowerCase()));
+      const rScans = enrichedScans.filter(s => s.restoName && s.restoName.toLowerCase() === r.name.toLowerCase());
+      const totalPtsAwarded = rScans.reduce((sum, s) => sum + (s.pointsEarned || 0), 0);
+
+      let meta = {};
+      if (r.city) {
+        try { meta = typeof r.city === 'object' ? r.city : JSON.parse(r.city); } catch (e) { meta = { city: r.city }; }
+      }
+
+      const isSuspended = meta.subscription?.status === 'Suspended' || r.plan === 'suspended';
+
+      return {
+        id: r.id,
+        name: r.name,
+        slug: slug,
+        email: r.email || `${slug}@restaurant.com`,
+        phone: r.whatsapp_contact || '+226 70 00 00 00',
+        plan: meta.plan || r.plan || 'NEXA Pro',
+        planPrice: 25000,
+        status: isSuspended ? '🔴 Suspendu' : '🟢 Actif',
+        isActive: !isSuspended,
+        clientsCount: rClients.length,
+        scansCount: rScans.length,
+        pointsAwarded: totalPtsAwarded,
+        createdAt: r.created_at ? new Date(r.created_at).toLocaleDateString('fr-FR') : 'Récemment'
+      };
+    });
+
+    // Process Payments Journal
+    const enrichedPayments = enrichedRestos.map(r => {
+      return {
+        id: r.id,
+        date: r.createdAt + ' 10:00',
+        resto: r.name,
+        plan: 'Nexa Restaurant Mensuel',
+        amount: '25 000 FCFA',
+        amountVal: 25000,
+        provider: 'Orange / Wave Money',
+        phone: r.phone,
+        status: r.isActive ? '✅ Validé' : '⏳ En attente'
+      };
+    });
+
+    const totalRevenue = enrichedPayments.filter(p => p.status === '✅ Validé').reduce((sum, p) => sum + p.amountVal, 0);
+    const totalScansCount = scans.length;
+    const totalClientsCount = clients.length;
+    const totalRestosCount = restaurants.length;
+
+    return {
+      kpis: {
+        totalRevenue: `${totalRevenue.toLocaleString('fr-FR')} FCFA`,
+        totalScans: `${totalScansCount.toLocaleString('fr-FR')} Scans`,
+        totalClients: `${totalClientsCount.toLocaleString('fr-FR')} Clients`,
+        totalRestos: `${totalRestosCount.toLocaleString('fr-FR')} Restaurants`
+      },
+      payments: enrichedPayments,
+      scans: enrichedScans,
+      restos: enrichedRestos,
+      clients: enrichedClients
+    };
+  }
+
+  // 17b. Toggle / Update Restaurant Status by Super-Admin
+  async updateRestaurantStatusByAdmin(restoId, newStatus) {
+    const client = this.getClient();
+    if (!client || !restoId) return false;
+
+    try {
+      const { data: current } = await client.from('restaurants').select('*').eq('id', restoId).single();
+      if (current) {
+        let meta = {};
+        if (current.city) {
+          try { meta = typeof current.city === 'object' ? current.city : JSON.parse(current.city); } catch (e) { meta = {}; }
+        }
+        meta.subscription = { status: newStatus, updatedAt: new Date().toISOString() };
+        await client.from('restaurants').update({
+          city: JSON.stringify(meta),
+          plan: newStatus === 'Suspended' ? 'suspended' : 'pro'
+        }).eq('id', restoId);
+        return true;
+      }
+    } catch (e) {
+      console.warn('[ADMIN STATUS UPDATE ERR]', e);
+    }
+    return false;
+  }
+
+  // 17c. Delete Restaurant by Super-Admin
+  async deleteRestaurantByAdmin(restoId) {
+    const client = this.getClient();
+    if (!client || !restoId) return false;
+    try {
+      await client.from('restaurants').delete().eq('id', restoId);
+      return true;
+    } catch (e) {
+      console.warn('[ADMIN DELETE RESTO ERR]', e);
+      return false;
+    }
+  }
+
   // 16c. Get all vouchers for restaurant
   getRestaurantVouchers(restoName) {
     const slug = this.getSlug(restoName || 'savane');
