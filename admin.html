@@ -15,7 +15,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Nexa Supabase Backend Engine -->
-  <script src="supabase.js?v=20260905_01"></script>
+  <script src="supabase.js?v=20260905_02"></script>
 
   <style>
     :root {
@@ -521,22 +521,29 @@
         tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: #64748B; padding: 2rem;">Aucun paiement enregistré pour l'instant.</td></tr>`;
         return;
       }
-      tbody.innerHTML = payments.map(p => `
+      tbody.innerHTML = payments.map(p => {
+        const cleanPhoneDigits = (p.phone || '').replace(/[^0-9]/g, '');
+        return `
         <tr>
           <td style="color: #64748B; font-size: 0.8rem; font-weight: 600;">${p.date}</td>
-          <td style="font-weight: 900; color: #0F172A;">${escapeHtml(p.resto)}</td>
-          <td><span style="background: #F1F5F9; color: #475569; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 8px;">${p.plan}</span></td>
-          <td><strong style="color: #059669; font-size: 0.95rem; font-weight: 900;">${p.amount}</strong></td>
+          <td style="font-weight: 900; color: #0F172A; font-size: 0.95rem;">${escapeHtml(p.resto)}</td>
+          <td><span style="background: #FEF3C7; color: #92400E; font-weight: 800; font-size: 0.72rem; padding: 3px 8px; border-radius: 8px;">${p.plan}</span></td>
+          <td><strong style="color: #059669; font-size: 1rem; font-weight: 900;">${p.amount}</strong></td>
           <td style="font-weight: 700; color: #334155;">${p.provider}</td>
-          <td style="color: #64748B; font-family: monospace;">${p.phone}</td>
-          <td><span class="badge-status badge-active">${p.status}</span></td>
           <td>
-            <a href="resto-r5.html" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Ouvrir l'espace de ce restaurant">
-              🏢 Gérer
+            <a href="https://wa.me/${cleanPhoneDigits}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 700; font-family: monospace;" title="Contacter sur WhatsApp">
+              💬 ${escapeHtml(p.phone)}
+            </a>
+          </td>
+          <td><span class="badge-status ${p.status.includes('Validé') ? 'badge-active' : 'badge-suspended'}">${p.status}</span></td>
+          <td>
+            <a href="resto-r5.html" onclick="localStorage.setItem('nexa_selected_resto', '${escapeHtml(p.resto)}');" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Ouvrir le tableau de bord de ${escapeHtml(p.resto)}">
+              🏢 Dashboard
             </a>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function renderScansTable(scans) {
@@ -546,16 +553,23 @@
         tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #64748B; padding: 2rem;">Aucun scan enregistré dans PostgreSQL.</td></tr>`;
         return;
       }
-      tbody.innerHTML = scans.map(s => `
+      tbody.innerHTML = scans.map(s => {
+        const cleanPhoneDigits = (s.clientPhone || '').replace(/[^0-9]/g, '');
+        return `
         <tr>
           <td style="color: #64748B; font-size: 0.8rem; font-weight: 600;">${s.time}</td>
-          <td style="font-weight: 900; color: #0F172A;">${escapeHtml(s.restoName)}</td>
-          <td><span style="font-size: 0.78rem; font-weight: 800; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 2px 8px; border-radius: 6px;">Table #${s.table}</span></td>
-          <td style="font-weight: 800; color: #334155;">${escapeHtml(s.clientName)}</td>
-          <td style="color: #64748B; font-family: monospace;">${escapeHtml(s.clientPhone)}</td>
-          <td><strong style="color: #D97706; font-weight: 900;">${s.pts}</strong></td>
+          <td><span style="font-weight: 900; color: #B45309; background: #FEF3C7; padding: 3px 9px; border-radius: 8px; font-size: 0.82rem;">${escapeHtml(s.restoName)}</span></td>
+          <td><span style="font-size: 0.78rem; font-weight: 800; background: #0F172A; color: white; padding: 2px 8px; border-radius: 6px;">Table #${s.table}</span></td>
+          <td style="font-weight: 800; color: #0F172A;">${escapeHtml(s.clientName)}</td>
+          <td>
+            <a href="https://wa.me/${cleanPhoneDigits}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 600; font-family: monospace;" title="Écrire sur WhatsApp">
+              💬 ${escapeHtml(s.clientPhone)}
+            </a>
+          </td>
+          <td><strong style="color: #D97706; font-weight: 900; font-size: 0.95rem;">${s.pts}</strong></td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function renderRestosTable(restos) {
@@ -565,20 +579,30 @@
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Aucun restaurant trouvé.</td></tr>`;
         return;
       }
-      tbody.innerHTML = restos.map(r => `
+      tbody.innerHTML = restos.map(r => {
+        const cleanPhoneDigits = (r.phone || '').replace(/[^0-9]/g, '');
+        return `
         <tr>
           <td>
-            <div style="font-weight: 900; color: #0F172A;">${escapeHtml(r.name)}</div>
-            <div style="font-size: 0.75rem; color: #64748B;">${escapeHtml(r.email)} • ${escapeHtml(r.phone)}</div>
+            <div style="font-weight: 900; color: #0F172A; font-size: 0.95rem;">${escapeHtml(r.name)}</div>
+            <div style="font-size: 0.75rem; color: #64748B;">
+              ${escapeHtml(r.email)} • 
+              <a href="https://wa.me/${cleanPhoneDigits}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 600;">
+                💬 ${escapeHtml(r.phone)}
+              </a>
+            </div>
           </td>
           <td><span style="background: #FEF3C7; color: #92400E; font-weight: 800; font-size: 0.72rem; padding: 3px 10px; border-radius: 10px;">${r.plan}</span></td>
-          <td style="font-weight: 800; color: #0F172A;">${r.scansCount} scans</td>
-          <td style="font-weight: 700; color: #475569;">${r.clientsCount} clients</td>
+          <td style="font-weight: 800; color: #0F172A;"><span style="background: #F1F5F9; padding: 3px 8px; border-radius: 6px;">${r.scansCount} scans</span></td>
+          <td style="font-weight: 700; color: #475569;"><span style="background: #F1F5F9; padding: 3px 8px; border-radius: 6px;">${r.clientsCount} clients</span></td>
           <td style="color: #D97706; font-weight: 900;">${r.pointsAwarded.toLocaleString()} pts</td>
           <td><span class="badge-status ${r.isActive ? 'badge-active' : 'badge-suspended'}">${r.status}</span></td>
           <td>
-            <div style="display: flex; gap: 0.35rem;">
-              <a href="index.html?resto=nx_${r.slug}&table=1" target="_blank" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Tester le QR client">
+            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+              <a href="resto-r5.html" onclick="localStorage.setItem('nexa_selected_resto', '${escapeHtml(r.name)}');" class="r6-btn-detail" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Ouvrir l'espace restaurant">
+                🏢 Gérer
+              </a>
+              <a href="index.html?resto=nx_${r.slug}&table=1" target="_blank" class="r6-btn-detail" style="background: #10B981; border-color: #10B981; color: white; font-size: 0.75rem; padding: 0.35rem 0.65rem;" title="Tester le QR client à table">
                 📱 QR Client
               </a>
               <button class="btn-logout" style="font-size: 0.75rem; padding: 0.35rem 0.65rem;" onclick="toggleRestoStatus('${r.id}', ${r.isActive})">
@@ -587,7 +611,8 @@
             </div>
           </td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function renderClientsTable(clients) {
@@ -597,17 +622,24 @@
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #64748B; padding: 2rem;">Aucun client trouvé dans le CRM.</td></tr>`;
         return;
       }
-      tbody.innerHTML = clients.map(c => `
+      tbody.innerHTML = clients.map(c => {
+        const cleanPhoneDigits = (c.phone || '').replace(/[^0-9]/g, '');
+        return `
         <tr>
           <td style="font-weight: 900; color: #0F172A;">${escapeHtml(c.name)}</td>
-          <td style="color: #64748B; font-family: monospace; font-weight: 600;">${escapeHtml(c.phone)}</td>
-          <td style="font-weight: 800; color: #B45309;">${escapeHtml(c.restoName)}</td>
+          <td>
+            <a href="https://wa.me/${cleanPhoneDigits}" target="_blank" style="color: #059669; text-decoration: none; font-weight: 700; font-family: monospace;" title="Contacter sur WhatsApp">
+              💬 ${escapeHtml(c.phone)}
+            </a>
+          </td>
+          <td><span style="background: #FEF3C7; color: #92400E; font-weight: 800; font-size: 0.75rem; padding: 2px 8px; border-radius: 6px;">${escapeHtml(c.restoName)}</span></td>
           <td><span style="background: ${c.tier === 'VIP' ? '#FEF3C7' : '#F1F5F9'}; color: ${c.tier === 'VIP' ? '#B45309' : '#475569'}; font-weight: 800; font-size: 0.7rem; padding: 2px 7px; border-radius: 6px;">${c.tier === 'VIP' ? '👑 VIP' : 'Silver'}</span></td>
           <td><strong style="color: #D97706; font-size: 0.95rem; font-weight: 900;">${c.points} pts</strong></td>
           <td style="font-weight: 700; color: #334155;">${c.visits} visite(s)</td>
           <td style="color: #64748B; font-size: 0.8rem;">${c.lastScan}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     async function toggleRestoStatus(restoId, currentlyActive) {
