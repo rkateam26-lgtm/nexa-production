@@ -1040,45 +1040,52 @@ class NexaProductionBackend {
     return formattedRewards;
   }
 
-  // Helper: Read local rewards cache (with slug variation & global scan fallback)
+  // Helper: Read local rewards cache (aggregates all slug variations & global fallback)
   getLocalRewards(slug) {
     try {
+      const mergedMap = new Map();
+      const appendItems = (rawStr) => {
+        if (!rawStr) return;
+        try {
+          const arr = JSON.parse(rawStr);
+          if (Array.isArray(arr)) {
+            arr.forEach(r => {
+              if (r && r.title && r.active !== false) {
+                const key = String(r.id || r.title);
+                if (!mergedMap.has(key)) {
+                  mergedMap.set(key, r);
+                }
+              }
+            });
+          }
+        } catch (e) {}
+      };
+
       if (!slug) slug = 'savane';
       const cleanSlug = this.getSlug(slug);
-      let raw = localStorage.getItem(`nexa_rewards_cache_${cleanSlug}`)
-        || localStorage.getItem(`nexa_rewards_${cleanSlug}`);
-      
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      appendItems(localStorage.getItem(`nexa_rewards_cache_${cleanSlug}`));
+      appendItems(localStorage.getItem(`nexa_rewards_${cleanSlug}`));
 
-      // Check alternative slug variations (e.g. savane vs le-savane)
       const altSlug = cleanSlug.startsWith('le-') ? cleanSlug.replace(/^le-/, '') : `le-${cleanSlug}`;
-      raw = localStorage.getItem(`nexa_rewards_cache_${altSlug}`) || localStorage.getItem(`nexa_rewards_${altSlug}`);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
+      appendItems(localStorage.getItem(`nexa_rewards_cache_${altSlug}`));
+      appendItems(localStorage.getItem(`nexa_rewards_${altSlug}`));
 
-      // Scan all localStorage keys starting with nexa_rewards_
+      appendItems(localStorage.getItem('nexa_rewards_global_all'));
+
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key && (key.startsWith('nexa_rewards_cache_') || key.startsWith('nexa_rewards_')) && !key.endsWith('_backup')) {
-          const val = localStorage.getItem(key);
-          if (val) {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-          }
+          appendItems(localStorage.getItem(key));
         }
       }
-      return [];
+
+      return Array.from(mergedMap.values());
     } catch (e) {
       return [];
     }
   }
 
-  // Helper: Save local rewards cache
+  // Helper: Save local rewards cache (with global fallback key sync)
   saveLocalRewards(slug, rewardsList) {
     try {
       if (!slug) slug = 'savane';
@@ -1088,6 +1095,20 @@ class NexaProductionBackend {
       const altSlug = cleanSlug.startsWith('le-') ? cleanSlug.replace(/^le-/, '') : `le-${cleanSlug}`;
       localStorage.setItem(`nexa_rewards_cache_${altSlug}`, JSON.stringify(rewardsList));
       localStorage.setItem(`nexa_rewards_${altSlug}`, JSON.stringify(rewardsList));
+
+      // Synchronize with global fallback map to survive any slug mismatch
+      let currentGlobal = [];
+      try {
+        currentGlobal = JSON.parse(localStorage.getItem('nexa_rewards_global_all') || '[]');
+      } catch (e) {}
+      const globalMap = new Map();
+      if (Array.isArray(currentGlobal)) {
+        currentGlobal.forEach(r => { if (r && r.title) globalMap.set(String(r.id || r.title), r); });
+      }
+      if (Array.isArray(rewardsList)) {
+        rewardsList.forEach(r => { if (r && r.title) globalMap.set(String(r.id || r.title), r); });
+      }
+      localStorage.setItem('nexa_rewards_global_all', JSON.stringify(Array.from(globalMap.values())));
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }

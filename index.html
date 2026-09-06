@@ -214,9 +214,9 @@
                   </div>
 
                   <!-- VIP Crown Badge Pill on the Right -->
-                  <div class="mockup-vip-pill-box">
-                    <div class="mockup-vip-crown-icon">👑</div>
-                    <div class="mockup-vip-pill-label">VIP</div>
+                  <div class="mockup-vip-pill-box" id="home-tier-pill-box">
+                    <div class="mockup-vip-crown-icon" id="home-tier-pill-icon">👑</div>
+                    <div class="mockup-vip-pill-label" id="home-tier-pill-label">VIP</div>
                   </div>
                 </div>
               </div>
@@ -1324,6 +1324,19 @@
           <span id="pay-submit-btn-label">⚡ Valider le Code OTP & Payer 25 000 FCFA</span>
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- TIER LEVEL UP PROMOTION CELEBRATION MODAL -->
+  <div id="modal-tier-levelup" class="nexa-modal-backdrop" style="display: none; align-items: center; justify-content: center; z-index: 10000; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(8px);">
+    <div style="background: linear-gradient(135deg, #1E293B, #0F172A); border: 2px solid var(--primary-gold); border-radius: 24px; padding: 2.25rem 1.75rem; width: 90%; max-width: 420px; text-align: center; color: white; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); position: relative;">
+      <div style="font-size: 4.5rem; margin-bottom: 0.5rem; line-height: 1; filter: drop-shadow(0 10px 15px rgba(245,158,11,0.3));" id="levelup-icon">🥈</div>
+      <div style="font-size: 0.8rem; font-weight: 800; color: #F59E0B; text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.4rem;">🎉 PROMOTION DE STATUT DÉBLOQUÉE !</div>
+      <h2 style="font-size: 1.75rem; font-weight: 900; margin: 0 0 0.5rem 0; color: #FFFFFF;" id="levelup-title">Niveau ARGENT !</h2>
+      <p style="font-size: 0.9rem; color: #CBD5E1; line-height: 1.5; margin-bottom: 1.75rem;" id="levelup-desc">Félicitations ! Vous avez accumulé 50 points et débloqué le statut ARGENT chez Le Savane.</p>
+      <button class="btn-primary" onclick="closeTierLevelUpModal()" style="width: 100%; justify-content: center; background: linear-gradient(135deg, #F59E0B, #D97706); color: #2A1D15; font-weight: 900; font-size: 1.05rem; padding: 0.9rem; border-radius: 14px; border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(245,158,11,0.4);">
+        🚀 Découvrir mes Privilèges
+      </button>
     </div>
   </div>
 

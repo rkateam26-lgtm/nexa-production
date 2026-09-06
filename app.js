@@ -109,11 +109,18 @@ function initNexaApp() {
     },
     rewards: (function() {
       try {
-        const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw);
-        if (!Array.isArray(parsed)) return [];
-        return parsed.map(r => ({
+        let items = [];
+        if (window.nexaBackend && typeof window.nexaBackend.getLocalRewards === 'function') {
+          items = window.nexaBackend.getLocalRewards(slug);
+        }
+        if (!items || items.length === 0) {
+          const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`) || localStorage.getItem('nexa_rewards_global_all');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) items = parsed;
+          }
+        }
+        return (items || []).map(r => ({
           ...r,
           image: resolveRewardImage(r)
         }));
@@ -248,12 +255,18 @@ function initNexaApp() {
           console.warn('[CLIENT OFFERS SYNC]', offErr);
         }
 
-        // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE!
-        if (state.clientSession.whatsapp) {
-          const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
-          if (profile) {
-            state.clientSession.points = profile.points || 0;
-            localStorage.setItem('nexa_client_points', state.clientSession.points);
+        // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE (MONOTONIC NON-DECREASING UPDATE)!
+        if (state.clientSession.whatsapp && window.nexaBackend && window.nexaBackend.getClientProfile) {
+          try {
+            const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
+            if (profile && typeof profile.points === 'number') {
+              const localPts = parseInt(localStorage.getItem('nexa_client_points') || '0', 10);
+              const currentPts = state.clientSession.points || 0;
+              state.clientSession.points = Math.max(currentPts, localPts, profile.points);
+              localStorage.setItem('nexa_client_points', state.clientSession.points);
+            }
+          } catch (profErr) {
+            console.warn('[CLIENT PROFILE SYNC NOTICE]', profErr);
           }
         }
 
@@ -614,7 +627,11 @@ function initNexaApp() {
 
       const newReward = { id: String(Date.now()), category, icon, title, pts, desc };
       state.rewards.push(newReward);
-      localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
+      if (window.nexaBackend && window.nexaBackend.saveLocalRewards) {
+        window.nexaBackend.saveLocalRewards(state.restaurant.id || 'savane', state.rewards);
+      } else {
+        localStorage.setItem(`nexa_rewards_${state.restaurant.id}`, JSON.stringify(state.rewards));
+      }
 
       if (window.nexaBackend) {
         try {
@@ -981,6 +998,9 @@ function initNexaApp() {
       const localConfiguredPts = localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active');
       const scanEarned = localConfiguredPts ? parseInt(localConfiguredPts, 10) : (state.restaurant.pointsPerScan || 20);
 
+      const prevScanPts = state.clientSession.points || 0;
+      const prevTierName = window.calculateClientTier ? window.calculateClientTier(prevScanPts).tierName : 'BRONZE';
+
       state.clientSession.points += scanEarned;
       localStorage.setItem('nexa_client_points', state.clientSession.points);
       localStorage.setItem(lastScanStorageKey, now.toString());
@@ -1019,8 +1039,8 @@ function initNexaApp() {
         try {
           const res = await window.nexaBackend.recordScanCloud(state.restaurant.name, scannedTableNum, state.clientSession.whatsapp, state.clientSession.name, scanEarned);
           if (res && res.currentPoints) {
-            state.clientSession.points = res.currentPoints;
-            localStorage.setItem('nexa_client_points', res.currentPoints);
+            state.clientSession.points = Math.max(state.clientSession.points, res.currentPoints);
+            localStorage.setItem('nexa_client_points', state.clientSession.points);
           }
         } catch (cloudErr) {
           console.warn('Cloud sync offline fallback:', cloudErr);
@@ -1053,6 +1073,22 @@ function initNexaApp() {
       setScannerState('success');
       addClientNotification('scan', `⭐ +${scanEarned} points crédités !`, `Preuve de visite confirmée le ${formatNexaDate(new Date())} chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde total : ${state.clientSession.points} pts.`);
       showToast('🎉 Visite Confirmée !', `+${scanEarned} points crédités chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde : ${state.clientSession.points} pts.`);
+
+      // Check Tier Promotion (Level-Up Celebration)
+      const postScanPts = state.clientSession.points;
+      const postTierInfo = window.calculateClientTier ? window.calculateClientTier(postScanPts) : { tierName: 'BRONZE' };
+      const postTierName = postTierInfo.tierName;
+
+      const getTierRankVal = (t) => (t === 'VIP' ? 4 : (t === 'GOLD' ? 3 : (t === 'ARGENT' || t === 'SILVER' ? 2 : 1)));
+
+      if (getTierRankVal(postTierName) > getTierRankVal(prevTierName)) {
+        setTimeout(() => {
+          if (window.showTierLevelUpModal) {
+            window.showTierLevelUpModal(postTierInfo, postScanPts);
+          }
+        }, 1200);
+        addClientNotification('reward', `🏆 NOUVEAU STATUT DÉBLOQUÉ : ${postTierInfo.tierBadge} !`, `Bravo ! Grâce à vos ${postScanPts} points chez ${state.restaurant.name}, vous êtes passé au statut ${postTierName} !`);
+      }
 
       // Confetti celebration
       if (window.confetti) {
@@ -1093,6 +1129,46 @@ function initNexaApp() {
       navigator.vibrate([200]);
     }
   }
+
+  // Global Level-Up Promotion Celebration Modal Handlers
+  window.showTierLevelUpModal = function(tierInfo, currentPoints) {
+    const modal = document.getElementById('modal-tier-levelup');
+    const icon = document.getElementById('levelup-icon');
+    const title = document.getElementById('levelup-title');
+    const desc = document.getElementById('levelup-desc');
+
+    if (icon) icon.textContent = tierInfo.tierIcon || '🏆';
+    if (title) title.textContent = `Statut ${tierInfo.tierName} !`;
+    if (desc) desc.textContent = `Félicitations ! Vous avez accumulé ${currentPoints} points et débloqué le statut ${tierInfo.tierName} chez ${state.restaurant.name}.`;
+
+    if (modal) {
+      modal.style.display = 'flex';
+      modal.classList.add('active');
+    }
+
+    if (window.confetti) {
+      try {
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.5 },
+          colors: ['#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899']
+        });
+      } catch (e) {}
+    }
+
+    if (navigator.vibrate) {
+      try { navigator.vibrate([200, 100, 200, 100, 300]); } catch (e) {}
+    }
+  };
+
+  window.closeTierLevelUpModal = function() {
+    const modal = document.getElementById('modal-tier-levelup');
+    if (modal) {
+      modal.style.display = 'none';
+      modal.classList.remove('active');
+    }
+  };
 
   // Resume scanning after error
   window.resumeScanningFromError = function() {
@@ -1348,7 +1424,7 @@ function initNexaApp() {
     });
 
     // ----------------------------------------------------
-    // TIER & STATUS LOGIC (BRONZE -> SILVER -> GOLD -> VIP)
+    // TIER & STATUS LOGIC (BRONZE -> ARGENT -> GOLD -> VIP)
     // ----------------------------------------------------
     function calculateClientTier(points) {
       const pts = Math.max(0, parseInt(points || '0', 10));
@@ -1356,10 +1432,11 @@ function initNexaApp() {
         return {
           tierName: 'VIP',
           tierBadge: 'VIP 👑',
+          tierIcon: '👑',
           nextTier: null,
           pointsToNext: 0,
           progressPercent: 100,
-          statusMessage: 'Statut maximum atteint'
+          statusMessage: 'Statut maximum atteint 🎉'
         };
       } else if (pts >= 100) {
         const nextTarget = 200;
@@ -1369,6 +1446,7 @@ function initNexaApp() {
         return {
           tierName: 'GOLD',
           tierBadge: 'GOLD 🥇',
+          tierIcon: '🥇',
           nextTier: 'VIP',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
@@ -1380,8 +1458,9 @@ function initNexaApp() {
         const pointsNeeded = nextTarget - pts;
         const progress = Math.min(100, Math.max(0, Math.round(((pts - currentBase) / (nextTarget - currentBase)) * 100)));
         return {
-          tierName: 'SILVER',
-          tierBadge: 'SILVER 🥈',
+          tierName: 'ARGENT',
+          tierBadge: 'ARGENT 🥈',
+          tierIcon: '🥈',
           nextTier: 'GOLD',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
@@ -1389,19 +1468,20 @@ function initNexaApp() {
         };
       } else {
         const nextTarget = 50;
-        const currentBase = 0;
         const pointsNeeded = nextTarget - pts;
         const progress = Math.min(100, Math.max(0, Math.round((pts / nextTarget) * 100)));
         return {
           tierName: 'BRONZE',
           tierBadge: 'BRONZE 🥉',
-          nextTier: 'SILVER',
+          tierIcon: '🥉',
+          nextTier: 'ARGENT',
           pointsToNext: pointsNeeded,
           progressPercent: progress,
-          statusMessage: `${pointsNeeded} points pour débloquer SILVER`
+          statusMessage: `${pointsNeeded} points pour débloquer ARGENT`
         };
       }
     }
+    window.calculateClientTier = calculateClientTier;
 
     const clientTierInfo = calculateClientTier(state.clientSession.points);
 
@@ -1418,24 +1498,27 @@ function initNexaApp() {
 
     const homeTierMedalEl = document.getElementById('home-tier-medal');
     if (homeTierMedalEl) {
-      if (clientTierInfo.tierName === 'VIP') {
-        homeTierMedalEl.textContent = '👑';
-      } else if (clientTierInfo.tierName === 'GOLD') {
-        homeTierMedalEl.textContent = '🏅';
-      } else if (clientTierInfo.tierName === 'SILVER') {
-        homeTierMedalEl.textContent = '🥈';
-      } else {
-        homeTierMedalEl.textContent = '🥉';
-      }
+      homeTierMedalEl.textContent = clientTierInfo.tierIcon;
     }
 
-    // Update Segmented Progress Bar (4 segments like mockup)
-    const segCount = 4;
-    const filledSegments = Math.min(segCount, Math.max(0, Math.round((clientTierInfo.progressPercent / 100) * segCount)));
+    // Update Top-Right Tier Pill Box
+    const pillIconEl = document.getElementById('home-tier-pill-icon');
+    if (pillIconEl) pillIconEl.textContent = clientTierInfo.tierIcon;
+
+    const pillLabelEl = document.getElementById('home-tier-pill-label');
+    if (pillLabelEl) pillLabelEl.textContent = clientTierInfo.tierName;
+
+    // Update Segmented Progress Bar (4 segments: Bronze, Argent, Gold, VIP)
     for (let s = 1; s <= 4; s++) {
       const segEl = document.getElementById(`seg-${s}`);
       if (segEl) {
-        if (s <= filledSegments || (filledSegments === 0 && s === 1 && state.clientSession.points > 0)) {
+        let isFilled = false;
+        if (s === 1 && state.clientSession.points >= 1) isFilled = true;
+        if (s === 2 && state.clientSession.points >= 50) isFilled = true;
+        if (s === 3 && state.clientSession.points >= 100) isFilled = true;
+        if (s === 4 && state.clientSession.points >= 200) isFilled = true;
+
+        if (isFilled) {
           segEl.classList.add('filled');
         } else {
           segEl.classList.remove('filled');
