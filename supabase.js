@@ -2090,12 +2090,20 @@ class NexaProductionBackend {
     let currentPoints = pointsEarned;
     try {
       let localList = this.getLocalClients(slug);
-      const existingIdx = localList.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      const phoneClean = (whatsappPhone || '').replace(/[^0-9]/g, '');
+      const existingIdx = localList.findIndex(c => {
+        const cPhone = (c.phone || c.whatsapp_phone || c.rawKey || '').replace(/[^0-9]/g, '');
+        return (c.rawKey || c.whatsapp_phone) === compositeKey || cPhone === phoneClean;
+      });
+
+      const hasScannedBefore = existingIdx >= 0 && localList[existingIdx].last_scan_at;
       const prevVisits = existingIdx >= 0 ? (localList[existingIdx].visits_count || localList[existingIdx].visits || 0) : 0;
-      currentVisits = prevVisits + 1;
-      currentPoints = (existingIdx >= 0 && typeof localList[existingIdx].points_balance === 'number' && localList[existingIdx].points_balance > 0)
-        ? localList[existingIdx].points_balance
-        : pointsEarned;
+      currentVisits = hasScannedBefore ? (prevVisits + 1) : 1;
+
+      const prevPoints = (existingIdx >= 0 && typeof localList[existingIdx].points_balance === 'number')
+        ? (localList[existingIdx].points_balance || localList[existingIdx].points || 0)
+        : 0;
+      currentPoints = prevPoints + pointsEarned;
 
       const displayName = clientName && clientName !== 'Client Nexa' 
         ? clientName 

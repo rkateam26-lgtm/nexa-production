@@ -90,16 +90,19 @@ function initNexaApp() {
     localStorage.setItem('nexa_resto_name', currentRestoName);
   }
 
-  const slug = currentRestoName.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+  const cleanRestoSlug = (window.nexaBackend && typeof window.nexaBackend.getSlug === 'function')
+    ? window.nexaBackend.getSlug(currentRestoName)
+    : currentRestoName.toLowerCase().trim().replace(/^nx[_-]/, '').replace(/[^a-z0-9]/g, '-').replace(/^le-/, '');
+  const slug = cleanRestoSlug;
 
   const state = {
     isMerchantLoggedIn: localStorage.getItem('nexa_merchant_logged') === 'true',
     restaurant: {
       id: slug,
       name: currentRestoName,
-      type: localStorage.getItem(`nexa_type_${slug}`) || '★ 4.9 • Bistro & Grillades',
-      pointsPerScan: parseInt(localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem('nexa_pts_active') || '20', 10),
-      currency: localStorage.getItem(`nexa_curr_${slug}`) || 'FCFA'
+      type: localStorage.getItem(`nexa_type_${slug}`) || localStorage.getItem(`nexa_type_le-${slug}`) || '★ 4.9 • Bistro & Grillades',
+      pointsPerScan: parseInt(localStorage.getItem(`nexa_pts_${slug}`) || localStorage.getItem(`nexa_pts_le-${slug}`) || localStorage.getItem('nexa_pts_active') || '20', 10),
+      currency: localStorage.getItem(`nexa_curr_${slug}`) || localStorage.getItem(`nexa_curr_le-${slug}`) || 'FCFA'
     },
     clientSession: {
       whatsapp: localStorage.getItem('nexa_client_whatsapp') || '',
@@ -114,13 +117,16 @@ function initNexaApp() {
           items = window.nexaBackend.getLocalRewards(slug);
         }
         if (!items || items.length === 0) {
-          const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`) || localStorage.getItem(`nexa_rewards_${slug}`) || localStorage.getItem('nexa_rewards_global_all');
+          const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`) 
+            || localStorage.getItem(`nexa_rewards_${slug}`) 
+            || localStorage.getItem(`nexa_rewards_cache_le-${slug}`) 
+            || localStorage.getItem(`nexa_rewards_le-${slug}`);
           if (raw) {
             const parsed = JSON.parse(raw);
             if (Array.isArray(parsed)) items = parsed;
           }
         }
-        return (items || []).map(r => ({
+        return (items || []).filter(r => r.active !== false).map(r => ({
           ...r,
           image: resolveRewardImage(r)
         }));
@@ -730,32 +736,55 @@ function initNexaApp() {
 
       console.log(`[DIAGNOSTIC FRONTEND] Connexion client -> Phone: "${phone}", Name: "${name}"`);
 
-      // 1. SAVE CLIENT SESSION LOCALLY & CLOSE MODAL INSTANTLY (0ms)
-      state.clientSession.whatsapp = phone;
-      state.clientSession.name = name;
-      localStorage.setItem('nexa_client_whatsapp', phone);
-      localStorage.setItem('nexa_client_name', name);
-
-      // Save client in restaurant's local CRM list immediately (0ms)
       const targetResto = state.restaurant.name || (localStorage.getItem('nexa_resto_name') || 'Le Savane');
-      const targetSlug = targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+      const targetSlug = (window.nexaBackend && typeof window.nexaBackend.getSlug === 'function')
+        ? window.nexaBackend.getSlug(targetResto)
+        : targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
       const compositeKey = `${phone}_${targetSlug}`;
+      const phoneClean = phone.replace(/[^0-9]/g, '');
+
+      // 1. RECOVER PREVIOUS POINTS & VISITS FOR RETURNING CLIENT FROM LOCAL CRM CACHE (0ms)
+      let prevPts = 0;
+      let prevVisits = 0;
+      let lastScanAt = null;
 
       try {
         let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || localStorage.getItem(`nexa_clients_cache_${targetSlug}`) || '[]');
-        const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === phone);
+        const existIdx = currentCrmClients.findIndex(c => {
+          const cPhone = (c.phone || c.whatsapp_phone || c.rawKey || '').replace(/[^0-9]/g, '');
+          return (c.rawKey || c.whatsapp_phone) === compositeKey || cPhone === phoneClean;
+        });
+
+        if (existIdx >= 0) {
+          prevPts = currentCrmClients[existIdx].points_balance || currentCrmClients[existIdx].points || 0;
+          prevVisits = currentCrmClients[existIdx].visits_count || currentCrmClients[existIdx].visits || 0;
+          lastScanAt = currentCrmClients[existIdx].last_scan_at || null;
+        }
+
+        // Recover session points
+        const restoredPts = Math.max(state.clientSession.points || 0, prevPts, parseInt(localStorage.getItem('nexa_client_points') || '0', 10));
+
+        state.clientSession.whatsapp = phone;
+        state.clientSession.name = name;
+        state.clientSession.points = restoredPts;
+        localStorage.setItem('nexa_client_whatsapp', phone);
+        localStorage.setItem('nexa_client_name', name);
+        localStorage.setItem('nexa_client_points', restoredPts);
+
         const clientEntry = {
           rawKey: compositeKey,
           whatsapp_phone: compositeKey,
           phone: phone,
           name: name,
           full_name: name,
-          points: state.clientSession.points || 0,
-          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
-          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
-          lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Nouveau client') : 'Nouveau client',
-          last_scan_at: existIdx >= 0 ? currentCrmClients[existIdx].last_scan_at : null
+          points: restoredPts,
+          points_balance: restoredPts,
+          visits: prevVisits,
+          visits_count: prevVisits,
+          lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Client Inscrit') : 'Nouveau client',
+          last_scan_at: lastScanAt
         };
+
         if (existIdx >= 0) {
           currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
         } else {
@@ -774,32 +803,51 @@ function initNexaApp() {
       });
 
       renderClientUI();
-      showToast('✅ Connecté !', `Bienvenue ${name} chez ${state.restaurant.name} !`);
+      showToast('✅ Connecté !', `Bienvenue ${name} chez ${state.restaurant.name} ! (${state.clientSession.points} pts)`);
 
-      // 2. IMMEDIATELY TRIGGER TABLE SCAN IF DIRECT QR SCAN (0ms)
-      if (isDirectTableScan) {
-        await triggerQRScanSuccess(`Table #${tableParam}`);
-      } else if (window.nexaBackend) {
-        // Only run background sync if this is NOT a direct table scan (e.g. standalone profile login)
+      // 2. BACKGROUND CLOUD SYNC & RECOVERY FROM SUPABASE
+      if (window.nexaBackend) {
         (async () => {
           try {
-            console.log(`[DIAGNOSTIC FRONTEND] Arrière-plan Supabase sync vers resto "${targetResto}"...`);
             const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
             if (profile) {
-              console.log('[DIAGNOSTIC FRONTEND] Profil Supabase existant trouvé:', profile);
-              state.clientSession.points = Math.max(state.clientSession.points || 0, profile.points || 0);
+              const cloudPts = typeof profile.points === 'number' ? profile.points : 0;
+              const cloudVisits = typeof profile.visits === 'number' ? profile.visits : 0;
+
+              const finalPts = Math.max(state.clientSession.points || 0, cloudPts);
+              const finalVisits = Math.max(prevVisits, cloudVisits);
+
+              state.clientSession.points = finalPts;
               state.clientSession.name = profile.name || name;
-              localStorage.setItem('nexa_client_points', state.clientSession.points);
+              localStorage.setItem('nexa_client_points', finalPts);
               localStorage.setItem('nexa_client_name', state.clientSession.name);
+
+              // Also update CRM client entry with recovered points & visits
+              let crmList = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || '[]');
+              const idx = crmList.findIndex(c => (c.phone || '').replace(/[^0-9]/g, '') === phoneClean);
+              if (idx >= 0) {
+                crmList[idx].points = finalPts;
+                crmList[idx].points_balance = finalPts;
+                crmList[idx].visits = finalVisits;
+                crmList[idx].visits_count = finalVisits;
+                localStorage.setItem(`nexa_clients_${targetSlug}`, JSON.stringify(crmList));
+              }
+
               renderClientUI();
             } else {
-              console.log('[DIAGNOSTIC FRONTEND] Création nouveau profil dans Supabase...');
               await window.nexaBackend.registerClientIdentity(targetResto, phone, name, state.clientSession.points || 0);
             }
           } catch (err) {
-            console.warn('[DIAGNOSTIC FRONTEND WARN] Échec de synchronisation arrière-plan Supabase:', err);
+            console.warn('[SUPABASE SYNC WARN]', err);
+          }
+
+          // Trigger scan if this was triggered during a table QR scan
+          if (isDirectTableScan) {
+            await triggerQRScanSuccess(`Table #${tableParam}`);
           }
         })();
+      } else if (isDirectTableScan) {
+        await triggerQRScanSuccess(`Table #${tableParam}`);
       }
     });
   }
@@ -1027,8 +1075,11 @@ function initNexaApp() {
       const scanCompositeKey = `${state.clientSession.whatsapp}_${scanTargetSlug}`;
       try {
         let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${scanTargetSlug}`) || localStorage.getItem(`nexa_clients_cache_${scanTargetSlug}`) || '[]');
-        const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === scanCompositeKey || c.phone === state.clientSession.whatsapp);
-        const updatedVisits = existIdx >= 0 ? ((currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) + 1) : 1;
+        const existIdx = currentCrmClients.findIndex(c => (c.rawKey || c.whatsapp_phone) === scanCompositeKey || (c.phone || '').replace(/[^0-9]/g, '') === phoneClean);
+        const isFirstEverScan = existIdx < 0 || !currentCrmClients[existIdx].last_scan_at || (currentCrmClients[existIdx].visits || 0) === 0;
+        const prevVisitsCount = existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 0) : 0;
+        const updatedVisits = isFirstEverScan ? 1 : (prevVisitsCount + 1);
+
         const clientEntry = {
           rawKey: scanCompositeKey,
           whatsapp_phone: scanCompositeKey,
