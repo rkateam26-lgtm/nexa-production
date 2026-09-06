@@ -1495,6 +1495,9 @@
             <span style="font-size: 0.75rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 4px 10px; border-radius: 12px;" id="r8-eligible-badge-count">
               0 échange(s) disponible(s)
             </span>
+          <!-- SEARCH INPUT FOR ELIGIBLE CLIENTS -->
+          <div style="margin-bottom: 1rem; position: relative;">
+            <input type="text" id="r8-eligible-search-input" placeholder="🔍 Rechercher un client par nom ou numéro (+226...)..." oninput="filterR8EligibleClients()" style="width: 100%; padding: 0.7rem 1rem; border-radius: 10px; border: 1.5px solid #CBD5E1; font-size: 0.88rem; font-weight: 600; outline: none; background: #FFFFFF; transition: border-color 0.2s; box-shadow: inset 0 1px 2px rgba(0,0,0,0.03);">
           </div>
 
           <div id="r8-eligible-feed" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem;">
@@ -3842,72 +3845,100 @@
     // ==========================================================================
     // REWARDS 1-CLICK REDEMPTION ENGINE
     // ==========================================================================
+    let rawR8EligibleItems = [];
+
     async function loadR8EligibleRedemptions() {
       if (!activeB2BSession || !activeB2BSession.restoName) return;
 
-      const feed = document.getElementById('r8-eligible-feed');
       const badgeCount = document.getElementById('r8-eligible-badge-count');
-      if (!feed) return;
 
       try {
         const backend = getSafeNexaBackend();
-        const eligibleItems = await backend.getEligibleRedemptions(activeB2BSession.restoName);
+        rawR8EligibleItems = await backend.getEligibleRedemptions(activeB2BSession.restoName);
 
         if (badgeCount) {
-          badgeCount.textContent = `${eligibleItems.length} échange(s) disponible(s)`;
+          badgeCount.textContent = `${rawR8EligibleItems.length} échange(s) disponible(s)`;
         }
 
-        if (!eligibleItems || eligibleItems.length === 0) {
-          feed.innerHTML = `
-            <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem; background: #FFFFFF; border-radius: 12px; border: 1px dashed #CBD5E1;">
-              <span style="font-size: 1.5rem; display: block; margin-bottom: 0.3rem;">ℹ️</span>
-              <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">Aucun échange en attente</span>
-              <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
-                Dès qu'un client accumule assez de points pour débloquer une récompense active, son option d'échange 1-clic apparaîtra ici !
-              </p>
-            </div>
-          `;
-          return;
-        }
-
-        feed.innerHTML = eligibleItems.map(item => {
-          const clientName = escapeHtml(item.client.name);
-          const rewardTitleEscaped = escapeHtml(item.reward.title).replace(/'/g, "\\'");
-          const clientPhone = item.client.rawKey;
-
-          return `
-            <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-              <div>
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                  <div>
-                    <strong style="font-size: 0.95rem; color: var(--text-dark); display: block;">👤 ${clientName}</strong>
-                    <span style="font-size: 0.75rem; color: var(--text-muted);">${item.client.phone}</span>
-                  </div>
-                  <span style="font-size: 0.75rem; font-weight: 800; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 10px;">
-                    Solde: ${item.client.points} pts
-                  </span>
-                </div>
-
-                <div style="background: #F1F5F9; padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
-                  <span style="font-size: 1.4rem;">${item.reward.icon}</span>
-                  <div>
-                    <strong style="font-size: 0.88rem; color: var(--text-dark); display: block;">${escapeHtml(item.reward.title)}</strong>
-                    <span style="font-size: 0.75rem; color: #DC2626; font-weight: 800;">Coût : -${item.reward.pts} PTS</span>
-                  </div>
-                </div>
-              </div>
-
-              <button class="btn-create-account" style="width: 100%; background: #10B981; border-color: #10B981; font-size: 0.8rem; padding: 0.5rem 0.75rem;" onclick="validateRewardRedemptionDirect('${clientPhone}', '${rewardTitleEscaped}', ${item.reward.pts}, this)">
-                <span>✅ Valider l'Échange (-${item.reward.pts} Pts)</span>
-              </button>
-            </div>
-          `;
-        }).join('');
-
+        filterR8EligibleClients();
       } catch (err) {
         console.error('[DIAGNOSTIC LOAD ELIGIBLE ERROR]', err);
       }
     }
+
+    window.filterR8EligibleClients = function() {
+      const feed = document.getElementById('r8-eligible-feed');
+      if (!feed) return;
+
+      const input = document.getElementById('r8-eligible-search-input');
+      const query = (input ? input.value : '').toLowerCase().trim();
+
+      if (!rawR8EligibleItems || rawR8EligibleItems.length === 0) {
+        feed.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem; background: #FFFFFF; border-radius: 12px; border: 1px dashed #CBD5E1;">
+            <span style="font-size: 1.5rem; display: block; margin-bottom: 0.3rem;">ℹ️</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">Aucun échange en attente</span>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">
+              Dès qu'un client accumule assez de points pour débloquer une récompense active, son option d'échange 1-clic apparaîtra ici !
+            </p>
+          </div>
+        `;
+        return;
+      }
+
+      const filtered = rawR8EligibleItems.filter(item => {
+        if (!query) return true;
+        const name = (item.client.name || '').toLowerCase();
+        const phone = (item.client.phone || item.client.rawKey || '').toLowerCase();
+        const rewardTitle = (item.reward.title || '').toLowerCase();
+        return name.includes(query) || phone.includes(query) || rewardTitle.includes(query);
+      });
+
+      if (filtered.length === 0) {
+        feed.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 1.5rem; background: #FFFFFF; border-radius: 12px; border: 1px dashed #CBD5E1;">
+            <span style="font-size: 1.5rem; display: block; margin-bottom: 0.3rem;">🔍</span>
+            <span style="font-size: 0.85rem; font-weight: 700; color: var(--text-dark);">Aucun client trouvé pour « ${escapeHtml(query)} »</span>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Vérifiez l'orthographe du nom ou du numéro de téléphone.</p>
+          </div>
+        `;
+        return;
+      }
+
+      feed.innerHTML = filtered.map(item => {
+        const clientName = escapeHtml(item.client.name);
+        const rewardTitleEscaped = escapeHtml(item.reward.title).replace(/'/g, "\\'");
+        const clientPhone = item.client.rawKey;
+
+        return `
+          <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+            <div>
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <div>
+                  <strong style="font-size: 0.95rem; color: var(--text-dark); display: block;">👤 ${clientName}</strong>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${item.client.phone}</span>
+                </div>
+                <span style="font-size: 0.75rem; font-weight: 800; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 10px;">
+                  Solde: ${item.client.points} pts
+                </span>
+              </div>
+
+              <div style="background: #F1F5F9; padding: 0.6rem 0.75rem; border-radius: 8px; margin-bottom: 0.85rem; display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.4rem;">${item.reward.icon}</span>
+                <div>
+                  <strong style="font-size: 0.88rem; color: var(--text-dark); display: block;">${escapeHtml(item.reward.title)}</strong>
+                  <span style="font-size: 0.75rem; color: #DC2626; font-weight: 800;">Coût : -${item.reward.pts} PTS</span>
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-create-account" style="width: 100%; background: #10B981; border-color: #10B981; font-size: 0.8rem; padding: 0.5rem 0.75rem;" onclick="validateRewardRedemptionDirect('${clientPhone}', '${rewardTitleEscaped}', ${item.reward.pts}, this)">
+              <span>✅ Valider l'Échange (-${item.reward.pts} Pts)</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+    };
 
     async function validateRewardRedemptionDirect(clientPhone, rewardTitle, ptsCost, btnElement = null) {
       if (!activeB2BSession || !activeB2BSession.restoName) return;

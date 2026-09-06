@@ -607,6 +607,11 @@
                 <span style="font-size: 0.75rem; background: var(--marron-light); color: var(--primary-gold); font-weight: 800; padding: 4px 10px; border-radius: 12px;" id="eligible-claims-count-badge">0 éligible(s)</span>
               </div>
 
+              <!-- SEARCH BAR FOR ELIGIBLE CLIENTS -->
+              <div style="margin-bottom: 1rem; position: relative;">
+                <input type="text" id="merchant-eligible-search-input" placeholder="🔍 Rechercher un client par nom ou numéro..." oninput="filterMerchantEligibleClients()" style="width: 100%; padding: 0.65rem 1rem; border-radius: 10px; border: 1.5px solid var(--dash-border); font-size: 0.85rem; font-weight: 600; outline: none; background: #FFFFFF;">
+              </div>
+
               <div id="merchant-eligible-rewards-feed">
                 <!-- Dynamically populated by app.js -->
               </div>
