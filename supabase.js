@@ -408,14 +408,39 @@ class NexaProductionBackend {
       // Merge with local clients list for instant resilient metrics
       let localClients = this.getLocalClients(slug);
       let mergedClientsMap = new Map();
-      localClients.forEach(c => mergedClientsMap.set(c.rawKey || c.whatsapp_phone || c.phone, c));
+      const processMetricClient = (c) => {
+        const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.rawKey ? c.rawKey.split('_')[0] : ''));
+        const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
+        if (!digitsKey) return;
+
+        const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 1);
+        const pts = typeof c.points_balance === 'number' ? c.points_balance : (typeof c.points === 'number' ? c.points : 0);
+
+        if (mergedClientsMap.has(digitsKey)) {
+          const prev = mergedClientsMap.get(digitsKey);
+          mergedClientsMap.set(digitsKey, {
+            ...prev,
+            visits_count: Math.max(prev.visits_count || 1, vCount || 1),
+            points_balance: Math.max(prev.points_balance || 0, pts || 0)
+          });
+        } else {
+          mergedClientsMap.set(digitsKey, {
+            ...c,
+            visits_count: vCount > 0 ? vCount : 1,
+            points_balance: pts
+          });
+        }
+      };
+
+      localClients.forEach(processMetricClient);
       if (Array.isArray(clientRows)) {
-        clientRows.forEach(c => mergedClientsMap.set(c.whatsapp_phone || c.phone, c));
+        clientRows.forEach(processMetricClient);
       }
+
       const allClients = Array.from(mergedClientsMap.values());
       const totalClientsCount = allClients.length;
-      const totalScansCount = allClients.reduce((sum, c) => sum + (c.visits_count || c.visits || 1), 0);
-      const totalPointsDistributed = allClients.reduce((sum, c) => sum + (c.points_balance || c.points || 0), 0);
+      const totalScansCount = allClients.reduce((sum, c) => sum + (c.visits_count || 1), 0);
+      const totalPointsDistributed = allClients.reduce((sum, c) => sum + (c.points_balance || 0), 0);
 
       // 2. Query active rewards / offers & redemptions count for this restaurant
       let activeOffersCount = 0;
@@ -584,30 +609,52 @@ class NexaProductionBackend {
           } catch (fErr) {}
         }
 
-        if (clientRows.length > 0) {
-          const mergedMap = new Map();
-          clients.forEach(c => mergedMap.set(c.rawKey || c.whatsapp_phone || c.id || c.phone, c));
-          clientRows.forEach(row => {
-            const rowKey = row.whatsapp_phone || String(row.id);
-            const cleanPhone = row.whatsapp_phone ? row.whatsapp_phone.split('_')[0] : (row.phone || '');
-            mergedMap.set(rowKey, {
-              id: row.id,
-              rawKey: row.whatsapp_phone,
-              whatsapp_phone: row.whatsapp_phone,
-              phone: cleanPhone,
-              full_name: row.full_name || 'Client Nexa',
-              name: row.full_name || 'Client Nexa',
-              points_balance: row.points_balance || 0,
-              points: row.points_balance || 0,
-              visits_count: row.visits_count || 1,
-              visits: row.visits_count || 1,
-              lastVisit: row.last_scan_at ? new Date(row.last_scan_at).toLocaleDateString('fr-FR') : 'Récemment',
-              last_scan_at: row.last_scan_at
+        const mergedMap = new Map();
+        const mergeClient = (c) => {
+          const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.rawKey ? c.rawKey.split('_')[0] : ''));
+          const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
+          if (!digitsKey) return;
+
+          const rawKey = c.rawKey || c.whatsapp_phone || `${rawPhone}_${slug}`;
+          const name = (c.name && c.name !== 'Client Nexa') ? c.name : (c.full_name && c.full_name !== 'Client Nexa' ? c.full_name : 'Client Nexa');
+          const pts = typeof c.points === 'number' ? c.points : (c.points_balance || 0);
+          const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 1);
+
+          if (mergedMap.has(digitsKey)) {
+            const prev = mergedMap.get(digitsKey);
+            mergedMap.set(digitsKey, {
+              ...prev,
+              rawKey: rawKey || prev.rawKey,
+              phone: rawPhone || prev.phone,
+              name: (name !== 'Client Nexa') ? name : prev.name,
+              full_name: (name !== 'Client Nexa') ? name : prev.full_name,
+              points: Math.max(prev.points || 0, pts || 0),
+              points_balance: Math.max(prev.points_balance || 0, pts || 0),
+              visits: Math.max(prev.visits || 1, vCount || 1),
+              visits_count: Math.max(prev.visits_count || 1, vCount || 1),
+              lastVisit: c.lastVisit || c.last_scan_at || prev.lastVisit
             });
-          });
-          clients = Array.from(mergedMap.values());
-          this.saveLocalClients(slug, clients);
-        }
+          } else {
+            mergedMap.set(digitsKey, {
+              id: c.id || rawKey,
+              rawKey: rawKey,
+              whatsapp_phone: rawKey,
+              phone: rawPhone,
+              name: name,
+              full_name: name,
+              points: pts,
+              points_balance: pts,
+              visits: vCount > 0 ? vCount : 1,
+              visits_count: vCount > 0 ? vCount : 1,
+              lastVisit: c.lastVisit || (c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR') : 'Récemment')
+            });
+          }
+        };
+
+        clients.forEach(mergeClient);
+        clientRows.forEach(mergeClient);
+        clients = Array.from(mergedMap.values());
+        this.saveLocalClients(slug, clients);
       } catch (cloudErr) {
         console.warn('[DIAGNOSTIC R6 CLIENTS NOTICE] Serving from fast local cache:', cloudErr.message);
       }
@@ -1716,17 +1763,40 @@ class NexaProductionBackend {
           .or(orFilter)
           .order('last_scan_at', { ascending: false });
 
-        if (!qErr && Array.isArray(slugClients) && slugClients.length > 0) {
-          return slugClients;
+        let clientRows = (!qErr && Array.isArray(slugClients) && slugClients.length > 0) ? slugClients : [];
+
+        if (clientRows.length === 0) {
+          const { data: allRows } = await client.from('clients').select('*');
+          if (Array.isArray(allRows) && allRows.length > 0) {
+            clientRows = allRows.filter(c => {
+              const wp = (c.whatsapp_phone || '').toLowerCase();
+              return wp.endsWith('_' + slug) || wp.includes(slug) || (restoDbId && c.restaurant_id === restoDbId);
+            });
+          }
         }
 
-        // Fallback filter in memory
-        const { data: allRows } = await client.from('clients').select('*');
-        if (Array.isArray(allRows) && allRows.length > 0) {
-          return allRows.filter(c => {
-            const wp = (c.whatsapp_phone || '').toLowerCase();
-            return wp.endsWith('_' + slug) || wp.includes(slug) || (restoDbId && c.restaurant_id === restoDbId);
+        if (clientRows.length > 0) {
+          const mergedMap = new Map();
+          clientRows.forEach(c => {
+            const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : '');
+            const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : String(c.id);
+            if (mergedMap.has(digitsKey)) {
+              const prev = mergedMap.get(digitsKey);
+              mergedMap.set(digitsKey, {
+                ...prev,
+                full_name: (c.full_name && c.full_name !== 'Client Nexa') ? c.full_name : prev.full_name,
+                points_balance: Math.max(prev.points_balance || 0, c.points_balance || 0),
+                visits_count: Math.max(prev.visits_count || 1, c.visits_count || 1),
+                last_scan_at: c.last_scan_at || prev.last_scan_at
+              });
+            } else {
+              mergedMap.set(digitsKey, {
+                ...c,
+                visits_count: (c.visits_count && c.visits_count > 0) ? c.visits_count : 1
+              });
+            }
           });
+          return Array.from(mergedMap.values());
         }
       } catch (err) {
         console.error('Fetch Clients Exception:', err);

@@ -208,6 +208,9 @@ function initNexaApp() {
         } else if (window.nexaBackend && window.nexaBackend.fetchRewardsByResto) {
           cloudRewards = await window.nexaBackend.fetchRewardsByResto(state.restaurant.name);
         }
+        if ((!cloudRewards || cloudRewards.length === 0) && window.nexaBackend && window.nexaBackend.getLocalRewards) {
+          cloudRewards = window.nexaBackend.getLocalRewards(currentSlug);
+        }
         if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
             id: String(r.id),
