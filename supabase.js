@@ -425,20 +425,20 @@ class NexaProductionBackend {
         const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
         if (!digitsKey) return;
 
-        const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 1);
+        const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0);
         const pts = typeof c.points_balance === 'number' ? c.points_balance : (typeof c.points === 'number' ? c.points : 0);
 
         if (mergedClientsMap.has(digitsKey)) {
           const prev = mergedClientsMap.get(digitsKey);
           mergedClientsMap.set(digitsKey, {
             ...prev,
-            visits_count: Math.max(prev.visits_count || 1, vCount || 1),
+            visits_count: Math.max(prev.visits_count || 0, vCount || 0),
             points_balance: Math.max(prev.points_balance || 0, pts || 0)
           });
         } else {
           mergedClientsMap.set(digitsKey, {
             ...c,
-            visits_count: vCount > 0 ? vCount : 1,
+            visits_count: vCount,
             points_balance: pts
           });
         }
@@ -2158,7 +2158,8 @@ class NexaProductionBackend {
           .eq('whatsapp_phone', compositeKey)
           .maybeSingle();
 
-        const cloudVisits = existingClient ? Math.max((existingClient.visits_count || 0) + 1, currentVisits) : currentVisits;
+        const hasCloudScannedBefore = Boolean(existingClient && existingClient.last_scan_at);
+        const cloudVisits = hasCloudScannedBefore ? Math.max((existingClient.visits_count || 1) + 1, currentVisits) : currentVisits;
         const cloudPoints = currentPoints;
         const displayName = clientName && clientName !== 'Client Nexa' ? clientName : (existingClient ? existingClient.full_name : 'Client Nexa');
 

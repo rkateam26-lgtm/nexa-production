@@ -1698,7 +1698,8 @@ function initNexaApp() {
       } else {
         fullRewardsContainer.innerHTML = state.rewards.map(reward => {
           const canClaim = state.clientSession.points >= reward.pts;
-          const ptsNeeded = reward.pts - state.clientSession.points;
+          const ptsNeeded = Math.max(0, reward.pts - state.clientSession.points);
+          const progressPct = Math.min(100, Math.max(0, Math.round((state.clientSession.points / reward.pts) * 100)));
           const titleEscaped = (reward.title || '').replace(/'/g, "\\'");
           const descEscaped = (reward.desc || reward.description || 'Valable sur présentation en caisse.').replace(/'/g, "\\'");
           const iconEscaped = (reward.icon || '🎁').replace(/'/g, "\\'");
@@ -1711,8 +1712,20 @@ function initNexaApp() {
               <div class="mockup-reward-item-left">
                 <img src="${imgSrc}" alt="${escapeHtml(reward.title)}" class="mockup-reward-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';">
                 <div class="mockup-reward-item-info">
-                  <div class="mockup-reward-item-name">${escapeHtml(reward.title)}</div>
-                  <div class="mockup-reward-item-pts">${reward.pts} points</div>
+                  <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
+                    <span class="mockup-reward-item-name">${escapeHtml(reward.title)}</span>
+                    ${canClaim ? `
+                      <span style="font-size: 0.65rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 10px;">✅ Éligible</span>
+                    ` : `
+                      <span style="font-size: 0.65rem; font-weight: 800; background: #FEF2F2; color: #DC2626; padding: 2px 8px; border-radius: 10px;">🔒 Il vous manque ${ptsNeeded} pts</span>
+                    `}
+                  </div>
+                  <div class="mockup-reward-item-pts">${reward.pts} points requis</div>
+
+                  <!-- Mini Progress Bar inside Reward Card -->
+                  <div style="width: 100%; max-width: 170px; height: 5px; background: #E2E8F0; border-radius: 10px; margin-top: 0.4rem; overflow: hidden;" title="Progression : ${progressPct}% (${state.clientSession.points}/${reward.pts} pts)">
+                    <div style="width: ${progressPct}%; height: 100%; background: ${canClaim ? '#10B981' : '#F59E0B'}; border-radius: 10px; transition: width 0.4s ease;"></div>
+                  </div>
                 </div>
               </div>
               <div class="mockup-reward-item-action" onclick="event.stopPropagation();">
@@ -1721,10 +1734,10 @@ function initNexaApp() {
                     Réclamer
                   </button>
                 ` : `
-                  <div class="mockup-lock-box" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;" title="Nécessite ${reward.pts} pts">
+                  <div class="mockup-lock-box" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="cursor: pointer;" title="Nécessite ${reward.pts} pts (${ptsNeeded} pts manquants)">
                     <i data-lucide="lock" style="width: 14px; height: 14px;"></i>
                   </div>
-                  <div class="mockup-lock-pts-needed">${ptsNeeded} points nécessaires</div>
+                  <div class="mockup-lock-pts-needed" style="color: #DC2626; font-weight: 800;">Manque ${ptsNeeded} pts</div>
                 `}
               </div>
             </div>
