@@ -1051,7 +1051,7 @@ function initNexaApp() {
       }
 
       setScannerState('success');
-      addClientNotification('scan', `⭐ +${scanEarned} points crédités !`, `Visite Table #${scannedTableNum} chez ${state.restaurant.name}. Solde total : ${state.clientSession.points} pts.`);
+      addClientNotification('scan', `⭐ +${scanEarned} points crédités !`, `Preuve de visite confirmée le ${formatNexaDate(new Date())} chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde total : ${state.clientSession.points} pts.`);
       showToast('🎉 Visite Confirmée !', `+${scanEarned} points crédités chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde : ${state.clientSession.points} pts.`);
 
       // Confetti celebration

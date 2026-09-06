@@ -1040,13 +1040,39 @@ class NexaProductionBackend {
     return formattedRewards;
   }
 
-  // Helper: Read local rewards cache
+  // Helper: Read local rewards cache (with slug variation & global scan fallback)
   getLocalRewards(slug) {
     try {
-      if (!slug) return [];
-      const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`)
-        || localStorage.getItem(`nexa_rewards_${slug}`);
-      return raw ? JSON.parse(raw) : [];
+      if (!slug) slug = 'savane';
+      const cleanSlug = this.getSlug(slug);
+      let raw = localStorage.getItem(`nexa_rewards_cache_${cleanSlug}`)
+        || localStorage.getItem(`nexa_rewards_${cleanSlug}`);
+      
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+
+      // Check alternative slug variations (e.g. savane vs le-savane)
+      const altSlug = cleanSlug.startsWith('le-') ? cleanSlug.replace(/^le-/, '') : `le-${cleanSlug}`;
+      raw = localStorage.getItem(`nexa_rewards_cache_${altSlug}`) || localStorage.getItem(`nexa_rewards_${altSlug}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+
+      // Scan all localStorage keys starting with nexa_rewards_
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('nexa_rewards_cache_') || key.startsWith('nexa_rewards_')) && !key.endsWith('_backup')) {
+          const val = localStorage.getItem(key);
+          if (val) {
+            const parsed = JSON.parse(val);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          }
+        }
+      }
+      return [];
     } catch (e) {
       return [];
     }
@@ -1055,9 +1081,13 @@ class NexaProductionBackend {
   // Helper: Save local rewards cache
   saveLocalRewards(slug, rewardsList) {
     try {
-      if (!slug) return;
-      localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(rewardsList));
-      localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(rewardsList));
+      if (!slug) slug = 'savane';
+      const cleanSlug = this.getSlug(slug);
+      localStorage.setItem(`nexa_rewards_cache_${cleanSlug}`, JSON.stringify(rewardsList));
+      localStorage.setItem(`nexa_rewards_${cleanSlug}`, JSON.stringify(rewardsList));
+      const altSlug = cleanSlug.startsWith('le-') ? cleanSlug.replace(/^le-/, '') : `le-${cleanSlug}`;
+      localStorage.setItem(`nexa_rewards_cache_${altSlug}`, JSON.stringify(rewardsList));
+      localStorage.setItem(`nexa_rewards_${altSlug}`, JSON.stringify(rewardsList));
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }
