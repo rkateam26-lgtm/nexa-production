@@ -2099,27 +2099,28 @@ class NexaProductionBackend {
       try {
         const { data: existingClient } = await client
           .from('clients')
-          .update({ points_balance: newBalance })
-          .eq('whatsapp_phone', existingClient.whatsapp_phone)
-          .select()
-          .single();
+          .select('*')
+          .or(`whatsapp_phone.eq.${compositeKey},whatsapp_phone.eq.${whatsappPhone}`)
+          .maybeSingle();
 
         if (existingClient) {
           const newBalance = Math.max(0, (existingClient.points_balance || 0) - pointsDeducted);
-          await client
+          const { data: updatedClient } = await client
             .from('clients')
             .update({ points_balance: newBalance })
-            .eq('whatsapp_phone', compositeKey);
-        }
+            .eq('id', existingClient.id)
+            .select()
+            .single();
 
-        console.log(`[DIAGNOSTIC DEDUCT PTS SUCCESS] New balance for ${existingClient.full_name}: ${newBalance} pts`);
-        return updatedClient;
-      } else {
-        throw new Error(`Client introuvable pour la clé ${cleanPhone}`);
+          console.log(`[DIAGNOSTIC DEDUCT PTS SUCCESS] New balance for ${existingClient.full_name || whatsappPhone}: ${newBalance} pts`);
+          return updatedClient;
+        } else {
+          throw new Error(`Client introuvable pour la clé ${whatsappPhone}`);
+        }
+      } catch (e) {
+        console.error('[DIAGNOSTIC DEDUCT PTS EXCEPTION]', e);
+        throw e;
       }
-    } catch (e) {
-      console.error('[DIAGNOSTIC DEDUCT PTS EXCEPTION]', e);
-      throw e;
     }
   }
 

@@ -221,26 +221,34 @@ input, select, textarea {
   max-width: 500px !important;
   margin: 0 auto !important;
   padding: 0 !important;
+  height: 100vh !important;
+  overflow: hidden !important;
 }
 
 .viewport-mobile .phone-wrapper {
   display: block !important;
   width: 100% !important;
   max-width: 100% !important;
+  height: 100vh !important;
   margin: 0 !important;
   padding: 0 !important;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
+  overflow: hidden !important;
 }
 
 .viewport-mobile .phone-screen {
   border-radius: 0 !important;
   border: none !important;
   box-shadow: none !important;
-  min-height: 100vh !important;
+  height: 100vh !important;
+  max-height: 100vh !important;
   background: var(--bg-whitey) !important;
   position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
 }
 
 .viewport-mobile .phone-notch { display: none !important; }
@@ -285,10 +293,12 @@ input, select, textarea {
 
 .viewport-dual .phone-screen {
   border-radius: 34px;
-  min-height: 800px;
+  height: 800px;
   max-height: 820px;
   overflow: hidden;
   position: relative !important;
+  display: flex !important;
+  flex-direction: column !important;
 }
 
 .viewport-dual .dashboard-container { display: grid !important; }
@@ -298,8 +308,10 @@ input, select, textarea {
    ========================================================================== */
 .phone-content {
   flex: 1;
-  overflow-y: auto;
-  padding-bottom: 75px;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  padding-bottom: 85px !important;
   scrollbar-width: none;
 }
 .phone-content::-webkit-scrollbar { display: none; }
@@ -319,6 +331,7 @@ input, select, textarea {
   align-items: center;
   z-index: 50 !important;
   padding-bottom: env(safe-area-inset-bottom, 0px);
+  flex-shrink: 0;
 }
 
 .nav-tab {

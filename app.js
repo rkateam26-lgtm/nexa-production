@@ -68,24 +68,26 @@ function initNexaApp() {
   let currentRestoName = '';
   if (urlRestoName) {
     currentRestoName = decodeURIComponent(urlRestoName);
-    // If it's a public identifier e.g. "nx_le-savane", resolve to friendly name
     if (currentRestoName.startsWith('nx_')) {
       const cleanSlug = currentRestoName.replace(/^nx_/, '');
       currentRestoName = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     }
     localStorage.setItem('nexa_resto_name', currentRestoName);
-  } else if (hasQrParam && localStorage.getItem('nexa_resto_name')) {
-    currentRestoName = localStorage.getItem('nexa_resto_name');
-    if (currentRestoName && currentRestoName.startsWith('nx_')) {
-      const cleanSlug = currentRestoName.replace(/^nx_/, '');
-      currentRestoName = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  } else {
+    const savedResto = localStorage.getItem('nexa_resto_name');
+    if (savedResto) {
+      currentRestoName = savedResto;
+      if (currentRestoName.startsWith('nx_')) {
+        const cleanSlug = currentRestoName.replace(/^nx_/, '');
+        currentRestoName = cleanSlug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
     }
   }
 
-  // CAS B: When NO restaurant QR parameter is present, do NOT auto-select Chitir Chicken or any default restaurant!
   const hasRestaurantContext = Boolean(currentRestoName);
   if (!currentRestoName) {
-    currentRestoName = 'Aucun Restaurant';
+    currentRestoName = 'Le Savane';
+    localStorage.setItem('nexa_resto_name', currentRestoName);
   }
 
   const slug = currentRestoName.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
@@ -618,8 +620,21 @@ function initNexaApp() {
   const modalClientAuth = document.getElementById('modal-client-auth');
   const formClientAuth = document.getElementById('form-client-auth');
 
-  window.openClientAuthModal = () => modalClientAuth && modalClientAuth.classList.add('active');
-  window.closeClientAuthModal = () => modalClientAuth && modalClientAuth.classList.remove('active');
+  window.openClientAuthModal = () => {
+    if (modalClientAuth) {
+      modalClientAuth.classList.add('active');
+      modalClientAuth.style.display = 'flex';
+    }
+  };
+  window.closeClientAuthModal = () => {
+    if (modalClientAuth) {
+      modalClientAuth.classList.remove('active');
+      modalClientAuth.style.display = 'none';
+    }
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { window.lucide.createIcons(); } catch (e) {}
+    }
+  };
 
   // DEMO RESTAURANT SWITCHER FOR TESTING
   window.loadDemoRestaurant = function(demoName = 'Le Savane') {
@@ -652,9 +667,7 @@ function initNexaApp() {
       localStorage.setItem('nexa_client_name', name);
 
       // Save client in restaurant's local CRM list immediately (0ms)
-      const targetResto = (hasRestaurantContext && state.restaurant.name !== 'Aucun Restaurant') 
-        ? state.restaurant.name 
-        : (localStorage.getItem('nexa_resto_name') || 'Le Savane');
+      const targetResto = state.restaurant.name || (localStorage.getItem('nexa_resto_name') || 'Le Savane');
       const targetSlug = targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
       const compositeKey = `${phone}_${targetSlug}`;
 
@@ -685,8 +698,13 @@ function initNexaApp() {
       }
 
       closeClientAuthModal();
+      document.querySelectorAll('.scanner-modal, .nexa-modal-backdrop').forEach(m => {
+        m.classList.remove('active');
+        m.style.display = 'none';
+      });
+
       renderClientUI();
-      showToast('✅ Connecté !', `Bienvenue ${name} !`);
+      showToast('✅ Connecté !', `Bienvenue ${name} chez ${state.restaurant.name} !`);
 
       // 2. IMMEDIATELY TRIGGER TABLE SCAN IF DIRECT QR SCAN (0ms)
       if (isDirectTableScan) {
@@ -996,6 +1014,7 @@ function initNexaApp() {
       }
 
       setScannerState('success');
+      showToast('🎉 Visite Confirmée !', `+${scanEarned} points crédités chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde : ${state.clientSession.points} pts.`);
 
       // Confetti celebration
       if (window.confetti) {
@@ -1005,6 +1024,13 @@ function initNexaApp() {
       // Vibrate mobile phone if supported
       if (navigator.vibrate) {
         navigator.vibrate([100, 50, 100]);
+      }
+
+      // Auto-dismiss scanner modal after short delay if triggered automatically by direct scan
+      if (isDirectTableScan && scannerModal && scannerModal.classList.contains('active')) {
+        setTimeout(() => {
+          stopCameraScanner();
+        }, 1600);
       }
 
       // Immediately update points on Accueil screen
@@ -1041,8 +1067,18 @@ function initNexaApp() {
     if (html5QrCode && html5QrCode.isScanning) {
       html5QrCode.stop().then(() => html5QrCode.clear()).catch(err => console.error(err));
     }
-    if (scannerModal) scannerModal.classList.remove('active');
+    if (scannerModal) {
+      scannerModal.classList.remove('active');
+      scannerModal.style.display = 'none';
+    }
+    document.querySelectorAll('.scanner-modal, .nexa-modal-backdrop').forEach(m => {
+      m.classList.remove('active');
+      m.style.display = 'none';
+    });
     isScanProcessing = false;
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { window.lucide.createIcons(); } catch (e) {}
+    }
   };
 
   // Global bridge for QR scan success & table points credit
@@ -1070,16 +1106,16 @@ function initNexaApp() {
      5. MOBILE NAVIGATION & MERCHANT 1-CLICK VALIDATION ENGINE
      ========================================================================== */
   // RE-BIND MOBILE TAB SWITCHING GLOBALLY SCRIPT & HELPERS
-  const navTabs = document.querySelectorAll('.mobile-nav .nav-tab');
-  const clientScreens = document.querySelectorAll('.client-screen');
-
   window.switchMobileTab = function(targetTab) {
     state.activeTab = targetTab || 'home';
-    clientScreens.forEach(s => {
+    const screens = document.querySelectorAll('.client-screen');
+    const tabs = document.querySelectorAll('.mobile-nav .nav-tab');
+
+    screens.forEach(s => {
       s.classList.remove('active');
       s.style.display = 'none';
     });
-    navTabs.forEach(t => t.classList.remove('active'));
+    tabs.forEach(t => t.classList.remove('active'));
 
     const targetScreen = document.getElementById(`screen-${targetTab}`);
     const matchTab = document.querySelector(`.mobile-nav .nav-tab[data-tab="${targetTab}"]`);
@@ -1090,14 +1126,19 @@ function initNexaApp() {
     }
     if (matchTab) matchTab.classList.add('active');
 
+    const phoneContent = document.querySelector('.phone-content');
+    if (phoneContent) phoneContent.scrollTop = 0;
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+      try { window.lucide.createIcons(); } catch (e) {}
+    }
   };
 
-  navTabs.forEach(tab => {
+  document.querySelectorAll('.mobile-nav .nav-tab').forEach(tab => {
     tab.addEventListener('click', (e) => {
-      e.preventDefault();
       const targetTab = tab.getAttribute('data-tab');
-      switchMobileTab(targetTab);
+      if (targetTab) window.switchMobileTab(targetTab);
     });
   });
 
@@ -1244,31 +1285,29 @@ function initNexaApp() {
     }
 
     // Default restaurant name when client is logged in without explicit URL param
-    if (isClientAuthenticated && state.restaurant.name === 'Aucun Restaurant') {
+    if (isClientAuthenticated && (state.restaurant.name === 'Aucun Restaurant' || !state.restaurant.name)) {
       state.restaurant.name = localStorage.getItem('nexa_resto_name') || 'Le Savane';
       state.restaurant.id = state.restaurant.name.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
     }
 
-    const restoEl = document.getElementById('mobile-resto-name');
-    if (restoEl) restoEl.textContent = state.restaurant.name;
+    const currentRestoName = state.restaurant.name || 'Le Savane';
+    const currentRestoType = state.restaurant.type || '★ 4.9 • Bistro & Grillades';
 
-    const restoTypeEl = document.getElementById('mobile-resto-type');
-    if (restoTypeEl) restoTypeEl.textContent = state.restaurant.type;
+    const restoNameEls = document.querySelectorAll('#mobile-resto-name, .client-resto-name, #profile-display-resto, #scanner-resto-title, #scanner-perm-resto-name');
+    restoNameEls.forEach(el => { el.textContent = currentRestoName; });
 
-    // Dynamically update Restaurant Logo on Client App
-    const restoLogoEl = document.getElementById('mobile-resto-logo') || document.querySelector('.restaurant-logo-clean');
-    if (restoLogoEl) {
+    const restoTypeEls = document.querySelectorAll('#mobile-resto-type, .client-resto-type');
+    restoTypeEls.forEach(el => { el.textContent = currentRestoType; });
+
+    const restoLogoEls = document.querySelectorAll('#mobile-resto-logo, #scanner-resto-logo, .restaurant-logo-clean');
+    restoLogoEls.forEach(img => {
       if (state.restaurant.logo) {
-        restoLogoEl.src = state.restaurant.logo;
+        img.src = state.restaurant.logo;
       } else {
         const cachedLogo = localStorage.getItem(`nexa_resto_logo_${slug}`);
-        if (cachedLogo) {
-          restoLogoEl.src = cachedLogo;
-        } else {
-          restoLogoEl.src = './assets/savane_dish.jpg';
-        }
+        img.src = cachedLogo || './assets/savane_dish.jpg';
       }
-    }
+    });
 
     // ----------------------------------------------------
     // TIER & STATUS LOGIC (BRONZE -> SILVER -> GOLD -> VIP)
@@ -2226,16 +2265,17 @@ function initNexaApp() {
       try {
         const backend = window.nexaBackend || (typeof NexaProductionBackend !== 'undefined' ? new NexaProductionBackend() : null);
         if (backend && typeof backend.createOrUpdateRestaurantOffer === 'function') {
-        const restoName = (state.restaurant && state.restaurant.name) || 'Le Savane';
-        const today = new Date().toISOString().split('T')[0];
-        const nextWeek = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
-        backend.createOrUpdateRestaurantOffer(restoName, {
-          title,
-          desc: text,
-          startDate: today,
-          endDate: nextWeek,
-          active: true
-        });
+          const restoName = (state.restaurant && state.restaurant.name) || 'Le Savane';
+          const today = new Date().toISOString().split('T')[0];
+          const nextWeek = new Date(Date.now() + 7*86400000).toISOString().split('T')[0];
+          backend.createOrUpdateRestaurantOffer(restoName, {
+            title,
+            desc: text,
+            startDate: today,
+            endDate: nextWeek,
+            active: true
+          });
+        }
       } catch (err) {
         console.warn('[OFFER SYNC NOTICE]', err);
       }
