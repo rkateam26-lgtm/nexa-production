@@ -1028,11 +1028,12 @@ function initNexaApp() {
       }
 
       // Add to Client History
+      const scanDateFormatted = formatNexaDate(new Date());
       state.clientSession.history.unshift({
         id: Date.now(),
         title: `Visite Table #${scannedTableNum} (+${scanEarned} pts)`,
-        time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}),
-        date: new Date().toLocaleDateString('fr-FR'),
+        time: scanDateFormatted,
+        date: scanDateFormatted,
         pts: `+${scanEarned}`
       });
       localStorage.setItem('nexa_client_history', JSON.stringify(state.clientSession.history));
@@ -1736,7 +1737,7 @@ function initNexaApp() {
           <div style="background: white; border: 1px solid var(--dash-border); border-radius: 12px; padding: 0.85rem; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
             <div>
               <strong style="font-size: 0.88rem; color: var(--marron-dark);">${h.title}</strong>
-              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">${h.date} à ${h.time}</p>
+              <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0;">${h.time || h.date || 'Récemment'}</p>
             </div>
             <strong style="color: var(--primary-gold); font-size: 0.95rem;">${h.pts} pts</strong>
           </div>

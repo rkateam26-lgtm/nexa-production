@@ -669,9 +669,7 @@ class NexaProductionBackend {
     const formattedClients = clients.map(c => {
       const rawKey = c.rawKey || c.whatsapp_phone || `${c.phone || ''}_${slug}`;
       const cleanPhone = c.phone || (rawKey ? rawKey.split('_')[0] : 'N/A');
-      const lastVisitDate = c.lastVisit || (c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR', {
-        year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-      }) : 'Récemment');
+      const lastVisitDate = this.formatNexaDate(c.last_scan_at || c.lastVisit);
 
       const visitsCount = (c.visits_count !== undefined && c.visits_count !== null)
         ? c.visits_count
@@ -2050,10 +2048,12 @@ class NexaProductionBackend {
     try {
       let localList = this.getLocalClients(slug);
       const existingIdx = localList.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
-      const prevPoints = existingIdx >= 0 ? (localList[existingIdx].points_balance || localList[existingIdx].points || 0) : 0;
       const prevVisits = existingIdx >= 0 ? (localList[existingIdx].visits_count || localList[existingIdx].visits || 0) : 0;
-      currentPoints = prevPoints + pointsEarned;
       currentVisits = prevVisits + 1;
+      currentPoints = (existingIdx >= 0 && typeof localList[existingIdx].points_balance === 'number' && localList[existingIdx].points_balance > 0)
+        ? localList[existingIdx].points_balance
+        : pointsEarned;
+
       const displayName = clientName && clientName !== 'Client Nexa' 
         ? clientName 
         : (existingIdx >= 0 ? (localList[existingIdx].name || localList[existingIdx].full_name) : 'Client Nexa');
@@ -2068,7 +2068,7 @@ class NexaProductionBackend {
         points: currentPoints,
         visits_count: currentVisits,
         visits: currentVisits,
-        lastVisit: 'À l\'instant',
+        lastVisit: this.formatNexaDate(new Date()),
         last_scan_at: new Date().toISOString()
       };
 
@@ -2107,8 +2107,8 @@ class NexaProductionBackend {
           .eq('whatsapp_phone', compositeKey)
           .maybeSingle();
 
-        const cloudVisits = existingClient ? (existingClient.visits_count || 0) + 1 : currentVisits;
-        const cloudPoints = existingClient ? (existingClient.points_balance || 0) + pointsEarned : currentPoints;
+        const cloudVisits = existingClient ? Math.max((existingClient.visits_count || 0) + 1, currentVisits) : currentVisits;
+        const cloudPoints = currentPoints;
         const displayName = clientName && clientName !== 'Client Nexa' ? clientName : (existingClient ? existingClient.full_name : 'Client Nexa');
 
         let clientId = existingClient ? existingClient.id : null;
@@ -2210,6 +2210,70 @@ class NexaProductionBackend {
         console.error('[DIAGNOSTIC DEDUCT PTS EXCEPTION]', e);
         throw e;
       }
+    }
+  }
+
+  // 12b. Helper: Clean French Date Formatting (DD/MM/YYYY à HH:mm)
+  formatNexaDate(dateValue) {
+    if (!dateValue || dateValue === 'Nouveau client' || dateValue === 'Récemment' || dateValue === 'À l\'instant') {
+      return dateValue || 'Récemment';
+    }
+    try {
+      const d = new Date(dateValue);
+      if (isNaN(d.getTime())) return dateValue;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} à ${hours}:${minutes}`;
+    } catch (e) {
+      return dateValue;
+    }
+  }
+
+  // 12c. Fetch Clients Eligible for Rewards (points_balance >= reward.pts)
+  async getEligibleRedemptions(restoName) {
+    if (!restoName) return [];
+    try {
+      const slug = this.getSlug(restoName);
+      const clients = await this.getRestaurantClients(restoName);
+      const rewards = await this.getRestaurantRewards(restoName);
+
+      const activeRewards = rewards.filter(r => r.active !== false);
+      if (!activeRewards || activeRewards.length === 0 || !clients || clients.length === 0) {
+        return [];
+      }
+
+      const eligibleList = [];
+      clients.forEach(c => {
+        const clientPts = typeof c.points === 'number' ? c.points : (c.points_balance || 0);
+        activeRewards.forEach(r => {
+          if (clientPts >= r.pts) {
+            eligibleList.push({
+              id: `elig_${c.rawKey || c.phone}_${r.id}`,
+              client: {
+                rawKey: c.rawKey || c.whatsapp_phone || `${c.phone}_${slug}`,
+                phone: c.phone,
+                name: c.name || c.full_name || 'Client Nexa',
+                points: clientPts
+              },
+              reward: {
+                id: r.id,
+                title: r.title,
+                pts: r.pts,
+                icon: r.icon || '🎁',
+                image: r.image
+              }
+            });
+          }
+        });
+      });
+
+      return eligibleList;
+    } catch (err) {
+      console.warn('[GET ELIGIBLE REDEMPTIONS WARN]', err);
+      return [];
     }
   }
 
