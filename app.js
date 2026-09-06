@@ -228,9 +228,26 @@ function initNexaApp() {
             image: resolveRewardImage(r),
             category: r.category || 'Général'
           }));
-          localStorage.setItem(`nexa_rewards_${currentSlug}`, JSON.stringify(state.rewards));
-          localStorage.setItem(`nexa_rewards_cache_${currentSlug}`, JSON.stringify(state.rewards));
+          if (window.nexaBackend && window.nexaBackend.saveLocalRewards) {
+            window.nexaBackend.saveLocalRewards(currentSlug, state.rewards);
+          }
+        } else if (window.nexaBackend && window.nexaBackend.getLocalRewards) {
+          const fallbackLocal = window.nexaBackend.getLocalRewards(currentSlug);
+          if (fallbackLocal && fallbackLocal.length > 0) {
+            state.rewards = fallbackLocal.filter(r => r.active !== false).map(r => ({
+              id: String(r.id),
+              title: r.title,
+              pts: r.pts || r.points_required || 50,
+              desc: r.desc || r.description || 'Valable sur présentation en caisse.',
+              icon: r.icon || '🎁',
+              image: resolveRewardImage(r),
+              category: r.category || 'Général'
+            }));
+          }
         }
+
+        // Re-render client UI to show rewards immediately
+        renderClientUI();
 
         // 1b. ALWAYS FETCH ACTIVE COMMERCIAL OFFERS (ÉTAPE R9) FOR CLIENT!
         try {
