@@ -138,6 +138,30 @@ function initNexaApp() {
   window.__nexaState = state;
   window.state = state;
 
+  function addClientNotification(type, title, text) {
+    if (!state.notifications) state.notifications = [];
+    const now = Date.now();
+    const existing = state.notifications.find(n => n.title === title && n.text === text);
+    if (existing && (now - (existing.timestamp || 0) < 60000)) return;
+
+    const notifObj = {
+      id: Date.now(),
+      timestamp: now,
+      type: type || 'info',
+      title: title,
+      text: text,
+      time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+    };
+    state.notifications.unshift(notifObj);
+    if (state.notifications.length > 20) {
+      state.notifications = state.notifications.slice(0, 20);
+    }
+    const currentSlug = state.restaurant.id || slug;
+    localStorage.setItem(`nexa_client_notifs_${currentSlug}`, JSON.stringify(state.notifications));
+    localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
+  }
+  window.addClientNotification = addClientNotification;
+
   if (window.lucide) {
     try { lucide.createIcons(); } catch (e) {}
   }
@@ -206,6 +230,15 @@ function initNexaApp() {
               state.offers = cloudOffers.filter(o => o.active !== false && o.computedStatus !== 'DISABLED' && o.computedStatus !== 'EXPIRED');
               localStorage.setItem(`nexa_offers_cache_${currentSlug}`, JSON.stringify(state.offers));
               localStorage.setItem(`nexa_offers_${currentSlug}`, JSON.stringify(state.offers));
+              
+              if (state.offers && state.offers.length > 0) {
+                state.offers.forEach(o => {
+                  const offerNotifTitle = `📢 Offre Spéciale : ${o.title}`;
+                  if (!state.notifications.some(n => n.title === offerNotifTitle)) {
+                    addClientNotification('offer', offerNotifTitle, `${o.desc || o.description || 'Offre exclusive chez ' + state.restaurant.name}. Valable jusqu'au ${o.endDate || o.end_date || 'bientôt'}.`);
+                  }
+                });
+              }
             }
           }
         } catch (offErr) {
@@ -681,8 +714,8 @@ function initNexaApp() {
           name: name,
           full_name: name,
           points: state.clientSession.points || 0,
-          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 0) : 0,
-          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 0) : 0,
+          visits: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
+          visits_count: existIdx >= 0 ? (currentCrmClients[existIdx].visits || currentCrmClients[existIdx].visits_count || 1) : 1,
           lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Nouveau client') : 'Nouveau client',
           last_scan_at: existIdx >= 0 ? currentCrmClients[existIdx].last_scan_at : null
         };
@@ -1014,6 +1047,7 @@ function initNexaApp() {
       }
 
       setScannerState('success');
+      addClientNotification('scan', `⭐ +${scanEarned} points crédités !`, `Visite Table #${scannedTableNum} chez ${state.restaurant.name}. Solde total : ${state.clientSession.points} pts.`);
       showToast('🎉 Visite Confirmée !', `+${scanEarned} points crédités chez ${state.restaurant.name} (Table #${scannedTableNum}). Solde : ${state.clientSession.points} pts.`);
 
       // Confetti celebration
@@ -1469,7 +1503,7 @@ function initNexaApp() {
       if (state.offers && state.offers.length > 0) {
         notifBannerSub.textContent = state.offers[0].title;
       } else {
-        notifBannerSub.textContent = '-20% sur votre prochain repas !';
+        notifBannerSub.textContent = 'Cumulez vos points à chaque visite !';
       }
     }
 
@@ -1483,8 +1517,8 @@ function initNexaApp() {
       if (featOfferDesc) featOfferDesc.textContent = topOffer.desc || topOffer.description || 'Validez au comptoir pour profiter de votre remise immédiate.';
       if (featOfferImg && topOffer.image) featOfferImg.src = topOffer.image;
     } else {
-      if (featOfferTitle) featOfferTitle.textContent = 'Nouvelle offre de -20% sur votre prochain repas';
-      if (featOfferDesc) featOfferDesc.textContent = 'Validez au comptoir pour profiter de votre remise immédiate.';
+      if (featOfferTitle) featOfferTitle.textContent = `Bienvenue chez ${state.restaurant.name}`;
+      if (featOfferDesc) featOfferDesc.textContent = 'Scannez votre table à chaque passage pour cumuler des points et débloquer des récompenses !';
       if (featOfferImg) featOfferImg.src = './assets/savane_dish.jpg';
     }
 
@@ -1613,30 +1647,40 @@ function initNexaApp() {
         `;
       }
 
-      const defaultNotifs = (state.notifications && state.notifications.length > 0) ? state.notifications : [
-        {
-          id: 1,
-          title: `🎉 Offre Bienvenue : -20% sur votre commande !`,
-          text: `Valable au comptoir chez ${state.restaurant.name}. Présentez votre écran fidélité.`,
-          time: 'Il y a 5 min'
-        },
-        {
-          id: 2,
-          title: `⭐ +20 points ajoutés à votre solde`,
-          text: `Merci pour votre visite chez ${state.restaurant.name}.`,
-          time: 'Aujourd\'hui'
-        }
-      ];
+      // Check reward unlocks automatically
+      if (state.rewards && Array.isArray(state.rewards)) {
+        state.rewards.forEach(r => {
+          if (state.clientSession.points >= r.pts) {
+            const unlockTitle = `🎁 Récompense Débloquée : ${r.title}`;
+            if (!state.notifications.some(n => n.title === unlockTitle)) {
+              addClientNotification('unlock', unlockTitle, `Félicitations ! Vous avez ${state.clientSession.points} pts. Réclamez votre "${r.title}" chez ${state.restaurant.name} !`);
+            }
+          }
+        });
+      }
 
-      const notifsHtml = defaultNotifs.map(n => `
-        <div style="background: white; border: 1px solid #F3F4F6; border-radius: 14px; padding: 0.85rem; margin-bottom: 0.75rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
-            <strong style="font-size: 0.88rem; color: #111827;">${n.title}</strong>
-            <span style="font-size: 0.7rem; color: #9CA3AF;">${n.time}</span>
+      const clientNotifs = state.notifications || [];
+      let notifsHtml = '';
+
+      if (clientNotifs.length > 0) {
+        notifsHtml = clientNotifs.map(n => `
+          <div style="background: white; border: 1px solid #F3F4F6; border-radius: 14px; padding: 0.85rem; margin-bottom: 0.75rem; box-shadow: 0 2px 6px rgba(0,0,0,0.02);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+              <strong style="font-size: 0.88rem; color: #111827;">${escapeHtml(n.title)}</strong>
+              <span style="font-size: 0.7rem; color: #9CA3AF;">${escapeHtml(n.time || 'Récemment')}</span>
+            </div>
+            <p style="font-size: 0.8rem; color: #6B7280; margin: 0;">${escapeHtml(n.text)}</p>
           </div>
-          <p style="font-size: 0.8rem; color: #6B7280; margin: 0;">${n.text}</p>
-        </div>
-      `).join('');
+        `).join('');
+      } else if (!offersHtml) {
+        notifsHtml = `
+          <div style="text-align: center; color: var(--text-muted); padding: 3rem 1.5rem; background: #FFFFFF; border-radius: 16px; border: 1.5px dashed var(--dash-border); margin-top: 1rem;">
+            <div style="font-size: 2.2rem; margin-bottom: 0.5rem;">🔔</div>
+            <div style="font-weight: 800; font-size: 1rem; color: var(--marron-dark); margin-bottom: 0.3rem;">Aucune notification</div>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">Vos alertes de points, récompenses débloquées et offres apparaîtront ici en temps réel.</p>
+          </div>
+        `;
+      }
 
       notifsFeed.innerHTML = offersHtml + notifsHtml;
     }

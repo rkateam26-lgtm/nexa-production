@@ -621,12 +621,17 @@ class NexaProductionBackend {
         year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
       }) : 'Récemment');
 
+      const visitsCount = (c.visits_count !== undefined && c.visits_count !== null)
+        ? c.visits_count
+        : ((c.visits !== undefined && c.visits !== null) ? c.visits : 1);
+
       return {
         rawKey: rawKey,
         phone: cleanPhone,
         name: c.name || c.full_name || 'Client Nexa',
         points: typeof c.points === 'number' ? c.points : (c.points_balance || 0),
-        visits: typeof c.visits === 'number' ? c.visits : (c.visits_count || 1),
+        visits: visitsCount,
+        visits_count: visitsCount,
         lastVisit: lastVisitDate,
         createdAt: c.createdAt || c.created_at || new Date().toISOString()
       };
@@ -878,6 +883,12 @@ class NexaProductionBackend {
     };
   }
 
+  // Alias for backward compatibility & quick config form submission
+  async updateRestaurantLoyaltyConfig(restoName, userEmail, configPayload) {
+    const pts = typeof configPayload === 'object' ? (configPayload.pointsPerScan || configPayload.pts || 20) : configPayload;
+    return await this.updateRestaurantPointsConfig(restoName, userEmail, pts);
+  }
+
   // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only (Local-First + Cloud Sync)
   async getRestaurantRewards(restoName) {
     console.log(`[DIAGNOSTIC R8 REWARDS] Fetching rewards for resto: "${restoName}"`);
@@ -982,7 +993,10 @@ class NexaProductionBackend {
   // Helper: Read local rewards cache
   getLocalRewards(slug) {
     try {
-      const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`);
+      const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`)
+        || localStorage.getItem(`nexa_rewards_${slug}`)
+        || localStorage.getItem('nexa_rewards_cache_savane')
+        || localStorage.getItem('nexa_rewards_savane');
       return raw ? JSON.parse(raw) : [];
     } catch (e) {
       return [];
@@ -994,6 +1008,10 @@ class NexaProductionBackend {
     try {
       localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(rewardsList));
       localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(rewardsList));
+      if (!slug || slug === 'savane' || slug === 'le-savane') {
+        localStorage.setItem('nexa_rewards_cache_savane', JSON.stringify(rewardsList));
+        localStorage.setItem('nexa_rewards_savane', JSON.stringify(rewardsList));
+      }
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }
