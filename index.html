@@ -89,7 +89,7 @@
       </a>
       <button class="btn-demo-action btn-pulse" id="btn-fast-scan">
         <i data-lucide="scan"></i>
-        <span>Simuler Scan (+20 pts)</span>
+        <span id="btn-fast-scan-text">Simuler Scan</span>
       </button>
     </div>
   </header>
@@ -284,48 +284,15 @@
               </div>
 
               <!-- SECTION: Mes récompenses -->
-              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Mes récompenses</div>
-              <div class="mockup-claimed-reward-card">
-                <div class="mockup-claimed-top-row">
-                  <div class="mockup-claimed-icon-wrap">
-                    <i data-lucide="gift" style="width: 22px; height: 22px; color: white;"></i>
-                  </div>
-                  <div class="mockup-claimed-details">
-                    <div class="mockup-claimed-title" id="claimed-reward-name">Boisson offerte</div>
-                    <div class="mockup-claimed-date" id="claimed-reward-date">Réclamée aujourd'hui</div>
-                    <div class="mockup-claimed-status-badge">Prête à utiliser</div>
-                  </div>
-                  <div class="mockup-claimed-chevron">›</div>
-                </div>
-
-                <button class="mockup-btn-show-qr" onclick="showPassModalFirst()">
-                  <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
-                  <span>Afficher mon QR</span>
-                </button>
+              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Mes récompenses réclamées</div>
+              <div id="client-claimed-rewards-container">
+                <!-- Dynamically populated by app.js when client claims a reward -->
               </div>
 
               <!-- SECTION: Historique -->
-              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Historique</div>
-              <div class="mockup-history-column">
-                <div class="mockup-history-card">
-                  <img src="./assets/savane_dish.jpg" alt="Dessert offert" class="mockup-history-thumb">
-                  <div class="mockup-history-info">
-                    <div class="mockup-history-title">Dessert offert</div>
-                    <div class="mockup-history-date">Utilisée le 15 août 2026</div>
-                  </div>
-                  <div class="mockup-history-badge">Utilisée</div>
-                  <div class="mockup-claimed-chevron">›</div>
-                </div>
-
-                <div class="mockup-history-card">
-                  <img src="./assets/cold_drink.jpg" alt="Boisson offerte" class="mockup-history-thumb">
-                  <div class="mockup-history-info">
-                    <div class="mockup-history-title">Boisson offerte</div>
-                    <div class="mockup-history-date">Utilisée le 02 août 2026</div>
-                  </div>
-                  <div class="mockup-history-badge">Utilisée</div>
-                  <div class="mockup-claimed-chevron">›</div>
-                </div>
+              <div class="mockup-section-heading" style="margin-top: 1.6rem;">Historique d'activité</div>
+              <div id="client-history-feed" class="mockup-history-column">
+                <!-- Dynamically populated by app.js with real activity history -->
               </div>
 
             </div>

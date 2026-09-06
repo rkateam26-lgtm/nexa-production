@@ -1460,6 +1460,9 @@ function initNexaApp() {
     const btnScanLabel = document.getElementById('btn-scan-label');
     if (btnScanLabel) btnScanLabel.textContent = `📷 Valider mes Points Table #${tableParam} (+${state.restaurant.pointsPerScan} Pts)`;
 
+    const btnFastScanText = document.getElementById('btn-fast-scan-text');
+    if (btnFastScanText) btnFastScanText.textContent = `Simuler Scan (+${state.restaurant.pointsPerScan} pts)`;
+
     // Toggle Login Banner visibility based on client authentication state
     const loginBanner = document.getElementById('client-login-banner');
     if (loginBanner) {
@@ -1572,6 +1575,41 @@ function initNexaApp() {
                   <div class="mockup-lock-pts-needed">${ptsNeeded} points nécessaires</div>
                 `}
               </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // Render Claimed Rewards Feed in Client App (TAB 2)
+    const claimedRewardsContainer = document.getElementById('client-claimed-rewards-container');
+    if (claimedRewardsContainer) {
+      if (!state.pendingClaims || state.pendingClaims.length === 0) {
+        claimedRewardsContainer.innerHTML = `
+          <div style="text-align: center; color: var(--text-muted); padding: 1.5rem 1rem; background: #FFFFFF; border-radius: 14px; border: 1.5px dashed var(--dash-border); margin-bottom: 1.25rem;">
+            <div style="font-size: 1.5rem; margin-bottom: 0.3rem;">🎁</div>
+            <div style="font-weight: 700; font-size: 0.88rem; color: var(--marron-dark);">Aucune récompense réclamée pour le moment</div>
+            <p style="font-size: 0.78rem; color: var(--text-muted); margin: 0.2rem 0 0 0;">Cumulez vos points et réclamez vos privilèges ci-dessus !</p>
+          </div>
+        `;
+      } else {
+        claimedRewardsContainer.innerHTML = state.pendingClaims.map(v => {
+          return `
+            <div class="mockup-claimed-reward-card" style="margin-bottom: 0.85rem;">
+              <div class="mockup-claimed-top-row">
+                <div class="mockup-claimed-icon-wrap">
+                  <span style="font-size: 1.3rem;">${v.rewardIcon || '🎁'}</span>
+                </div>
+                <div class="mockup-claimed-details">
+                  <div class="mockup-claimed-title">${escapeHtml(v.rewardTitle || 'Récompense')}</div>
+                  <div class="mockup-claimed-date">Code: <strong>${v.code || 'NX-0000'}</strong> • ${v.pts} pts</div>
+                  <div class="mockup-claimed-status-badge">${v.status === 'validated' ? '✅ Validée en Caisse' : '⏳ En attente de validation'}</div>
+                </div>
+              </div>
+              <button class="mockup-btn-show-qr" onclick="showPassModalFirst()" style="margin-top: 0.6rem;">
+                <i data-lucide="qr-code" style="width: 18px; height: 18px;"></i>
+                <span>Afficher mon QR Pass</span>
+              </button>
             </div>
           `;
         }).join('');

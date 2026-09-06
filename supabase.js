@@ -214,10 +214,15 @@ class NexaProductionBackend {
       restoAddress,
       restoCity,
       restoCountry,
-      restoCategory
+      restoCategory,
+      pointsPerScan
     } = payload;
 
     const slug = this.getSlug(restoName);
+    const ptsVal = parseInt(pointsPerScan || 20, 10);
+    localStorage.setItem(`nexa_pts_${slug}`, ptsVal.toString());
+    localStorage.setItem('nexa_pts_active', ptsVal.toString());
+
     let authUserId = 'user_b2b_' + Date.now();
 
     // A. Attempt Supabase Auth (Graceful non-blocking registration)
@@ -258,7 +263,7 @@ class NexaProductionBackend {
     // B. Create / Upsert Restaurant Record in `restaurants` Table
     const metaObj = JSON.stringify({
       type: restoCategory || 'Bistro & Grillades',
-      scanPts: 20,
+      scanPts: ptsVal,
       address: restoAddress,
       city: restoCity,
       country: restoCountry,
@@ -1040,10 +1045,9 @@ class NexaProductionBackend {
   // Helper: Read local rewards cache
   getLocalRewards(slug) {
     try {
+      if (!slug) return [];
       const raw = localStorage.getItem(`nexa_rewards_cache_${slug}`)
-        || localStorage.getItem(`nexa_rewards_${slug}`)
-        || localStorage.getItem('nexa_rewards_cache_savane')
-        || localStorage.getItem('nexa_rewards_savane');
+        || localStorage.getItem(`nexa_rewards_${slug}`);
       return raw ? JSON.parse(raw) : [];
     } catch (e) {
       return [];
@@ -1053,12 +1057,9 @@ class NexaProductionBackend {
   // Helper: Save local rewards cache
   saveLocalRewards(slug, rewardsList) {
     try {
+      if (!slug) return;
       localStorage.setItem(`nexa_rewards_cache_${slug}`, JSON.stringify(rewardsList));
       localStorage.setItem(`nexa_rewards_${slug}`, JSON.stringify(rewardsList));
-      if (!slug || slug === 'savane' || slug === 'le-savane') {
-        localStorage.setItem('nexa_rewards_cache_savane', JSON.stringify(rewardsList));
-        localStorage.setItem('nexa_rewards_savane', JSON.stringify(rewardsList));
-      }
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }
