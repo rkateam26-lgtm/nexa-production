@@ -986,14 +986,16 @@ class NexaProductionBackend {
               const rSlug = rRestoId ? this.getSlug(rRestoId) : '';
               const rNameSlug = rRestoName ? this.getSlug(rRestoName) : '';
 
-              return (
+              const isMatch = (
                 rSlug === slug ||
                 rNameSlug === slug ||
                 rRestoId.includes(slug) ||
                 (cleanSearch && rRestoName.includes(cleanSearch)) ||
-                rDesc === slug ||
-                rDesc.includes(slug)
+                rDesc.includes(`[resto:${slug}]`) ||
+                rDesc.includes(slug) ||
+                (!rRestoId && !rRestoName && !rDesc.includes('[resto:'))
               );
+              return isMatch;
             });
           } else if (qErr) {
             console.warn('[REWARDS QUERY NOTICE]', qErr.message);
@@ -1012,12 +1014,16 @@ class NexaProductionBackend {
             const existing = mergedMap.get(rowId);
             const isExplicitlyInactive = row.active === false || row.is_active === false || (existing && existing.active === false);
 
+            const rawDesc = String(row.description || row.desc || (existing && existing.desc) || 'Valable sur présentation en caisse.').trim();
+            const cleanDesc = rawDesc.replace(/^\[resto:[a-z0-9-]+\]\s*/i, '');
+
             mergedMap.set(rowId, {
               ...row,
               id: rowId,
               title: row.title || row.name || (existing && existing.title) || 'Récompense',
               pts: parseInt(row.points_required || row.pts || row.points || row.points_cost || (existing && existing.pts) || 20, 10),
-              desc: (row.description && row.description !== slug) ? row.description : ((row.desc && row.desc !== slug) ? row.desc : (existing && existing.desc) || 'Valable sur présentation en caisse.'),
+              desc: cleanDesc,
+              description: cleanDesc,
               image: row.image || (existing && existing.image) || '',
               category: row.category || (existing && existing.category) || 'Général',
               icon: row.icon || (existing && existing.icon) || '🎁',
@@ -1033,46 +1039,19 @@ class NexaProductionBackend {
       }
     }
 
-    // 2b. Guaranteed authentic initial rewards for restaurant if catalog is currently empty
-    if (!rewards || rewards.length === 0) {
-      const displayResto = restoName || 'Le Savane';
-      rewards = [
-        { id: `resto_${slug}_1`, title: '☕ Café Espresso Offert', pts: 20, desc: `Valable chez ${displayResto} sur présentation en caisse.`, icon: '☕', category: 'Boisson', active: true },
-        { id: `resto_${slug}_2`, title: '🥤 Boisson Fraîche au Choix', pts: 30, desc: `Jus naturel, Soda ou Eau minérale offert chez ${displayResto}.`, icon: '🥤', category: 'Boisson', active: true },
-        { id: `resto_${slug}_3`, title: '🍰 Dessert Gourmet Maison', pts: 50, desc: `Tiramisu, Gâteau ou Fondant au chocolat chez ${displayResto}.`, icon: '🍰', category: 'Dessert', active: true },
-        { id: `resto_${slug}_4`, title: '🍔 Plat Combo Signature', pts: 100, desc: `Un plat principal ou burger offert chez ${displayResto}.`, icon: '🍔', category: 'Plat', active: true }
-      ];
-      this.saveLocalRewards(slug, rewards);
-
-      if (client) {
-        (async () => {
-          for (const item of rewards) {
-            try {
-              await client.from('rewards').upsert({
-                title: item.title,
-                description: item.desc,
-                points_required: item.pts,
-                icon: item.icon,
-                category: item.category,
-                resto_id: slug,
-                restaurant_name: displayResto
-              });
-            } catch (e) {}
-          }
-        })();
-      }
-    }
+    // STRICTLY USER CREATED REWARDS: ZERO FALLBACK SEED GENERATION
 
     // 3. Format rewards cleanly
     const formattedRewards = rewards.map(r => {
-      const isLegacyDescResto = r.description === slug || r.description === restoName;
+      const rawDesc = String(r.desc || r.description || 'Valable sur présentation en caisse.').trim();
+      const cleanDesc = rawDesc.replace(/^\[resto:[a-z0-9-]+\]\s*/i, '');
       const smartImg = (r.image && r.image.trim()) ? r.image.trim() : this.getSmartRewardFallbackImage(r.icon, r.title, r.category);
       return {
         id: String(r.id),
         restoId: r.resto_id || slug,
         restoName: r.restaurant_name || restoName,
         title: r.title || 'Récompense',
-        desc: (r.desc && r.desc !== slug) ? r.desc : (isLegacyDescResto ? 'Valable sur présentation en caisse.' : (r.description || 'Valable sur présentation en caisse.')),
+        desc: cleanDesc,
         pts: parseInt(r.pts || r.points_required || r.points_cost || 20, 10),
         icon: r.icon || '🎁',
         image: smartImg,
@@ -1189,13 +1168,17 @@ class NexaProductionBackend {
     }
     this.saveLocalRewards(slug, list);
 
+    const rawUserDesc = (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim();
+    const cleanUserDesc = rawUserDesc.replace(/^\[resto:[a-z0-9-]+\]\s*/i, '');
+    const taggedDesc = `[resto:${slug}] ${cleanUserDesc}`;
+
     // 2. Background cloud sync with multi-payload fallback strategy
     if (client) {
       const tryPayloads = [
         // Payload 1: Complete modern schema
         {
           title: rewardData.title.trim(),
-          description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          description: taggedDesc,
           points_required: ptsVal,
           pts: ptsVal,
           icon: rewardData.icon || '🎁',
@@ -1208,7 +1191,7 @@ class NexaProductionBackend {
         // Payload 2: Standard schema (without extra optional columns)
         {
           title: rewardData.title.trim(),
-          description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          description: taggedDesc,
           points_required: ptsVal,
           icon: rewardData.icon || '🎁',
           image: smartImg,
@@ -1217,7 +1200,7 @@ class NexaProductionBackend {
         // Payload 3: Alternative column names (pts, desc)
         {
           title: rewardData.title.trim(),
-          desc: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          desc: taggedDesc,
           pts: ptsVal,
           icon: rewardData.icon || '🎁',
           resto_id: slug
@@ -1226,7 +1209,7 @@ class NexaProductionBackend {
         {
           title: rewardData.title.trim(),
           points_required: ptsVal,
-          description: slug,
+          description: taggedDesc,
           icon: rewardData.icon || '🎁'
         }
       ];
