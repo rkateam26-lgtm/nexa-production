@@ -696,6 +696,14 @@ function initNexaApp() {
 
   window.openClientAuthModal = () => {
     if (modalClientAuth) {
+      const restoEl = document.getElementById('auth-resto-display-name');
+      const tableEl = document.getElementById('auth-table-display-num');
+      const ptsEl = document.getElementById('auth-pts-display-num');
+
+      if (restoEl) restoEl.textContent = state.restaurant.name || 'Le Savane';
+      if (tableEl) tableEl.textContent = tableParam || '4';
+      if (ptsEl) ptsEl.textContent = state.restaurant.pointsPerScan || '20';
+
       modalClientAuth.classList.add('active');
       modalClientAuth.style.display = 'flex';
     }

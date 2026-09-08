@@ -1166,33 +1166,31 @@ class NexaProductionBackend {
     // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
     if (client) {
       const dbPayload = {
-        id: rewardId,
         title: rewardData.title.trim(),
-        description: (rewardData.desc || '').trim() || slug,
-        desc: (rewardData.desc || '').trim() || slug,
+        description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
         points_required: ptsVal,
-        pts: ptsVal,
         icon: rewardData.icon || '🎁',
         image: smartImg,
         category: rewardData.category || 'Général',
-        active: rewardData.active !== false,
+        is_active: rewardData.active !== false,
         resto_id: slug,
         restaurant_name: restoName
       };
+      if (rewardId && !rewardId.toString().startsWith('local_')) {
+        dbPayload.id = rewardId;
+      }
 
       const syncPromise = client.from('rewards').upsert(dbPayload);
-      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500));
+      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
       Promise.race([syncPromise, syncTimeout])
         .then(({ error }) => {
           if (!error) {
             console.log(`[DIAGNOSTIC R8 CLOUD SUCCESS] Synced reward with image: ${rewardId}`);
           } else {
             console.warn('[DIAGNOSTIC R8 CLOUD NOTICE - RETRYING WITH BASE PAYLOAD]:', error.message);
-            // Fallback retry with base columns
             client.from('rewards').upsert({
-              id: rewardId,
               title: rewardData.title.trim(),
-              description: slug,
+              description: (rewardData.desc || 'Valable sur présentation en caisse.').trim(),
               points_required: ptsVal,
               icon: rewardData.icon || '🎁',
               image: smartImg,
@@ -2631,7 +2629,7 @@ class NexaProductionBackend {
           id: c.id,
           name: c.full_name || c.name || 'Client Nexa',
           maskedPhone: maskedPhone,
-          visits: typeof c.visits_count === 'number' ? c.visits_count : (c.visits || 1),
+          visits: typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0),
           points: typeof c.points_balance === 'number' ? c.points_balance : (c.points || 0),
           tier: c.tier || ((c.points_balance || c.points || 0) >= 200 ? 'VIP' : 'Silver')
         };
