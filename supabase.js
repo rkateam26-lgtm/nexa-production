@@ -976,6 +976,9 @@ class NexaProductionBackend {
           if (!qErr && Array.isArray(rows) && rows.length > 0) {
             rewardRows = rows.filter(r => {
               if (!r || (!r.title && !r.name)) return false;
+              const rTitle = String(r.title || r.name || '').toLowerCase();
+              if (rTitle.includes('ballon') || String(r.id || '').includes('seed_')) return false;
+
               const rRestoId = String(r.resto_id || r.restaurant_id || '').toLowerCase();
               const rRestoName = String(r.restaurant_name || r.resto_name || '').toLowerCase();
               const rDesc = String(r.description || r.desc || '').toLowerCase();
@@ -989,9 +992,7 @@ class NexaProductionBackend {
                 rRestoId.includes(slug) ||
                 (cleanSearch && rRestoName.includes(cleanSearch)) ||
                 rDesc === slug ||
-                rDesc.includes(slug) ||
-                (!rRestoId && !rRestoName) ||
-                rows.length <= 15
+                rDesc.includes(slug)
               );
             });
           } else if (qErr) {

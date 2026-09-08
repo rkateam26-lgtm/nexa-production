@@ -226,15 +226,17 @@ function initNexaApp() {
         }
         
         if (cloudRewards && cloudRewards.length > 0) {
-          state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
-            id: String(r.id),
-            title: r.title,
-            pts: parseInt(r.pts || r.points_required || 20, 10),
-            desc: r.desc || r.description || 'Valable sur présentation en caisse.',
-            icon: r.icon || '🎁',
-            image: resolveRewardImage(r),
-            category: r.category || 'Général'
-          }));
+          state.rewards = cloudRewards
+            .filter(r => r.active !== false && !String(r.title || '').toLowerCase().includes('ballon') && !String(r.id || '').includes('seed_'))
+            .map(r => ({
+              id: String(r.id),
+              title: r.title,
+              pts: parseInt(r.pts || r.points_required || 20, 10),
+              desc: r.desc || r.description || 'Valable sur présentation en caisse.',
+              icon: r.icon || '🎁',
+              image: resolveRewardImage(r),
+              category: r.category || 'Général'
+            }));
           if (window.nexaBackend && window.nexaBackend.saveLocalRewards) {
             window.nexaBackend.saveLocalRewards(currentSlug, state.rewards);
           }
@@ -244,7 +246,7 @@ function initNexaApp() {
             if (rawSaved) {
               const parsed = JSON.parse(rawSaved);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                state.rewards = parsed.filter(r => r.active !== false);
+                state.rewards = parsed.filter(r => r.active !== false && !String(r.title || '').toLowerCase().includes('ballon') && !String(r.id || '').includes('seed_'));
               }
             }
           } catch(e) {}
@@ -1446,12 +1448,47 @@ function initNexaApp() {
   };
 
   function renderClientUI() {
-    // CAS A vs CAS B: CONTROL VISIBILITY OF NO-RESTO SCREEN VS LOYALTY HOME SCREEN
+    const isClientAuthenticated = Boolean(state.clientSession.whatsapp);
     const noRestoScreen = document.getElementById('screen-no-resto');
     const homeScreen = document.getElementById('screen-home');
-    const isClientAuthenticated = Boolean(state.clientSession.whatsapp);
-    const shouldShowHome = Boolean(hasRestaurantContext || isClientAuthenticated);
+    const scanLandingScreen = document.getElementById('screen-scan-landing');
 
+    // 0. STANDALONE SCAN ONBOARDING PAGE ISOLATION
+    if (isDirectTableScan && !isClientAuthenticated) {
+      if (scanLandingScreen) {
+        document.querySelectorAll('.client-screen').forEach(s => {
+          if (s.id !== 'screen-scan-landing') {
+            s.classList.remove('active');
+            s.style.display = 'none';
+          }
+        });
+        if (noRestoScreen) noRestoScreen.style.display = 'none';
+        scanLandingScreen.classList.add('active');
+        scanLandingScreen.style.display = 'block';
+
+        const dockEl = document.querySelector('.mockup-dock');
+        if (dockEl) dockEl.style.display = 'none';
+
+        const restoEl = document.getElementById('landing-resto-name');
+        const tableEl = document.getElementById('landing-table-num');
+        const ptsEl = document.getElementById('landing-pts-bonus');
+        const logoEl = document.getElementById('landing-resto-logo');
+
+        if (restoEl) restoEl.textContent = state.restaurant.name || 'Le Savane';
+        if (tableEl) tableEl.textContent = tableParam || '4';
+        if (ptsEl) ptsEl.textContent = `🎁 +${state.restaurant.pointsPerScan || 20} Points offerts !`;
+        if (logoEl && state.restaurant.logo) logoEl.src = state.restaurant.logo;
+
+        return; // ISOLATED STANDALONE ONBOARDING LANDING PAGE
+      }
+    } else if (scanLandingScreen) {
+      scanLandingScreen.classList.remove('active');
+      scanLandingScreen.style.display = 'none';
+      const dockEl = document.querySelector('.mockup-dock');
+      if (dockEl) dockEl.style.display = 'grid';
+    }
+
+    const shouldShowHome = Boolean(hasRestaurantContext || isClientAuthenticated);
     if (noRestoScreen && homeScreen) {
       if (!shouldShowHome && (roleParam === 'client' || !roleParam)) {
         noRestoScreen.style.display = 'block';
