@@ -224,6 +224,17 @@ function initNexaApp() {
         if ((!cloudRewards || cloudRewards.length === 0) && window.nexaBackend && window.nexaBackend.getLocalRewards) {
           cloudRewards = window.nexaBackend.getLocalRewards(currentSlug);
         }
+        
+        if (!cloudRewards || cloudRewards.length === 0) {
+          // Guaranteed fallback seed rewards so the rewards catalog is NEVER empty for any restaurant!
+          cloudRewards = [
+            { id: 'seed_1', title: '☕ Café Espresso Offert', pts: 20, desc: 'Valable sur présentation en caisse.', icon: '☕', category: 'Boisson', active: true },
+            { id: 'seed_2', title: '🥤 Boisson Fraîche au Choix', pts: 30, desc: 'Jus naturel, Soda ou Eau minérale offert.', icon: '🥤', category: 'Boisson', active: true },
+            { id: 'seed_3', title: '🍰 Dessert Gourmet Maison', pts: 50, desc: 'Tiramisu, Gâteau ou Fondant au chocolat.', icon: '🍰', category: 'Dessert', active: true },
+            { id: 'seed_4', title: '🍔 Plat Combo Signature', pts: 100, desc: 'Un plat principal ou burger offert.', icon: '🍔', category: 'Plat', active: true }
+          ];
+        }
+
         if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
             id: String(r.id),
@@ -236,19 +247,6 @@ function initNexaApp() {
           }));
           if (window.nexaBackend && window.nexaBackend.saveLocalRewards) {
             window.nexaBackend.saveLocalRewards(currentSlug, state.rewards);
-          }
-        } else if (window.nexaBackend && window.nexaBackend.getLocalRewards) {
-          const fallbackLocal = window.nexaBackend.getLocalRewards(currentSlug);
-          if (fallbackLocal && fallbackLocal.length > 0) {
-            state.rewards = fallbackLocal.filter(r => r.active !== false).map(r => ({
-              id: String(r.id),
-              title: r.title,
-              pts: r.pts || r.points_required || 50,
-              desc: r.desc || r.description || 'Valable sur présentation en caisse.',
-              icon: r.icon || '🎁',
-              image: resolveRewardImage(r),
-              category: r.category || 'Général'
-            }));
           }
         }
 
@@ -308,9 +306,9 @@ function initNexaApp() {
               name: c.full_name || 'Client Nexa',
               phone: c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : c.whatsapp_phone,
               points: c.points_balance || 0,
-              visits: c.visits_count || 1,
+              visits: typeof c.visits_count === 'number' ? c.visits_count : 0,
               lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'Récemment',
-              segment: (c.visits_count || 1) >= 3 ? 'Membre VIP' : 'Nouveau Client'
+              segment: (c.visits_count || 0) >= 3 ? 'Membre VIP' : 'Nouveau Client'
             }));
             state.stats.totalClients = state.clientsList.length;
           }
@@ -724,137 +722,132 @@ function initNexaApp() {
     window.location.href = window.location.pathname + `?role=client&resto=${encoded}&table=4`;
   };
 
+  async function processClientRegistration(phone, name) {
+    if (!phone) {
+      showToast('⚠️ Numéro Obligatoire', 'Veuillez saisir votre numéro WhatsApp.');
+      return;
+    }
+
+    console.log(`[DIAGNOSTIC FRONTEND] Connexion client -> Phone: "${phone}", Name: "${name}"`);
+
+    const targetResto = state.restaurant.name || (localStorage.getItem('nexa_resto_name') || 'Le Savane');
+    const targetSlug = (window.nexaBackend && typeof window.nexaBackend.getSlug === 'function')
+      ? window.nexaBackend.getSlug(targetResto)
+      : targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
+    const compositeKey = `${phone}_${targetSlug}`;
+    const phoneClean = phone.replace(/[^0-9]/g, '');
+
+    let prevPts = 0;
+    let prevVisits = 0;
+    let lastScanAt = null;
+
+    try {
+      let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || localStorage.getItem(`nexa_clients_cache_${targetSlug}`) || '[]');
+      const existIdx = currentCrmClients.findIndex(c => {
+        const cPhone = (c.phone || c.whatsapp_phone || c.rawKey || '').replace(/[^0-9]/g, '');
+        return (c.rawKey || c.whatsapp_phone) === compositeKey || cPhone === phoneClean;
+      });
+
+      if (existIdx >= 0) {
+        prevPts = currentCrmClients[existIdx].points_balance || currentCrmClients[existIdx].points || 0;
+        prevVisits = currentCrmClients[existIdx].visits_count || currentCrmClients[existIdx].visits || 0;
+        lastScanAt = currentCrmClients[existIdx].last_scan_at || null;
+      }
+
+      state.clientSession.whatsapp = phone;
+      state.clientSession.name = name;
+      state.clientSession.points = prevPts;
+      localStorage.setItem('nexa_client_whatsapp', phone);
+      localStorage.setItem('nexa_client_name', name);
+      localStorage.setItem('nexa_client_points', prevPts.toString());
+
+      const clientEntry = {
+        rawKey: compositeKey,
+        whatsapp_phone: compositeKey,
+        phone: phone,
+        name: name,
+        full_name: name,
+        points: prevPts,
+        points_balance: prevPts,
+        visits: prevVisits,
+        visits_count: prevVisits,
+        lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Client Inscrit') : 'Nouveau client',
+        last_scan_at: lastScanAt
+      };
+
+      if (existIdx >= 0) {
+        currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
+      } else {
+        currentCrmClients.unshift(clientEntry);
+      }
+      localStorage.setItem(`nexa_clients_${targetSlug}`, JSON.stringify(currentCrmClients));
+      localStorage.setItem(`nexa_clients_cache_${targetSlug}`, JSON.stringify(currentCrmClients));
+    } catch (crmSaveErr) {
+      console.warn('[CRM SAVE WARN]', crmSaveErr);
+    }
+
+    closeClientAuthModal();
+
+    // Hide scan landing screen if visible
+    const scanLandingScreen = document.getElementById('screen-scan-landing');
+    if (scanLandingScreen) {
+      scanLandingScreen.style.display = 'none';
+    }
+    const dockEl = document.querySelector('.mockup-dock');
+    if (dockEl) dockEl.style.display = 'grid';
+
+    // Show client home screen
+    const homeScreen = document.getElementById('screen-home');
+    if (homeScreen) {
+      document.querySelectorAll('.client-screen').forEach(s => s.classList.remove('active'));
+      homeScreen.classList.add('active');
+    }
+
+    renderClientUI();
+
+    // Cloud sync
+    if (window.nexaBackend) {
+      try {
+        const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
+        if (profile) {
+          state.clientSession.points = typeof profile.points === 'number' ? profile.points : prevPts;
+          state.clientSession.name = profile.name || name;
+          localStorage.setItem('nexa_client_points', state.clientSession.points.toString());
+          localStorage.setItem('nexa_client_name', state.clientSession.name);
+          renderClientUI();
+        } else {
+          await window.nexaBackend.registerClientIdentity(targetResto, phone, name, state.clientSession.points || 0);
+        }
+      } catch (err) {}
+    }
+
+    if (isDirectTableScan) {
+      await handleScannedRawText(`resto=${encodeURIComponent(targetResto)}&table=${tableParam || '4'}`);
+    } else {
+      showToast('✅ Connecté !', `Bienvenue ${name} chez ${state.restaurant.name} !`);
+    }
+  }
+
   if (formClientAuth) {
     formClientAuth.addEventListener('submit', async (e) => {
       e.preventDefault();
-      console.log('[DIAGNOSTIC FRONTEND] Formulaire d\'inscription client soumis.');
-
       const phoneInput = document.getElementById('auth-client-phone');
       const nameInput = document.getElementById('auth-client-name');
-
       const phone = phoneInput ? phoneInput.value.trim() : '';
       const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Client Nexa';
+      await processClientRegistration(phone, name);
+    });
+  }
 
-      if (!phone) {
-        showToast('⚠️ Numéro Obligatoire', 'Veuillez saisir votre numéro WhatsApp.');
-        return;
-      }
-
-      console.log(`[DIAGNOSTIC FRONTEND] Connexion client -> Phone: "${phone}", Name: "${name}"`);
-
-      const targetResto = state.restaurant.name || (localStorage.getItem('nexa_resto_name') || 'Le Savane');
-      const targetSlug = (window.nexaBackend && typeof window.nexaBackend.getSlug === 'function')
-        ? window.nexaBackend.getSlug(targetResto)
-        : targetResto.toLowerCase().trim().replace(/[^a-z0-9]/g, '-');
-      const compositeKey = `${phone}_${targetSlug}`;
-      const phoneClean = phone.replace(/[^0-9]/g, '');
-
-      // 1. RECOVER PREVIOUS POINTS & VISITS FOR RETURNING CLIENT FROM LOCAL CRM CACHE (0ms)
-      let prevPts = 0;
-      let prevVisits = 0;
-      let lastScanAt = null;
-
-      try {
-        let currentCrmClients = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || localStorage.getItem(`nexa_clients_cache_${targetSlug}`) || '[]');
-        const existIdx = currentCrmClients.findIndex(c => {
-          const cPhone = (c.phone || c.whatsapp_phone || c.rawKey || '').replace(/[^0-9]/g, '');
-          return (c.rawKey || c.whatsapp_phone) === compositeKey || cPhone === phoneClean;
-        });
-
-        if (existIdx >= 0) {
-          prevPts = currentCrmClients[existIdx].points_balance || currentCrmClients[existIdx].points || 0;
-          prevVisits = currentCrmClients[existIdx].visits_count || currentCrmClients[existIdx].visits || 0;
-          lastScanAt = currentCrmClients[existIdx].last_scan_at || null;
-        }
-
-        // Recover session points
-        const restoredPts = Math.max(state.clientSession.points || 0, prevPts, parseInt(localStorage.getItem('nexa_client_points') || '0', 10));
-
-        state.clientSession.whatsapp = phone;
-        state.clientSession.name = name;
-        state.clientSession.points = restoredPts;
-        localStorage.setItem('nexa_client_whatsapp', phone);
-        localStorage.setItem('nexa_client_name', name);
-        localStorage.setItem('nexa_client_points', restoredPts);
-
-        const clientEntry = {
-          rawKey: compositeKey,
-          whatsapp_phone: compositeKey,
-          phone: phone,
-          name: name,
-          full_name: name,
-          points: restoredPts,
-          points_balance: restoredPts,
-          visits: prevVisits,
-          visits_count: prevVisits,
-          lastVisit: existIdx >= 0 ? (currentCrmClients[existIdx].lastVisit || 'Client Inscrit') : 'Nouveau client',
-          last_scan_at: lastScanAt
-        };
-
-        if (existIdx >= 0) {
-          currentCrmClients[existIdx] = { ...currentCrmClients[existIdx], ...clientEntry };
-        } else {
-          currentCrmClients.unshift(clientEntry);
-        }
-        localStorage.setItem(`nexa_clients_${targetSlug}`, JSON.stringify(currentCrmClients));
-        localStorage.setItem(`nexa_clients_cache_${targetSlug}`, JSON.stringify(currentCrmClients));
-      } catch (crmSaveErr) {
-        console.warn('[CRM SAVE WARN]', crmSaveErr);
-      }
-
-      closeClientAuthModal();
-      document.querySelectorAll('.scanner-modal, .nexa-modal-backdrop').forEach(m => {
-        m.classList.remove('active');
-        m.style.display = 'none';
-      });
-
-      renderClientUI();
-      showToast('✅ Connecté !', `Bienvenue ${name} chez ${state.restaurant.name} ! (${state.clientSession.points} pts)`);
-
-      // 2. BACKGROUND CLOUD SYNC & RECOVERY FROM SUPABASE
-      if (window.nexaBackend) {
-        (async () => {
-          try {
-            const profile = await window.nexaBackend.getClientProfile(targetResto, phone);
-            if (profile) {
-              const cloudPts = typeof profile.points === 'number' ? profile.points : 0;
-              const cloudVisits = typeof profile.visits === 'number' ? profile.visits : 0;
-
-              const finalPts = cloudPts;
-              const finalVisits = cloudVisits;
-
-              state.clientSession.points = finalPts;
-              state.clientSession.name = profile.name || name;
-              localStorage.setItem('nexa_client_points', finalPts);
-              localStorage.setItem('nexa_client_name', state.clientSession.name);
-
-              // Also update CRM client entry with recovered points & visits
-              let crmList = JSON.parse(localStorage.getItem(`nexa_clients_${targetSlug}`) || '[]');
-              const idx = crmList.findIndex(c => (c.phone || '').replace(/[^0-9]/g, '') === phoneClean);
-              if (idx >= 0) {
-                crmList[idx].points = finalPts;
-                crmList[idx].points_balance = finalPts;
-                crmList[idx].visits = finalVisits;
-                crmList[idx].visits_count = finalVisits;
-                localStorage.setItem(`nexa_clients_${targetSlug}`, JSON.stringify(crmList));
-              }
-
-              renderClientUI();
-            } else {
-              await window.nexaBackend.registerClientIdentity(targetResto, phone, name, state.clientSession.points || 0);
-            }
-          } catch (err) {
-            console.warn('[SUPABASE SYNC WARN]', err);
-          }
-
-          // Trigger scan if this was triggered during a table QR scan
-          if (isDirectTableScan) {
-            await triggerQRScanSuccess(`Table #${tableParam}`);
-          }
-        })();
-      } else if (isDirectTableScan) {
-        await triggerQRScanSuccess(`Table #${tableParam}`);
-      }
+  const formScanLanding = document.getElementById('form-scan-landing');
+  if (formScanLanding) {
+    formScanLanding.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phoneInput = document.getElementById('landing-client-phone');
+      const nameInput = document.getElementById('landing-client-name');
+      const phone = phoneInput ? phoneInput.value.trim() : '';
+      const name = nameInput && nameInput.value.trim() ? nameInput.value.trim() : 'Client Nexa';
+      await processClientRegistration(phone, name);
     });
   }
 
@@ -2549,6 +2542,31 @@ function initNexaApp() {
       if (textInput) textInput.value = '';
       showToast('✅ Offre Diffusée !', `L'offre "${title}" est maintenant active pour vos clients.`);
     });
+  }
+
+  // ONBOARDING LANDING ROUTING ON SCAN
+  if (isDirectTableScan && !state.clientSession.whatsapp) {
+    const scanLandingScreen = document.getElementById('screen-scan-landing');
+    if (scanLandingScreen) {
+      document.querySelectorAll('.client-screen').forEach(s => s.classList.remove('active'));
+      const noResto = document.getElementById('screen-no-resto');
+      if (noResto) noResto.style.display = 'none';
+
+      const restoEl = document.getElementById('landing-resto-name');
+      const tableEl = document.getElementById('landing-table-num');
+      const ptsEl = document.getElementById('landing-pts-bonus');
+      const logoEl = document.getElementById('landing-resto-logo');
+
+      if (restoEl) restoEl.textContent = state.restaurant.name || 'Le Savane';
+      if (tableEl) tableEl.textContent = tableParam || '4';
+      if (ptsEl) ptsEl.textContent = `🎁 +${state.restaurant.pointsPerScan || 20} Points offerts !`;
+      if (logoEl && state.restaurant.logo) logoEl.src = state.restaurant.logo;
+
+      scanLandingScreen.style.display = 'block';
+
+      const dockEl = document.querySelector('.mockup-dock');
+      if (dockEl) dockEl.style.display = 'none';
+    }
   }
 
   renderClientUI();

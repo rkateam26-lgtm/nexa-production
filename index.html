@@ -135,6 +135,81 @@
             </button>
           </div>
 
+          <!-- NEXA RED & WHITE SCAN ONBOARDING LANDING SCREEN -->
+          <div id="screen-scan-landing" style="display: none; min-height: 100%; background: #FAF8F5; padding-bottom: 2rem;">
+            
+            <!-- Red Nexa Top Header Bar -->
+            <div style="background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); padding: 1.5rem 1.25rem 2rem 1.25rem; color: white; text-align: center; border-radius: 0 0 24px 24px; box-shadow: 0 10px 25px rgba(220, 38, 38, 0.25); position: relative;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+                <div style="display: flex; align-items: center; gap: 0.4rem;">
+                  <div style="background: white; color: #DC2626; font-weight: 900; font-size: 1.1rem; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">N</div>
+                  <strong style="font-size: 1rem; letter-spacing: 1px; color: white;">NEXA</strong>
+                </div>
+                <span style="background: rgba(255,255,255,0.2); color: white; font-size: 0.7rem; font-weight: 800; padding: 3px 10px; border-radius: 12px;">SCAN TABLE</span>
+              </div>
+
+              <!-- Store Avatar / Logo -->
+              <div style="width: 70px; height: 70px; border-radius: 20px; background: white; padding: 3px; margin: 0 auto 0.75rem auto; box-shadow: 0 8px 20px rgba(0,0,0,0.2);">
+                <img id="landing-resto-logo" src="./assets/savane_dish.jpg" alt="Resto Logo" style="width: 100%; height: 100%; object-fit: cover; border-radius: 17px;" onerror="this.onerror=null; this.src='./assets/savane_dish.jpg';">
+              </div>
+
+              <div style="font-size: 0.75rem; font-weight: 800; color: #FECACA; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.2rem;">
+                Bienvenue chez
+              </div>
+              <h1 style="font-size: 1.75rem; font-weight: 900; color: #FFFFFF; margin: 0 0 0.6rem 0;" id="landing-resto-name">Le Savane</h1>
+
+              <div style="display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem; font-weight: 700; color: #FFFFFF; margin-bottom: 0.85rem;">
+                <span>📍 Table #<span id="landing-table-num">4</span></span>
+                <span>•</span>
+                <span style="color: #4ADE80; font-weight: 800;">Scan Validé ✅</span>
+              </div>
+
+              <div style="background: white; border-radius: 16px; padding: 0.85rem 1rem; color: #1E293B; margin-top: 0.5rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                <div style="font-size: 0.75rem; font-weight: 800; color: #DC2626; text-transform: uppercase; letter-spacing: 1px;">BONUS DE BIENVENUE INSTANTANÉ</div>
+                <div style="font-size: 1.35rem; font-weight: 900; color: #DC2626; margin: 0.1rem 0;" id="landing-pts-bonus">🎁 +20 Points offerts !</div>
+                <div style="font-size: 0.78rem; color: #64748B;">Crédités immédiatement lors de votre inscription ci-dessous.</div>
+              </div>
+            </div>
+
+            <!-- Red & White Form Body Card -->
+            <div style="padding: 1.25rem; margin-top: -0.5rem;">
+              <div style="background: #FFFFFF; border-radius: 20px; padding: 1.5rem; border: 1.5px solid #FECACA; box-shadow: 0 10px 30px rgba(220,38,38,0.08);">
+                
+                <h3 style="font-size: 1.1rem; font-weight: 900; color: #991B1B; margin: 0 0 0.4rem 0; text-align: center;">
+                  📲 Rejoignez le Club Fidélité
+                </h3>
+                <p style="font-size: 0.82rem; color: #475569; line-height: 1.45; text-align: center; margin: 0 0 1.25rem 0;">
+                  Inscrivez-vous en 5 secondes pour valider vos <strong>points offerts</strong>, consulter la carte des récompenses et profiter de vos réductions !
+                </p>
+
+                <form id="form-scan-landing">
+                  <div style="margin-bottom: 1rem;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 800; color: #1E293B; margin-bottom: 0.35rem;">
+                      📱 Votre Numéro WhatsApp <span style="color: #DC2626;">*</span>
+                    </label>
+                    <input type="tel" id="landing-client-phone" placeholder="+226 70 12 34 56" style="width: 100%; padding: 0.85rem; border-radius: 12px; border: 2px solid #FCA5A5; font-size: 1rem; font-weight: 800; color: #1E293B; background: #FEF2F2;" required>
+                  </div>
+
+                  <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 800; color: #1E293B; margin-bottom: 0.35rem;">
+                      👤 Votre Prénom & Nom (Optionnel)
+                    </label>
+                    <input type="text" id="landing-client-name" placeholder="ex: Jean Dupont" style="width: 100%; padding: 0.85rem; border-radius: 12px; border: 1.5px solid #CBD5E1; font-size: 0.95rem; font-weight: 600; color: #1E293B;">
+                  </div>
+
+                  <button type="submit" style="width: 100%; padding: 0.95rem; background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%); color: #FFFFFF; font-weight: 900; font-size: 1.05rem; border-radius: 14px; border: none; cursor: pointer; box-shadow: 0 6px 20px rgba(220, 38, 38, 0.35); display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
+                    <span>🚀 Créditer Mes Points & Accéder au Club</span>
+                  </button>
+                </form>
+
+                <div style="margin-top: 1.25rem; text-align: center; font-size: 0.75rem; color: #64748B; border-top: 1px solid #F1F5F9; padding-top: 0.85rem;">
+                  🔒 Connexion instantanée et sécurisée via NEXA SaaS.
+                </div>
+              </div>
+            </div>
+
+          </div>
+
           <!-- SCREEN 1: CLIENT ACCUEIL (EXACT REPRODUCTION OF USER MOCKUP) -->
           <div class="client-screen active" id="screen-home">
             
