@@ -225,13 +225,11 @@ function initNexaApp() {
           cloudRewards = window.nexaBackend.getLocalRewards(currentSlug);
         }
         
-        if (!cloudRewards || cloudRewards.length === 0) {
-          state.rewards = [];
-        } else {
+        if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
             id: String(r.id),
             title: r.title,
-            pts: r.pts || r.points_required || 50,
+            pts: parseInt(r.pts || r.points_required || 20, 10),
             desc: r.desc || r.description || 'Valable sur présentation en caisse.',
             icon: r.icon || '🎁',
             image: resolveRewardImage(r),
@@ -240,6 +238,16 @@ function initNexaApp() {
           if (window.nexaBackend && window.nexaBackend.saveLocalRewards) {
             window.nexaBackend.saveLocalRewards(currentSlug, state.rewards);
           }
+        } else if (!state.rewards || state.rewards.length === 0) {
+          try {
+            const rawSaved = localStorage.getItem(`nexa_rewards_${currentSlug}`) || localStorage.getItem(`nexa_rewards_cache_${currentSlug}`);
+            if (rawSaved) {
+              const parsed = JSON.parse(rawSaved);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                state.rewards = parsed.filter(r => r.active !== false);
+              }
+            }
+          } catch(e) {}
         }
 
         // Re-render client UI to show rewards immediately

@@ -955,13 +955,13 @@ class NexaProductionBackend {
   async getRestaurantRewards(restoName) {
     console.log(`[DIAGNOSTIC R8 REWARDS] Fetching rewards for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
-    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim();
+    const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim().toLowerCase();
     const client = this.getClient();
 
     // 1. Immediately read locally cached rewards
     let rewards = this.getLocalRewards(slug);
 
-    // 2. Fast non-blocking sync with Supabase Cloud (6s timeout)
+    // 2. Fast non-blocking sync with Supabase Cloud (5s timeout)
     if (client) {
       try {
         let rewardRows = [];
@@ -975,25 +975,27 @@ class NexaProductionBackend {
           const { data: rows, error: qErr } = await Promise.race([queryPromise, timeoutPromise]);
           if (!qErr && Array.isArray(rows) && rows.length > 0) {
             rewardRows = rows.filter(r => {
-              if (!r || !r.title) return false;
+              if (!r || (!r.title && !r.name)) return false;
               const rRestoId = String(r.resto_id || r.restaurant_id || '').toLowerCase();
               const rRestoName = String(r.restaurant_name || r.resto_name || '').toLowerCase();
               const rDesc = String(r.description || r.desc || '').toLowerCase();
 
               const rSlug = rRestoId ? this.getSlug(rRestoId) : '';
               const rNameSlug = rRestoName ? this.getSlug(rRestoName) : '';
-              const targetClean = (restoName || '').toLowerCase().trim();
 
               return (
                 rSlug === slug ||
                 rNameSlug === slug ||
                 rRestoId.includes(slug) ||
-                (targetClean && rRestoName.includes(targetClean)) ||
+                (cleanSearch && rRestoName.includes(cleanSearch)) ||
                 rDesc === slug ||
                 rDesc.includes(slug) ||
-                rows.length <= 10
+                (!rRestoId && !rRestoName) ||
+                rows.length <= 15
               );
             });
+          } else if (qErr) {
+            console.warn('[REWARDS QUERY NOTICE]', qErr.message);
           }
         } catch (queryErr) {
           console.warn('[REWARDS QUERY NOTICE]', queryErr.message);
@@ -1001,21 +1003,24 @@ class NexaProductionBackend {
 
         if (rewardRows.length > 0) {
           const mergedMap = new Map();
-          // Index existing local rewards
+          // Index existing local rewards first
           rewards.forEach(r => mergedMap.set(String(r.id), r));
-          // Merge incoming cloud rows, retaining existing image if cloud row doesn't have it
+          // Merge incoming cloud rows
           rewardRows.forEach(row => {
-            const rowId = String(row.id);
+            const rowId = String(row.id || row.title);
             const existing = mergedMap.get(rowId);
+            const isExplicitlyInactive = row.active === false || row.is_active === false || (existing && existing.active === false);
+
             mergedMap.set(rowId, {
               ...row,
               id: rowId,
-              title: row.title,
-              pts: row.points_required || row.pts || (existing && existing.pts) || 20,
-              desc: row.description || row.desc || (existing && existing.desc) || 'Valable sur présentation en caisse.',
+              title: row.title || row.name || (existing && existing.title) || 'Récompense',
+              pts: parseInt(row.points_required || row.pts || row.points || row.points_cost || (existing && existing.pts) || 20, 10),
+              desc: (row.description && row.description !== slug) ? row.description : ((row.desc && row.desc !== slug) ? row.desc : (existing && existing.desc) || 'Valable sur présentation en caisse.'),
               image: row.image || (existing && existing.image) || '',
               category: row.category || (existing && existing.category) || 'Général',
-              active: row.active !== undefined ? row.active : (row.is_active !== undefined ? row.is_active : (existing ? existing.active : true)),
+              icon: row.icon || (existing && existing.icon) || '🎁',
+              active: !isExplicitlyInactive,
               useCount: row.redemptions_count || row.use_count || (existing && existing.useCount) || 0
             });
           });
@@ -1037,12 +1042,12 @@ class NexaProductionBackend {
         restoName: r.restaurant_name || restoName,
         title: r.title || 'Récompense',
         desc: (r.desc && r.desc !== slug) ? r.desc : (isLegacyDescResto ? 'Valable sur présentation en caisse.' : (r.description || 'Valable sur présentation en caisse.')),
-        pts: r.points_required || r.pts || r.points_cost || 20,
+        pts: parseInt(r.pts || r.points_required || r.points_cost || 20, 10),
         icon: r.icon || '🎁',
         image: smartImg,
         category: r.category || 'Général',
         active: r.active !== false && r.is_active !== false,
-        useCount: r.redemptions_count || r.use_count || 0,
+        useCount: r.useCount || r.redemptions_count || r.use_count || 0,
         createdAt: r.created_at || new Date().toISOString()
       };
     });
@@ -1060,8 +1065,8 @@ class NexaProductionBackend {
           const arr = JSON.parse(rawStr);
           if (Array.isArray(arr)) {
             arr.forEach(r => {
-              if (r && r.title && r.active !== false) {
-                const key = String(r.id || r.title);
+              if (r && (r.title || r.name) && r.active !== false) {
+                const key = String(r.id || r.title || r.name);
                 if (!mergedMap.has(key)) {
                   mergedMap.set(key, r);
                 }
@@ -1089,27 +1094,19 @@ class NexaProductionBackend {
   // Helper: Save local rewards cache (scoped strictly to restaurant slug)
   saveLocalRewards(slug, rewardsList) {
     try {
-      if (!slug) slug = 'savane';
-      const cleanSlug = this.getSlug(slug);
+      const cleanSlug = (slug || 'savane').replace(/^nx[_-]/, '').toLowerCase();
+      const altSlug = `le-${cleanSlug}`;
       const payload = JSON.stringify(rewardsList || []);
       localStorage.setItem(`nexa_rewards_cache_${cleanSlug}`, payload);
       localStorage.setItem(`nexa_rewards_${cleanSlug}`, payload);
-
-      const altSlug = cleanSlug.startsWith('le-') ? cleanSlug.replace(/^le-/, '') : `le-${cleanSlug}`;
       localStorage.setItem(`nexa_rewards_cache_${altSlug}`, payload);
       localStorage.setItem(`nexa_rewards_${altSlug}`, payload);
-
-      try {
-        localStorage.removeItem('nexa_rewards_global_all');
-        localStorage.removeItem('nexa_rewards_cache_demo');
-        localStorage.removeItem('nexa_rewards_demo');
-      } catch (e) {}
     } catch (e) {
       console.warn('[STORAGE] Failed to cache rewards locally', e);
     }
   }
 
-  // 1k. ÉTAPE R8: Create or Update Reward (Instant Local + Background Cloud Sync)
+  // 1k. Create or Update Reward Tagged for Restaurant
   async createOrUpdateRestaurantReward(restoName, rewardData) {
     console.log(`[DIAGNOSTIC R8 SAVE REWARD] Saving reward "${rewardData.title}" for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
@@ -1121,7 +1118,7 @@ class NexaProductionBackend {
 
     const ptsVal = parseInt(rewardData.pts, 10);
     if (isNaN(ptsVal) || ptsVal <= 0) {
-      throw new Error('Le coût en points doit être un nombre entier strictement positif (supérieur à 0).');
+      throw new Error('Le coût en points doit être un nombre entier strictly positif (supérieur à 0).');
     }
     if (ptsVal > 10000) {
       throw new Error('Le coût en points ne peut pas dépasser 10 000 points.');
@@ -1131,7 +1128,7 @@ class NexaProductionBackend {
     const smartImg = (rewardData.image && rewardData.image.trim()) ? rewardData.image.trim() : this.getSmartRewardFallbackImage(rewardData.icon, rewardData.title, rewardData.category);
 
     let list = this.getLocalRewards(slug);
-    const existingIdx = list.findIndex(r => r.id === rewardId);
+    const existingIdx = list.findIndex(r => r.id === rewardId || r.title === rewardData.title);
 
     const recordPayload = {
       id: rewardId,
@@ -1161,43 +1158,64 @@ class NexaProductionBackend {
     }
     this.saveLocalRewards(slug, list);
 
-    // 2. Fire-and-forget background cloud sync (never blocks or freezes the user interface)
+    // 2. Background cloud sync with multi-payload fallback strategy
     if (client) {
-      const dbPayload = {
-        title: rewardData.title.trim(),
-        description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
-        points_required: ptsVal,
-        icon: rewardData.icon || '🎁',
-        image: smartImg,
-        category: rewardData.category || 'Général',
-        is_active: rewardData.active !== false,
-        resto_id: slug,
-        restaurant_name: restoName
-      };
-      if (rewardId && !rewardId.toString().startsWith('local_')) {
-        dbPayload.id = rewardId;
-      }
+      const tryPayloads = [
+        // Payload 1: Complete modern schema
+        {
+          title: rewardData.title.trim(),
+          description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          points_required: ptsVal,
+          pts: ptsVal,
+          icon: rewardData.icon || '🎁',
+          image: smartImg,
+          category: rewardData.category || 'Général',
+          is_active: rewardData.active !== false,
+          resto_id: slug,
+          restaurant_name: restoName
+        },
+        // Payload 2: Standard schema (without extra optional columns)
+        {
+          title: rewardData.title.trim(),
+          description: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          points_required: ptsVal,
+          icon: rewardData.icon || '🎁',
+          image: smartImg,
+          resto_id: slug
+        },
+        // Payload 3: Alternative column names (pts, desc)
+        {
+          title: rewardData.title.trim(),
+          desc: (rewardData.desc || rewardData.description || 'Valable sur présentation en caisse.').trim(),
+          pts: ptsVal,
+          icon: rewardData.icon || '🎁',
+          resto_id: slug
+        },
+        // Payload 4: Bare minimum fallback
+        {
+          title: rewardData.title.trim(),
+          points_required: ptsVal,
+          description: slug,
+          icon: rewardData.icon || '🎁'
+        }
+      ];
 
-      const syncPromise = client.from('rewards').upsert(dbPayload);
-      const syncTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000));
-      Promise.race([syncPromise, syncTimeout])
-        .then(({ error }) => {
-          if (!error) {
-            console.log(`[DIAGNOSTIC R8 CLOUD SUCCESS] Synced reward with image: ${rewardId}`);
-          } else {
-            console.warn('[DIAGNOSTIC R8 CLOUD NOTICE - RETRYING WITH BASE PAYLOAD]:', error.message);
-            client.from('rewards').upsert({
-              title: rewardData.title.trim(),
-              description: (rewardData.desc || 'Valable sur présentation en caisse.').trim(),
-              points_required: ptsVal,
-              icon: rewardData.icon || '🎁',
-              image: smartImg,
-              resto_id: slug,
-              restaurant_name: restoName
-            }).catch(() => {});
+      (async () => {
+        for (const payload of tryPayloads) {
+          if (rewardId && !rewardId.toString().startsWith('local_') && !isNaN(Number(rewardId))) {
+            payload.id = rewardId;
           }
-        })
-        .catch(err => console.warn('[DIAGNOSTIC R8 CLOUD NOTICE]:', err.message));
+          try {
+            const { error } = await client.from('rewards').upsert(payload);
+            if (!error) {
+              console.log(`[REWARDS CLOUD SUCCESS] Synced reward "${rewardData.title}"`);
+              break;
+            } else {
+              console.warn('[REWARDS CLOUD TRY WARN]:', error.message);
+            }
+          } catch (e) {}
+        }
+      })();
     }
 
     return recordPayload;
