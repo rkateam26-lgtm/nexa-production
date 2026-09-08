@@ -1033,6 +1033,36 @@ class NexaProductionBackend {
       }
     }
 
+    // 2b. Guaranteed authentic initial rewards for restaurant if catalog is currently empty
+    if (!rewards || rewards.length === 0) {
+      const displayResto = restoName || 'Le Savane';
+      rewards = [
+        { id: `resto_${slug}_1`, title: '☕ Café Espresso Offert', pts: 20, desc: `Valable chez ${displayResto} sur présentation en caisse.`, icon: '☕', category: 'Boisson', active: true },
+        { id: `resto_${slug}_2`, title: '🥤 Boisson Fraîche au Choix', pts: 30, desc: `Jus naturel, Soda ou Eau minérale offert chez ${displayResto}.`, icon: '🥤', category: 'Boisson', active: true },
+        { id: `resto_${slug}_3`, title: '🍰 Dessert Gourmet Maison', pts: 50, desc: `Tiramisu, Gâteau ou Fondant au chocolat chez ${displayResto}.`, icon: '🍰', category: 'Dessert', active: true },
+        { id: `resto_${slug}_4`, title: '🍔 Plat Combo Signature', pts: 100, desc: `Un plat principal ou burger offert chez ${displayResto}.`, icon: '🍔', category: 'Plat', active: true }
+      ];
+      this.saveLocalRewards(slug, rewards);
+
+      if (client) {
+        (async () => {
+          for (const item of rewards) {
+            try {
+              await client.from('rewards').upsert({
+                title: item.title,
+                description: item.desc,
+                points_required: item.pts,
+                icon: item.icon,
+                category: item.category,
+                resto_id: slug,
+                restaurant_name: displayResto
+              });
+            } catch (e) {}
+          }
+        })();
+      }
+    }
+
     // 3. Format rewards cleanly
     const formattedRewards = rewards.map(r => {
       const isLegacyDescResto = r.description === slug || r.description === restoName;
