@@ -278,15 +278,13 @@ function initNexaApp() {
           console.warn('[CLIENT OFFERS SYNC]', offErr);
         }
 
-        // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE (MONOTONIC NON-DECREASING UPDATE)!
+        // 2. ALWAYS FETCH RETURNING CLIENT POINTS BALANCE (CLOUD IS AUTHORITATIVE)
         if (state.clientSession.whatsapp && window.nexaBackend && window.nexaBackend.getClientProfile) {
           try {
             const profile = await window.nexaBackend.getClientProfile(state.restaurant.name, state.clientSession.whatsapp);
             if (profile && typeof profile.points === 'number') {
-              const localPts = parseInt(localStorage.getItem('nexa_client_points') || '0', 10);
-              const currentPts = state.clientSession.points || 0;
-              state.clientSession.points = Math.max(currentPts, localPts, profile.points);
-              localStorage.setItem('nexa_client_points', state.clientSession.points);
+              state.clientSession.points = profile.points;
+              localStorage.setItem('nexa_client_points', state.clientSession.points.toString());
             }
           } catch (profErr) {
             console.warn('[CLIENT PROFILE SYNC NOTICE]', profErr);
@@ -814,8 +812,8 @@ function initNexaApp() {
               const cloudPts = typeof profile.points === 'number' ? profile.points : 0;
               const cloudVisits = typeof profile.visits === 'number' ? profile.visits : 0;
 
-              const finalPts = Math.max(state.clientSession.points || 0, cloudPts);
-              const finalVisits = Math.max(prevVisits, cloudVisits);
+              const finalPts = cloudPts;
+              const finalVisits = cloudVisits;
 
               state.clientSession.points = finalPts;
               state.clientSession.name = profile.name || name;
@@ -1707,15 +1705,16 @@ function initNexaApp() {
           const imgSrc = (reward.image && reward.image.trim()) ? reward.image : fallbackImg;
           const imgSafe = imgSrc.replace(/'/g, "\\'");
 
+          const cardClass = canClaim ? 'mockup-reward-item-row reward-card-eligible' : 'mockup-reward-item-row reward-card-locked';
           return `
-            <div class="mockup-reward-item-row" onclick="openRewardDetailModal('${titleEscaped}', '${descEscaped}', ${reward.pts}, '${imgSafe}', '${reward.id}', '${iconEscaped}')" style="cursor: pointer;">
+            <div id="reward-card-${reward.id}" class="${cardClass}" onclick="openRewardDetailModal('${titleEscaped}', '${descEscaped}', ${reward.pts}, '${imgSafe}', '${reward.id}', '${iconEscaped}')" style="cursor: pointer;">
               <div class="mockup-reward-item-left">
                 <img src="${imgSrc}" alt="${escapeHtml(reward.title)}" class="mockup-reward-thumb" onerror="this.onerror=null; this.src='${fallbackImg}';">
                 <div class="mockup-reward-item-info">
                   <div style="display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap;">
                     <span class="mockup-reward-item-name">${escapeHtml(reward.title)}</span>
                     ${canClaim ? `
-                      <span style="font-size: 0.65rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 10px;">✅ Éligible</span>
+                      <span style="font-size: 0.65rem; font-weight: 800; background: #DCFCE7; color: #15803D; padding: 2px 8px; border-radius: 10px; box-shadow: 0 1px 3px rgba(16,185,129,0.2);">✅ Éligible</span>
                     ` : `
                       <span style="font-size: 0.65rem; font-weight: 800; background: #FEF2F2; color: #DC2626; padding: 2px 8px; border-radius: 10px;">🔒 Il vous manque ${ptsNeeded} pts</span>
                     `}
@@ -1723,14 +1722,14 @@ function initNexaApp() {
                   <div class="mockup-reward-item-pts">${reward.pts} points requis</div>
 
                   <!-- Mini Progress Bar inside Reward Card -->
-                  <div style="width: 100%; max-width: 170px; height: 5px; background: #E2E8F0; border-radius: 10px; margin-top: 0.4rem; overflow: hidden;" title="Progression : ${progressPct}% (${state.clientSession.points}/${reward.pts} pts)">
-                    <div style="width: ${progressPct}%; height: 100%; background: ${canClaim ? '#10B981' : '#F59E0B'}; border-radius: 10px; transition: width 0.4s ease;"></div>
+                  <div style="width: 100%; max-width: 170px; height: 6px; background: #E2E8F0; border-radius: 10px; margin-top: 0.4rem; overflow: hidden;" title="Progression : ${progressPct}% (${state.clientSession.points}/${reward.pts} pts)">
+                    <div style="width: ${progressPct}%; height: 100%; background: ${canClaim ? '#10B981' : 'linear-gradient(90deg, #F59E0B, #EF4444)'}; border-radius: 10px; transition: width 0.4s ease;"></div>
                   </div>
                 </div>
               </div>
               <div class="mockup-reward-item-action" onclick="event.stopPropagation();">
                 ${canClaim ? `
-                  <button class="mockup-btn-claim" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')">
+                  <button class="mockup-btn-claim" onclick="handleRewardClick('${reward.id}', ${reward.pts}, '${titleEscaped}')" style="background: #10B981; border: none; font-weight: 800;">
                     Réclamer
                   </button>
                 ` : `
@@ -1920,17 +1919,25 @@ function initNexaApp() {
     if (currentPoints < requiredPts) {
       const missingPts = requiredPts - currentPoints;
 
-      state.notifications.unshift({
-        id: Date.now(),
-        title: `🔒 Points Insuffisants pour "${title}"`,
-        text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez votre table lors de votre prochaine visite !`,
-        time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
-      });
-      localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
+      // Trigger card shake animation
+      const cardEl = document.getElementById(`reward-card-${rewardId}`);
+      if (cardEl) {
+        cardEl.classList.add('shaking');
+        setTimeout(() => cardEl.classList.remove('shaking'), 450);
+      }
 
-      renderClientUI();
-      showToast('🔒 Points Insuffisants !', `Il vous manque ${missingPts} pts pour "${title}". Voir l'onglet Notifs !`);
-      alert(`🔒 Oups ! Points Insuffisants :\n\nIl vous manque ${missingPts} points pour débloquer "${title}".\n\nVous avez actuellement ${currentPoints} pts, et cette offre nécessite ${requiredPts} pts chez ${state.restaurant.name}.\n\nUne alerte a été ajoutée dans votre onglet Notifications !`);
+      const notifTitle = `🔒 Points Insuffisants pour "${title}"`;
+      if (!state.notifications.some(n => n.title === notifTitle)) {
+        state.notifications.unshift({
+          id: Date.now(),
+          title: notifTitle,
+          text: `Il vous manque ${missingPts} pts chez ${state.restaurant.name}. Scannez votre table lors de votre prochaine visite !`,
+          time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})
+        });
+        localStorage.setItem('nexa_client_notifs', JSON.stringify(state.notifications));
+      }
+
+      showToast('🔒 Points Insuffisants !', `Il vous manque ${missingPts} pts pour débloquer « ${title} ». Scannez en table pour cumuler vos points !`);
     } else {
       claimReward(rewardId);
     }

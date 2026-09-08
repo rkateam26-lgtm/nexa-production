@@ -3910,7 +3910,7 @@
       feed.innerHTML = filtered.map(item => {
         const clientName = escapeHtml(item.client.name);
         const rewardTitleEscaped = escapeHtml(item.reward.title).replace(/'/g, "\\'");
-        const clientPhone = item.client.rawKey;
+        const clientPhone = item.client.phone || (item.client.rawKey ? item.client.rawKey.split('_')[0] : '');
 
         return `
           <div style="background: #FFFFFF; border: 1px solid #CBD5E1; border-radius: 12px; padding: 1rem; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
@@ -3918,7 +3918,7 @@
               <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
                 <div>
                   <strong style="font-size: 0.95rem; color: var(--text-dark); display: block;">👤 ${clientName}</strong>
-                  <span style="font-size: 0.75rem; color: var(--text-muted);">${item.client.phone}</span>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(item.client.phone || clientPhone)}</span>
                 </div>
                 <span style="font-size: 0.75rem; font-weight: 800; background: #FEF3C7; color: #92400E; padding: 2px 8px; border-radius: 10px;">
                   Solde: ${item.client.points} pts

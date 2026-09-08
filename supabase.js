@@ -420,38 +420,36 @@ class NexaProductionBackend {
       // Merge with local clients list for instant resilient metrics
       let localClients = this.getLocalClients(slug);
       let mergedClientsMap = new Map();
-      const processMetricClient = (c) => {
+      localClients.forEach(c => {
         const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.rawKey ? c.rawKey.split('_')[0] : ''));
         const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
         if (!digitsKey) return;
-
         const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0);
         const pts = typeof c.points_balance === 'number' ? c.points_balance : (typeof c.points === 'number' ? c.points : 0);
+        mergedClientsMap.set(digitsKey, { ...c, visits_count: vCount, points_balance: pts });
+      });
 
-        if (mergedClientsMap.has(digitsKey)) {
-          const prev = mergedClientsMap.get(digitsKey);
+      // Cloud client rows are authoritative over stale local CRM cache!
+      if (Array.isArray(clientRows) && clientRows.length > 0) {
+        clientRows.forEach(c => {
+          const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : '');
+          const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
+          if (!digitsKey) return;
+          const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0);
+          const pts = typeof c.points_balance === 'number' ? c.points_balance : (typeof c.points === 'number' ? c.points : 0);
+          const prev = mergedClientsMap.get(digitsKey) || {};
           mergedClientsMap.set(digitsKey, {
             ...prev,
-            visits_count: Math.max(prev.visits_count || 0, vCount || 0),
-            points_balance: Math.max(prev.points_balance || 0, pts || 0)
-          });
-        } else {
-          mergedClientsMap.set(digitsKey, {
             ...c,
             visits_count: vCount,
             points_balance: pts
           });
-        }
-      };
-
-      localClients.forEach(processMetricClient);
-      if (Array.isArray(clientRows)) {
-        clientRows.forEach(processMetricClient);
+        });
       }
 
       const allClients = Array.from(mergedClientsMap.values());
       const totalClientsCount = allClients.length;
-      const totalScansCount = allClients.reduce((sum, c) => sum + (c.visits_count || 1), 0);
+      const totalScansCount = allClients.reduce((sum, c) => sum + (c.visits_count || 0), 0);
       const totalPointsDistributed = allClients.reduce((sum, c) => sum + (c.points_balance || 0), 0);
 
       // 2. Query active rewards / offers & redemptions count for this restaurant
@@ -622,49 +620,56 @@ class NexaProductionBackend {
         }
 
         const mergedMap = new Map();
-        const mergeClient = (c) => {
+        
+        // 1. Load local clients cache
+        clients.forEach(c => {
           const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.rawKey ? c.rawKey.split('_')[0] : ''));
           const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
           if (!digitsKey) return;
-
           const rawKey = c.rawKey || c.whatsapp_phone || `${rawPhone}_${slug}`;
           const name = (c.name && c.name !== 'Client Nexa') ? c.name : (c.full_name && c.full_name !== 'Client Nexa' ? c.full_name : 'Client Nexa');
           const pts = typeof c.points === 'number' ? c.points : (c.points_balance || 0);
-          const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 1);
+          const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0);
+          mergedMap.set(digitsKey, {
+            id: c.id || rawKey,
+            rawKey: rawKey,
+            whatsapp_phone: rawKey,
+            phone: rawPhone,
+            name: name,
+            full_name: name,
+            points: pts,
+            points_balance: pts,
+            visits: vCount,
+            visits_count: vCount,
+            lastVisit: c.lastVisit || (c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR') : 'Récemment')
+          });
+        });
 
-          if (mergedMap.has(digitsKey)) {
-            const prev = mergedMap.get(digitsKey);
-            mergedMap.set(digitsKey, {
-              ...prev,
-              rawKey: rawKey || prev.rawKey,
-              phone: rawPhone || prev.phone,
-              name: (name !== 'Client Nexa') ? name : prev.name,
-              full_name: (name !== 'Client Nexa') ? name : prev.full_name,
-              points: Math.max(prev.points || 0, pts || 0),
-              points_balance: Math.max(prev.points_balance || 0, pts || 0),
-              visits: Math.max(prev.visits || 1, vCount || 1),
-              visits_count: Math.max(prev.visits_count || 1, vCount || 1),
-              lastVisit: c.lastVisit || c.last_scan_at || prev.lastVisit
-            });
-          } else {
-            mergedMap.set(digitsKey, {
-              id: c.id || rawKey,
-              rawKey: rawKey,
-              whatsapp_phone: rawKey,
-              phone: rawPhone,
-              name: name,
-              full_name: name,
-              points: pts,
-              points_balance: pts,
-              visits: vCount > 0 ? vCount : 1,
-              visits_count: vCount > 0 ? vCount : 1,
-              lastVisit: c.lastVisit || (c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR') : 'Récemment')
-            });
-          }
-        };
-
-        clients.forEach(mergeClient);
-        clientRows.forEach(mergeClient);
+        // 2. Override with fresh Cloud data (authoritative)
+        clientRows.forEach(c => {
+          const rawPhone = c.phone || (c.whatsapp_phone ? c.whatsapp_phone.split('_')[0] : (c.rawKey ? c.rawKey.split('_')[0] : ''));
+          const digitsKey = rawPhone ? rawPhone.replace(/[^0-9]/g, '') : (c.id ? String(c.id) : '');
+          if (!digitsKey) return;
+          const rawKey = c.rawKey || c.whatsapp_phone || `${rawPhone}_${slug}`;
+          const name = (c.name && c.name !== 'Client Nexa') ? c.name : (c.full_name && c.full_name !== 'Client Nexa' ? c.full_name : 'Client Nexa');
+          const pts = typeof c.points_balance === 'number' ? c.points_balance : (c.points || 0);
+          const vCount = typeof c.visits_count === 'number' ? c.visits_count : (typeof c.visits === 'number' ? c.visits : 0);
+          const prev = mergedMap.get(digitsKey) || {};
+          mergedMap.set(digitsKey, {
+            ...prev,
+            id: c.id || prev.id || rawKey,
+            rawKey: rawKey,
+            whatsapp_phone: rawKey,
+            phone: rawPhone,
+            name: (name !== 'Client Nexa') ? name : (prev.name || 'Client Nexa'),
+            full_name: (name !== 'Client Nexa') ? name : (prev.full_name || 'Client Nexa'),
+            points: pts,
+            points_balance: pts,
+            visits: vCount,
+            visits_count: vCount,
+            lastVisit: c.last_scan_at ? new Date(c.last_scan_at).toLocaleDateString('fr-FR') : (prev.lastVisit || 'Récemment')
+          });
+        });
         clients = Array.from(mergedMap.values());
         this.saveLocalClients(slug, clients);
       } catch (cloudErr) {
@@ -2219,50 +2224,97 @@ class NexaProductionBackend {
 
   // 12. Deduct Points on Reward Redemption
   async deductPointsCloud(restoName, whatsappPhone, pointsDeducted) {
+    if (!whatsappPhone) return null;
     const slug = this.getSlug(restoName || 'savane');
-    const compositeKey = `${whatsappPhone}_${slug}`;
+    const cleanPhone = (whatsappPhone || '').split('_')[0].trim();
+    const digitsOnly = cleanPhone.replace(/[^0-9]/g, '');
+    const compositeKey = `${cleanPhone}_${slug}`;
 
-    // Update Local CRM cache immediately (0ms)
+    console.log(`[DEDUCT PTS CLOUD] Resto: "${restoName}", Phone: "${cleanPhone}", Deducting: ${pointsDeducted} pts`);
+
+    let newBal = 0;
+
+    // 1. Update Local CRM cache immediately (0ms)
     try {
       let localList = this.getLocalClients(slug);
-      const existingIdx = localList.findIndex(c => (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === whatsappPhone);
+      const existingIdx = localList.findIndex(c => {
+        const cDigits = (c.phone || c.whatsapp_phone || c.rawKey || '').replace(/[^0-9]/g, '');
+        return (c.rawKey || c.whatsapp_phone) === compositeKey || c.phone === cleanPhone || cDigits === digitsOnly;
+      });
       if (existingIdx >= 0) {
         const prevPts = localList[existingIdx].points_balance || localList[existingIdx].points || 0;
-        const newBal = Math.max(0, prevPts - pointsDeducted);
+        newBal = Math.max(0, prevPts - pointsDeducted);
         localList[existingIdx].points = newBal;
         localList[existingIdx].points_balance = newBal;
         this.saveLocalClients(slug, localList);
+        localStorage.setItem(`nexa_clients_${slug}`, JSON.stringify(localList));
+      }
+    } catch (e) {
+      console.warn('[DEDUCT LOCAL CRM WARN]', e);
+    }
+
+    // 2. Synchronize active local client session if currently logged in on this device
+    try {
+      const activeSessionPhone = (localStorage.getItem('nexa_client_whatsapp') || '').replace(/[^0-9]/g, '');
+      if (activeSessionPhone && activeSessionPhone === digitsOnly) {
+        localStorage.setItem('nexa_client_points', newBal.toString());
+        if (window.state && window.state.clientSession) {
+          window.state.clientSession.points = newBal;
+          if (typeof window.renderClientUI === 'function') {
+            window.renderClientUI();
+          }
+        }
       }
     } catch (e) {}
 
+    // 3. Update Supabase Cloud database
     const client = this.getClient();
-    if (client && whatsappPhone) {
+    if (client) {
       try {
-        const { data: existingClient } = await client
+        let existingClient = null;
+
+        // Try composite key match
+        const { data: c1 } = await client
           .from('clients')
           .select('*')
-          .or(`whatsapp_phone.eq.${compositeKey},whatsapp_phone.eq.${whatsappPhone}`)
+          .eq('whatsapp_phone', compositeKey)
           .maybeSingle();
 
+        existingClient = c1;
+
+        // Fallback: search by phone digits substring if primary composite key returned null
+        if (!existingClient && digitsOnly) {
+          const { data: matches } = await client
+            .from('clients')
+            .select('*')
+            .ilike('whatsapp_phone', `%${digitsOnly}%`);
+
+          if (Array.isArray(matches) && matches.length > 0) {
+            existingClient = matches.find(m => (m.whatsapp_phone || '').endsWith(`_${slug}`)) || matches[0];
+          }
+        }
+
         if (existingClient) {
-          const newBalance = Math.max(0, (existingClient.points_balance || 0) - pointsDeducted);
+          const cloudBalance = Math.max(0, (existingClient.points_balance || 0) - pointsDeducted);
           const { data: updatedClient } = await client
             .from('clients')
-            .update({ points_balance: newBalance })
+            .update({ points_balance: cloudBalance })
             .eq('id', existingClient.id)
             .select()
             .single();
 
-          console.log(`[DIAGNOSTIC DEDUCT PTS SUCCESS] New balance for ${existingClient.full_name || whatsappPhone}: ${newBalance} pts`);
+          console.log(`[DIAGNOSTIC DEDUCT PTS SUCCESS] New balance for ${existingClient.full_name || cleanPhone}: ${cloudBalance} pts`);
           return updatedClient;
         } else {
-          throw new Error(`Client introuvable pour la clé ${whatsappPhone}`);
+          console.warn(`[DIAGNOSTIC DEDUCT PTS WARN] Client Cloud introuvable pour ${cleanPhone}, CRM local mis à jour à ${newBal} pts.`);
+          return { points_balance: newBal };
         }
       } catch (e) {
         console.error('[DIAGNOSTIC DEDUCT PTS EXCEPTION]', e);
-        throw e;
+        return { points_balance: newBal };
       }
     }
+    return { points_balance: newBal };
   }
 
   // 12b. Helper: Clean French Date Formatting (DD/MM/YYYY à HH:mm)

@@ -2482,3 +2482,42 @@ input, select, textarea {
   .stat-card { padding: 0.75rem !important; }
   .stat-value { font-size: 1.35rem !important; }
 }
+
+/* ==========================================================================
+   REWARD CARD ANIMATIONS & DYNAMIC ELIGIBILITY STYLES
+   ========================================================================== */
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  70% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+@keyframes shakeLock {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+.reward-card-eligible {
+  border: 1.5px solid #10B981 !important;
+  background: linear-gradient(135deg, #FFFFFF 0%, #F0FDF4 100%) !important;
+  animation: pulseGlow 2.5s infinite;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.reward-card-eligible:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.15) !important;
+}
+
+.reward-card-locked {
+  border: 1px solid #E2E8F0 !important;
+  background: #FFFFFF !important;
+  transition: transform 0.2s ease;
+}
+
+.reward-card-locked.shaking {
+  animation: shakeLock 0.4s ease-in-out;
+  border-color: #EF4444 !important;
+}
+
