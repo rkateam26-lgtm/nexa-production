@@ -952,9 +952,56 @@ class NexaProductionBackend {
   }
 
   // 1j. ÉTAPE R8: Fetch Rewards Catalogue for this Restaurant only (Local-First + Cloud Sync)
+  isLegacySeedReward(r) {
+    if (!r) return true;
+    const title = String(r.title || r.name || '').toLowerCase();
+    const id = String(r.id || '').toLowerCase();
+    return (
+      id.includes('seed_') ||
+      id.startsWith('resto_savane_') ||
+      id.startsWith('resto_le-savane_') ||
+      title.includes('café espresso') ||
+      title.includes('boisson fraîche') ||
+      title.includes('dessert gourmet') ||
+      title.includes('plat combo') ||
+      title.includes('ballon')
+    );
+  }
+
+  purgeLegacySeedRewards(slug) {
+    try {
+      const keysToClean = [
+        `nexa_rewards_${slug}`,
+        `nexa_rewards_cache_${slug}`,
+        `nexa_rewards_le-${slug}`,
+        `nexa_rewards_cache_le-${slug}`,
+        'nexa_rewards_savane',
+        'nexa_rewards_cache_savane',
+        'nexa_rewards_demo',
+        'nexa_rewards_cache_demo',
+        'nexa_rewards_global_all'
+      ];
+
+      keysToClean.forEach(key => {
+        try {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            const arr = JSON.parse(raw);
+            if (Array.isArray(arr)) {
+              const cleaned = arr.filter(item => item && !this.isLegacySeedReward(item));
+              localStorage.setItem(key, JSON.stringify(cleaned));
+            }
+          }
+        } catch (e) {}
+      });
+    } catch (e) {}
+  }
+
   async getRestaurantRewards(restoName) {
     console.log(`[DIAGNOSTIC R8 REWARDS] Fetching rewards for resto: "${restoName}"`);
     const slug = this.getSlug(restoName || 'savane');
+    this.purgeLegacySeedRewards(slug);
+
     const cleanSearch = (restoName || '').replace(/^nx[_-]/, '').replace(/[-_]/g, ' ').trim().toLowerCase();
     const client = this.getClient();
 
@@ -976,8 +1023,7 @@ class NexaProductionBackend {
           if (!qErr && Array.isArray(rows) && rows.length > 0) {
             rewardRows = rows.filter(r => {
               if (!r || (!r.title && !r.name)) return false;
-              const rTitle = String(r.title || r.name || '').toLowerCase();
-              if (rTitle.includes('ballon') || String(r.id || '').includes('seed_')) return false;
+              if (this.isLegacySeedReward(r)) return false; // STRICT BLACKLIST
 
               const rRestoId = String(r.resto_id || r.restaurant_id || '').toLowerCase();
               const rRestoName = String(r.restaurant_name || r.resto_name || '').toLowerCase();
@@ -992,8 +1038,7 @@ class NexaProductionBackend {
                 rRestoId.includes(slug) ||
                 (cleanSearch && rRestoName.includes(cleanSearch)) ||
                 rDesc.includes(`[resto:${slug}]`) ||
-                rDesc.includes(slug) ||
-                (!rRestoId && !rRestoName && !rDesc.includes('[resto:'))
+                (rDesc.includes(slug) && !rDesc.includes('[resto:'))
               );
               return isMatch;
             });
@@ -1007,9 +1052,12 @@ class NexaProductionBackend {
         if (rewardRows.length > 0) {
           const mergedMap = new Map();
           // Index existing local rewards first
-          rewards.forEach(r => mergedMap.set(String(r.id), r));
+          rewards.forEach(r => {
+            if (!this.isLegacySeedReward(r)) mergedMap.set(String(r.id), r);
+          });
           // Merge incoming cloud rows
           rewardRows.forEach(row => {
+            if (this.isLegacySeedReward(row)) return;
             const rowId = String(row.id || row.title);
             const existing = mergedMap.get(rowId);
             const isExplicitlyInactive = row.active === false || row.is_active === false || (existing && existing.active === false);
@@ -1075,7 +1123,7 @@ class NexaProductionBackend {
           const arr = JSON.parse(rawStr);
           if (Array.isArray(arr)) {
             arr.forEach(r => {
-              if (r && (r.title || r.name) && r.active !== false) {
+              if (r && (r.title || r.name) && r.active !== false && !this.isLegacySeedReward(r)) {
                 const key = String(r.id || r.title || r.name);
                 if (!mergedMap.has(key)) {
                   mergedMap.set(key, r);

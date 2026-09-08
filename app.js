@@ -227,7 +227,7 @@ function initNexaApp() {
         
         if (cloudRewards && cloudRewards.length > 0) {
           state.rewards = cloudRewards
-            .filter(r => r.active !== false && !String(r.title || '').toLowerCase().includes('ballon') && !String(r.id || '').includes('seed_'))
+            .filter(r => r && r.active !== false && (!window.nexaBackend || !window.nexaBackend.isLegacySeedReward || !window.nexaBackend.isLegacySeedReward(r)))
             .map(r => ({
               id: String(r.id),
               title: r.title,
@@ -246,7 +246,7 @@ function initNexaApp() {
             if (rawSaved) {
               const parsed = JSON.parse(rawSaved);
               if (Array.isArray(parsed) && parsed.length > 0) {
-                state.rewards = parsed.filter(r => r.active !== false && !String(r.title || '').toLowerCase().includes('ballon') && !String(r.id || '').includes('seed_'));
+                state.rewards = parsed.filter(r => r && r.active !== false && (!window.nexaBackend || !window.nexaBackend.isLegacySeedReward || !window.nexaBackend.isLegacySeedReward(r)));
               }
             }
           } catch(e) {}
