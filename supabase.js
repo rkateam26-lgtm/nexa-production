@@ -966,39 +966,37 @@ class NexaProductionBackend {
       try {
         let rewardRows = [];
 
-        // Primary query: check resto_id, restaurant_name, description
         try {
-          const queryPromise = client
-            .from('rewards')
-            .select('*')
-            .or(`resto_id.eq.${slug},resto_id.ilike.%${slug}%,restaurant_name.ilike.%${cleanSearch}%,restaurant_name.ilike.%${restoName}%,description.ilike.%${slug}%,desc.ilike.%${slug}%`)
-            .order('created_at', { ascending: false });
-
+          const queryPromise = client.from('rewards').select('*').order('created_at', { ascending: false });
           const timeoutPromise = new Promise((_, reject) => 
             setTimeout(() => reject(new Error('timeout')), 5000)
           );
 
           const { data: rows, error: qErr } = await Promise.race([queryPromise, timeoutPromise]);
           if (!qErr && Array.isArray(rows) && rows.length > 0) {
-            rewardRows = rows;
+            rewardRows = rows.filter(r => {
+              if (!r || !r.title) return false;
+              const rRestoId = String(r.resto_id || r.restaurant_id || '').toLowerCase();
+              const rRestoName = String(r.restaurant_name || r.resto_name || '').toLowerCase();
+              const rDesc = String(r.description || r.desc || '').toLowerCase();
+
+              const rSlug = rRestoId ? this.getSlug(rRestoId) : '';
+              const rNameSlug = rRestoName ? this.getSlug(rRestoName) : '';
+              const targetClean = (restoName || '').toLowerCase().trim();
+
+              return (
+                rSlug === slug ||
+                rNameSlug === slug ||
+                rRestoId.includes(slug) ||
+                (targetClean && rRestoName.includes(targetClean)) ||
+                rDesc === slug ||
+                rDesc.includes(slug) ||
+                rows.length <= 10
+              );
+            });
           }
         } catch (queryErr) {
-          console.warn('[REWARDS PRIMARY QUERY NOTICE]', queryErr.message);
-        }
-
-        // Secondary fallback: fetch all rewards and filter in-memory if primary query returned nothing
-        if (rewardRows.length === 0) {
-          try {
-            const { data: allRows } = await client.from('rewards').select('*');
-            if (Array.isArray(allRows) && allRows.length > 0) {
-              rewardRows = allRows.filter(r => {
-                const rSlug = r.resto_id ? this.getSlug(r.resto_id) : '';
-                const rNameSlug = r.restaurant_name ? this.getSlug(r.restaurant_name) : '';
-                const rDesc = (r.description || r.desc || '').toLowerCase();
-                return rSlug === slug || rNameSlug === slug || rDesc === slug || rDesc.includes(slug);
-              });
-            }
-          } catch (fallbackErr) {}
+          console.warn('[REWARDS QUERY NOTICE]', queryErr.message);
         }
 
         if (rewardRows.length > 0) {
@@ -1017,7 +1015,7 @@ class NexaProductionBackend {
               desc: row.description || row.desc || (existing && existing.desc) || 'Valable sur présentation en caisse.',
               image: row.image || (existing && existing.image) || '',
               category: row.category || (existing && existing.category) || 'Général',
-              active: row.active !== undefined ? row.active : (existing ? existing.active : true),
+              active: row.active !== undefined ? row.active : (row.is_active !== undefined ? row.is_active : (existing ? existing.active : true)),
               useCount: row.redemptions_count || row.use_count || (existing && existing.useCount) || 0
             });
           });
@@ -2106,7 +2104,12 @@ class NexaProductionBackend {
       const prevPoints = (existingIdx >= 0 && typeof localList[existingIdx].points_balance === 'number')
         ? (localList[existingIdx].points_balance || localList[existingIdx].points || 0)
         : 0;
-      currentPoints = prevPoints + pointsEarned;
+
+      // Prevent point doubling: check if caller (handleScannedRawText) already credited pointsEarned in local storage
+      const lastScanTime = existingIdx >= 0 && localList[existingIdx].last_scan_at ? new Date(localList[existingIdx].last_scan_at).getTime() : 0;
+      const justScannedInLast30s = (Date.now() - lastScanTime) < 30000;
+
+      currentPoints = (existingIdx >= 0 && justScannedInLast30s) ? prevPoints : (prevPoints + pointsEarned);
 
       const displayName = clientName && clientName !== 'Client Nexa' 
         ? clientName 
@@ -2163,7 +2166,7 @@ class NexaProductionBackend {
 
         const hasCloudScannedBefore = Boolean(existingClient && existingClient.last_scan_at);
         const cloudVisits = hasCloudScannedBefore ? Math.max((existingClient.visits_count || 1) + 1, currentVisits) : currentVisits;
-        const cloudPoints = currentPoints;
+        const cloudPoints = existingClient ? ((existingClient.points_balance || 0) + pointsEarned) : currentPoints;
         const displayName = clientName && clientName !== 'Client Nexa' ? clientName : (existingClient ? existingClient.full_name : 'Client Nexa');
 
         let clientId = existingClient ? existingClient.id : null;

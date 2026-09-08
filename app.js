@@ -646,7 +646,11 @@ function initNexaApp() {
 
       if (window.nexaBackend) {
         try {
-          await window.nexaBackend.createCloudReward(state.restaurant.name, title, pts, desc, icon, category);
+          if (window.nexaBackend.createOrUpdateRestaurantReward) {
+            await window.nexaBackend.createOrUpdateRestaurantReward(state.restaurant.name, newReward);
+          } else if (window.nexaBackend.createCloudReward) {
+            await window.nexaBackend.createCloudReward(state.restaurant.name, title, pts, desc, icon, category);
+          }
         } catch (err) {
           console.log('Reward save info:', err);
         }
