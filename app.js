@@ -226,16 +226,8 @@ function initNexaApp() {
         }
         
         if (!cloudRewards || cloudRewards.length === 0) {
-          // Guaranteed fallback seed rewards so the rewards catalog is NEVER empty for any restaurant!
-          cloudRewards = [
-            { id: 'seed_1', title: '☕ Café Espresso Offert', pts: 20, desc: 'Valable sur présentation en caisse.', icon: '☕', category: 'Boisson', active: true },
-            { id: 'seed_2', title: '🥤 Boisson Fraîche au Choix', pts: 30, desc: 'Jus naturel, Soda ou Eau minérale offert.', icon: '🥤', category: 'Boisson', active: true },
-            { id: 'seed_3', title: '🍰 Dessert Gourmet Maison', pts: 50, desc: 'Tiramisu, Gâteau ou Fondant au chocolat.', icon: '🍰', category: 'Dessert', active: true },
-            { id: 'seed_4', title: '🍔 Plat Combo Signature', pts: 100, desc: 'Un plat principal ou burger offert.', icon: '🍔', category: 'Plat', active: true }
-          ];
-        }
-
-        if (cloudRewards && cloudRewards.length > 0) {
+          state.rewards = [];
+        } else {
           state.rewards = cloudRewards.filter(r => r.active !== false).map(r => ({
             id: String(r.id),
             title: r.title,
